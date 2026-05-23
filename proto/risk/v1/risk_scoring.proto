@@ -81,7 +81,7 @@ message ScorePaymentResponse {
   // Detailed rule hits explaining individual score contributions.
   repeated RiskRuleHit rule_hits = 4;
 
-// Risk rule version used to produce this response.
+  // Risk rule version used to produce this response.
   string rule_version = 5;
 }
 

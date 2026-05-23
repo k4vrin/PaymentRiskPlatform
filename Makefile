@@ -4,6 +4,7 @@ GO_SERVICE_DIR := services/risk-scoring-service
 GO_CACHE ?= /private/tmp/paymentrisk-go-build-cache
 PROTO_DIR := proto
 GO_PROTO_OUT := proto/gen/go
+GO_BIN := $(shell go env GOPATH)/bin
 
 .PHONY: help
 help:
@@ -15,6 +16,8 @@ help:
 	@echo "  make java-validate     Validate Spring Boot service"
 	@echo "  make java-test         Run Spring Boot tests"
 	@echo "  make go-test           Run Go tests"
+	@echo "  make proto             Generate protobuf code"
+	@echo "  make proto-go          Generate Go protobuf code"
 	@echo "  make test              Run Java and Go tests"
 	@echo "  make spring-run        Run Spring Boot service locally"
 	@echo "  make risk-run          Run Go risk scoring service locally"
@@ -58,10 +61,13 @@ spring-run:
 risk-run:
 	cd $(GO_SERVICE_DIR) && GOCACHE=$(GO_CACHE) go run ./cmd/risk-scoring-service
 
+.PHONY: proto
+proto: proto-go
+
 .PHONY: proto-go
 proto-go:
 	mkdir -p $(GO_PROTO_OUT)
-	protoc \
+	PATH="$(PATH):$(GO_BIN)" protoc \
 		-I $(PROTO_DIR) \
 		--go_out=$(GO_PROTO_OUT) \
 		--go_opt=paths=source_relative \

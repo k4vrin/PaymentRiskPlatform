@@ -139,53 +139,64 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [x] Expose Swagger UI endpoint if dependency supports it.
 - [ ] Define REST API versioning convention:
     - [ ] Document REST path prefix `/api/v1`.
-    - [ ] Add package or constant for API v1 base path.
+    - [x] Add package or constant for API v1 base path.
     - [ ] Use `/api/v1` in the first controller.
-- [ ] Define event schema versioning convention:
-    - [ ] Create event envelope documentation in `docs/events/event-envelope.md`.
-    - [ ] Document `schemaVersion`.
-    - [ ] Document `eventId`.
-    - [ ] Document `eventType`.
-    - [ ] Document `aggregateId`.
-    - [ ] Document `aggregateType`.
-    - [ ] Document `occurredAt`.
-    - [ ] Document `producer`.
-    - [ ] Document `correlationId`.
-- [ ] Create shared API package structure:
-    - [ ] `shared/api`
-    - [ ] `shared/api/error`
-    - [ ] `shared/api/correlation`
-    - [ ] `shared/api/version`
-- [ ] Create global API error response model:
-    - [ ] Add `ApiErrorResponse`.
-    - [ ] Add `errorCode`.
-    - [ ] Add `message`.
-    - [ ] Add `details`.
-    - [ ] Add `correlationId`.
-    - [ ] Add `timestamp`.
-    - [ ] Add `path`.
-- [ ] Create validation error detail model:
-    - [ ] Add `ApiErrorDetail`.
-    - [ ] Add `field`.
-    - [ ] Add `rejectedValue` only when safe to expose.
-    - [ ] Add `reason`.
-- [ ] Define stable API error codes:
-    - [ ] Add `VALIDATION_FAILED`.
-    - [ ] Add `NOT_FOUND`.
-    - [ ] Add `DUPLICATE_IDEMPOTENCY_KEY`.
-    - [ ] Add `PAYMENT_STATE_CONFLICT`.
-    - [ ] Add `RISK_SERVICE_TIMEOUT`.
-    - [ ] Add `DOWNSTREAM_UNAVAILABLE`.
-    - [ ] Add `UNAUTHORIZED`.
-    - [ ] Add `FORBIDDEN`.
-    - [ ] Add `INTERNAL_ERROR`.
-- [ ] Add global WebFlux exception handling:
-    - [ ] Handle Bean Validation errors.
-    - [ ] Handle request binding errors.
-    - [ ] Handle not-found exceptions.
-    - [ ] Handle conflict exceptions.
-    - [ ] Handle downstream timeout exceptions.
-    - [ ] Handle fallback internal errors.
+- [x] Define event schema versioning convention:
+    - [x] Create event envelope documentation in `docs/events/event-envelope.md`.
+    - [x] Document `schemaVersion`.
+    - [x] Document `eventId`.
+    - [x] Document `eventType`.
+    - [x] Document `aggregateId`.
+    - [x] Document `aggregateType`.
+    - [x] Document `occurredAt`.
+    - [x] Document `producer`.
+    - [x] Document `correlationId`.
+- [x] Create shared API package structure:
+    - [x] `shared/api`
+    - [x] `shared/api/error`
+    - [x] `shared/api/correlation`
+    - [x] `shared/api/version`
+- [x] Create global API error response model:
+    - [x] Add `ApiErrorResponse`.
+    - [x] Add `status`.
+    - [x] Add `code`.
+    - [x] Add `message`.
+    - [x] Add `path`.
+    - [x] Add `correlationId`.
+    - [x] Add `fieldErrors`.
+    - [x] Add `timestamp`.
+- [x] Create validation error detail model:
+    - [x] Add nested `ApiErrorResponse.FieldError`.
+    - [x] Add `field`.
+    - [x] Add `message`.
+    - [x] Do not expose rejected values in validation responses.
+- [x] Define stable API error codes:
+    - [x] Add sealed `ApiErrorCode` interface.
+    - [x] Add `Business` error code group.
+    - [x] Add `Security` error code group.
+    - [x] Add `Validation` error code group.
+    - [x] Add `Infrastructure` error code group.
+    - [x] Add `VALIDATION_FAILED`.
+    - [x] Add `RESOURCE_NOT_FOUND`.
+    - [x] Add `DUPLICATE_IDEMPOTENCY_KEY`.
+    - [x] Add `PAYMENT_STATE_CONFLICT`.
+    - [x] Add `RISK_SERVICE_TIMEOUT`.
+    - [x] Add `DOWNSTREAM_UNAVAILABLE`.
+    - [x] Add `UNAUTHORIZED`.
+    - [x] Add `FORBIDDEN`.
+    - [x] Add `INTERNAL_ERROR`.
+- [x] Add global WebFlux exception handling:
+    - [x] Handle Bean Validation errors.
+    - [x] Handle request binding errors.
+    - [x] Handle malformed request input errors.
+    - [x] Handle not-found exceptions.
+    - [x] Handle conflict exceptions.
+    - [x] Handle downstream timeout exceptions.
+    - [x] Handle downstream unavailable exceptions.
+    - [x] Handle authentication errors.
+    - [x] Handle authorization errors.
+    - [x] Handle fallback internal errors.
+    - [x] Add WebFlux exception handler tests.
 - [ ] Add correlation ID support:
     - [ ] Create correlation ID constant for `X-Correlation-Id`.
     - [ ] Add WebFlux filter.
@@ -220,7 +231,7 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [ ] Document error response format in `docs/api/error-contract.md`.
     - [ ] Document correlation ID behavior in `docs/api/correlation-id.md`.
 - [ ] Update developer commands:
-    - [ ] Add `make proto`.
+    - [x] Add `make proto`.
     - [ ] Add `make java-run` or keep `make spring-run` documented.
     - [ ] Add `make contract-test` if useful.
     - [ ] Ensure `make test` runs Java and Go checks after generation.
