@@ -85,51 +85,51 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
 
 ### Steps
 
-- [ ] Create shared contract folders:
-    - [ ] Create `proto/risk/v1`.
-    - [ ] Create `docs/api`.
-    - [ ] Create `docs/events`.
-- [ ] Add protobuf source file:
-    - [ ] Create `proto/risk/v1/risk_scoring.proto`.
-    - [ ] Set `syntax = "proto3"`.
-    - [ ] Set protobuf package to `risk.v1`.
-    - [ ] Set Java package option.
-    - [ ] Set Go package option.
-- [ ] Define protobuf enum contracts:
-    - [ ] Add `RiskDecision`.
-    - [ ] Add `RiskReasonCode`.
-    - [ ] Add stable numeric enum values.
-    - [ ] Reserve `0` enum values for unspecified states.
-- [ ] Define protobuf message contracts:
-    - [ ] Add `ScorePaymentRequest`.
-    - [ ] Add `ScorePaymentResponse`.
-    - [ ] Add `RiskRuleHit`.
-    - [ ] Add amount as integer minor units.
-    - [ ] Add `correlation_id`.
-    - [ ] Add `rule_version`.
-- [ ] Define protobuf service contract:
-    - [ ] Add `RiskScoringService`.
-    - [ ] Add unary `ScorePayment` RPC.
-    - [ ] Document timeout expectation in proto comments.
-- [ ] Add protobuf tooling documentation:
-    - [ ] Document required local tools in `README.md`.
-    - [ ] Document `protoc` installation requirement.
-    - [ ] Document Go plugins:
-        - [ ] `protoc-gen-go`
-        - [ ] `protoc-gen-go-grpc`
-- [ ] Add Go protobuf generation:
-    - [ ] Add generated-code target to `Makefile`.
-    - [ ] Generate Go protobuf messages.
-    - [ ] Generate Go gRPC service interfaces.
-    - [ ] Place generated Go files under an agreed package path.
-    - [ ] Ensure generated Go files compile with `go test ./...`.
-- [ ] Add Java protobuf generation:
-    - [ ] Add Maven protobuf plugin.
-    - [ ] Add Java protobuf runtime dependency.
-    - [ ] Add Java gRPC dependency.
-    - [ ] Generate Java protobuf messages.
-    - [ ] Generate Java gRPC client stubs.
-    - [ ] Ensure generated Java sources compile with `./mvnw test`.
+- [x] Create shared contract folders:
+    - [x] Create `proto/risk/v1`.
+    - [x] Create `docs/api`.
+    - [x] Create `docs/events`.
+- [x] Add protobuf source file:
+    - [x] Create `proto/risk/v1/risk_scoring.proto`.
+    - [x] Set `syntax = "proto3"`.
+    - [x] Set protobuf package to `risk.v1`.
+    - [x] Set Java package option.
+    - [x] Set Go package option.
+- [x] Define protobuf enum contracts:
+    - [x] Add `RiskDecision`.
+    - [x] Add `RiskReasonCode`.
+    - [x] Add stable numeric enum values.
+    - [x] Reserve `0` enum values for unspecified states.
+- [x] Define protobuf message contracts:
+    - [x] Add `ScorePaymentRequest`.
+    - [x] Add `ScorePaymentResponse`.
+    - [x] Add `RiskRuleHit`.
+    - [x] Add amount as integer minor units.
+    - [x] Add `correlation_id`.
+    - [x] Add `rule_version`.
+- [x] Define protobuf service contract:
+    - [x] Add `RiskScoringService`.
+    - [x] Add unary `ScorePayment` RPC.
+    - [x] Document timeout expectation in proto comments.
+- [x] Add protobuf tooling documentation:
+    - [x] Document required local tools in `README.md`.
+    - [x] Document `protoc` installation requirement.
+    - [x] Document Go plugins:
+        - [x] `protoc-gen-go`
+        - [x] `protoc-gen-go-grpc`
+- [x] Add Go protobuf generation:
+    - [x] Add generated-code target to `Makefile`.
+    - [x] Generate Go protobuf messages.
+    - [x] Generate Go gRPC service interfaces.
+    - [x] Place generated Go files under an agreed package path.
+    - [x] Ensure generated Go files compile with `go test ./...`.
+- [x] Add Java protobuf generation:
+    - [x] Add Maven protobuf plugin.
+    - [x] Add Java protobuf runtime dependency.
+    - [x] Add Java gRPC dependency.
+    - [x] Generate Java protobuf messages.
+    - [x] Generate Java gRPC client stubs.
+    - [x] Ensure generated Java sources compile with `./mvnw test`.
 - [ ] Add Spring OpenAPI setup:
     - [ ] Add WebFlux-compatible OpenAPI dependency.
     - [ ] Configure OpenAPI title.

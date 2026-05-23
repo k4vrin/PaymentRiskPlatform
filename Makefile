@@ -2,6 +2,8 @@ COMPOSE_FILE := platform/compose.local.yaml
 JAVA_SERVICE_DIR := services/payment-orchestrator-service
 GO_SERVICE_DIR := services/risk-scoring-service
 GO_CACHE ?= /private/tmp/paymentrisk-go-build-cache
+PROTO_DIR := proto
+GO_PROTO_OUT := proto/gen/go
 
 .PHONY: help
 help:
@@ -55,3 +57,14 @@ spring-run:
 .PHONY: risk-run
 risk-run:
 	cd $(GO_SERVICE_DIR) && GOCACHE=$(GO_CACHE) go run ./cmd/risk-scoring-service
+
+.PHONY: proto-go
+proto-go:
+	mkdir -p $(GO_PROTO_OUT)
+	protoc \
+		-I $(PROTO_DIR) \
+		--go_out=$(GO_PROTO_OUT) \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=$(GO_PROTO_OUT) \
+		--go-grpc_opt=paths=source_relative \
+		$(PROTO_DIR)/risk/v1/risk_scoring.proto

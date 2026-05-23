@@ -24,6 +24,37 @@ scripts/
 - Maven through the generated Spring Boot wrapper
 - Go 1.26.3
 - Docker and Docker Compose
+- Protocol Buffers compiler, `protoc`
+- Go protobuf plugins:
+  - `protoc-gen-go`
+  - `protoc-gen-go-grpc`
+
+Install protobuf tooling on macOS with Homebrew:
+
+```bash
+brew install protobuf
+```
+
+Install the Go protobuf plugins:
+
+```bash
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+```
+
+Make sure the Go install binary directory is on your shell path:
+
+```bash
+export PATH="$PATH:$(go env GOPATH)/bin"
+```
+
+Verify the tools:
+
+```bash
+protoc --version
+protoc-gen-go --version
+protoc-gen-go-grpc --version
+```
 
 ## Local Infrastructure
 
