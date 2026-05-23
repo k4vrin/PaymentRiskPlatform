@@ -1,0 +1,20 @@
+spring:
+  r2dbc:
+    url: ${PAYMENT_RISK_R2DBC_URL}
+    username: ${PAYMENT_RISK_DB_USERNAME}
+    password: ${PAYMENT_RISK_DB_PASSWORD}
+  flyway:
+    url: ${PAYMENT_RISK_FLYWAY_JDBC_URL}
+    user: ${PAYMENT_RISK_DB_USERNAME}
+    password: ${PAYMENT_RISK_DB_PASSWORD}
+  data:
+    redis:
+      host: ${PAYMENT_RISK_REDIS_HOST}
+      port: ${PAYMENT_RISK_REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${PAYMENT_RISK_KAFKA_BOOTSTRAP_SERVERS}
+  rabbitmq:
+    host: ${PAYMENT_RISK_RABBITMQ_HOST}
+    port: ${PAYMENT_RISK_RABBITMQ_PORT:5672}
+    username: ${PAYMENT_RISK_RABBITMQ_USERNAME}
+    password: ${PAYMENT_RISK_RABBITMQ_PASSWORD}

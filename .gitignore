@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+target/
+.mvn/timing.properties
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
+
+# Go
+bin/
+dist/
+*.test
+coverage.out
+coverage.html
+
+# Logs
+*.log
+logs/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local platform state
+platform/data/
+platform/.tmp/
+
+# Generated artifacts
+generated/
+build/
+out/
