@@ -130,13 +130,13 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [x] Generate Java protobuf messages.
     - [x] Generate Java gRPC client stubs.
     - [x] Ensure generated Java sources compile with `./mvnw test`.
-- [ ] Add Spring OpenAPI setup:
-    - [ ] Add WebFlux-compatible OpenAPI dependency.
-    - [ ] Configure OpenAPI title.
-    - [ ] Configure OpenAPI version.
-    - [ ] Configure server URL for local development.
-    - [ ] Expose OpenAPI JSON endpoint.
-    - [ ] Expose Swagger UI endpoint if dependency supports it.
+- [x] Add Spring OpenAPI setup:
+    - [x] Add WebFlux-compatible OpenAPI dependency.
+    - [x] Configure OpenAPI title.
+    - [x] Configure OpenAPI version.
+    - [x] Configure server URL for local development.
+    - [x] Expose OpenAPI JSON endpoint.
+    - [x] Expose Swagger UI endpoint if dependency supports it.
 - [ ] Define REST API versioning convention:
     - [ ] Document REST path prefix `/api/v1`.
     - [ ] Add package or constant for API v1 base path.
