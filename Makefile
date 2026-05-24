@@ -18,7 +18,9 @@ help:
 	@echo "  make go-test           Run Go tests"
 	@echo "  make proto             Generate protobuf code"
 	@echo "  make proto-go          Generate Go protobuf code"
-	@echo "  make test              Run Java and Go tests"
+	@echo "  make contract-test     Regenerate contracts and run Java and Go tests"
+	@echo "  make test              Regenerate contracts and run Java and Go tests"
+	@echo "  make java-run          Alias for make spring-run"
 	@echo "  make spring-run        Run Spring Boot service locally"
 	@echo "  make risk-run          Run Go risk scoring service locally"
 
@@ -51,7 +53,13 @@ go-test:
 	cd $(GO_SERVICE_DIR) && GOCACHE=$(GO_CACHE) go test ./...
 
 .PHONY: test
-test: java-test go-test
+test: proto java-test go-test
+
+.PHONY: contract-test
+contract-test: proto java-test go-test
+
+.PHONY: java-run
+java-run: spring-run
 
 .PHONY: spring-run
 spring-run:

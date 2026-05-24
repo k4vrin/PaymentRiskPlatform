@@ -114,11 +114,19 @@ Run all available checks:
 make test
 ```
 
+Regenerate contracts and run contract checks:
+
+```bash
+make contract-test
+```
+
 Start the Spring Boot service:
 
 ```bash
 make spring-run
 ```
+
+`make java-run` is also available as an alias for `make spring-run`.
 
 Start the Go risk scoring service:
 

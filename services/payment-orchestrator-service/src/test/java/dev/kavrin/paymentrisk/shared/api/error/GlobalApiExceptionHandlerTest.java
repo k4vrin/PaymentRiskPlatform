@@ -1,14 +1,12 @@
 package dev.kavrin.paymentrisk.shared.api.error;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.web.reactive.ReactiveWebSecurityAutoConfiguration;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @WebFluxTest(
         controllers = TestErrorController.class,
@@ -114,5 +112,19 @@ class GlobalApiExceptionHandlerTest {
                 .jsonPath("$.message").isEqualTo("An unexpected error occurred.")
                 .jsonPath("$.path").isEqualTo("/test/unexpected")
                 .jsonPath("$.correlationId").isEqualTo("corr-internal");
+    }
+
+    @Test
+    void unknownRouteReturnsStructuredErrorResponse() {
+        webTestClient.get()
+                .uri("/test/missing")
+                .header("X-Correlation-Id", "corr-missing")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(404)
+                .jsonPath("$.code").isEqualTo("RESOURCE_NOT_FOUND")
+                .jsonPath("$.path").isEqualTo("/test/missing")
+                .jsonPath("$.correlationId").isEqualTo("corr-missing");
     }
 }

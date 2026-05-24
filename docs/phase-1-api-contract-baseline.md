@@ -152,19 +152,19 @@ Completed:
 - shared protobuf folder and `risk_scoring.proto`;
 - Go and Java protobuf generation;
 - Spring OpenAPI setup;
+- REST API versioning documentation;
 - event envelope documentation;
 - shared API package structure;
 - global API error response model;
 - stable grouped API error codes;
 - global WebFlux exception handling;
 - correlation ID support;
-- correlation ID documentation.
-
-Remaining:
-
-- REST API versioning documentation;
 - first contract-only REST endpoint;
 - Spring API tests for the contract endpoint;
 - protobuf construction tests;
-- REST, gRPC, and error contract documentation;
-- final developer command cleanup for contract testing.
+- REST, gRPC, error, and correlation contract documentation;
+- developer command cleanup for contract testing.
+
+Remaining:
+
+- None for Phase 1.

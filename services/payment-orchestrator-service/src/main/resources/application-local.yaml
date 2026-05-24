@@ -18,3 +18,13 @@ spring:
     port: 5672
     username: payment_risk
     password: payment_risk
+  security:
+    user:
+      name: dev
+      password: dev-pass
+      roles:
+        - ADMIN
+        - MERCHANT
+        - OPS
+        - AUDITOR
+        - SERVICE

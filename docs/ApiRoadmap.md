@@ -137,10 +137,10 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [x] Configure server URL for local development.
     - [x] Expose OpenAPI JSON endpoint.
     - [x] Expose Swagger UI endpoint if dependency supports it.
-- [ ] Define REST API versioning convention:
-    - [ ] Document REST path prefix `/api/v1`.
+- [x] Define REST API versioning convention:
+    - [x] Document REST path prefix `/api/v1`.
     - [x] Add package or constant for API v1 base path.
-    - [ ] Use `/api/v1` in the first controller.
+    - [x] Use `/api/v1` in the first controller.
 - [x] Define event schema versioning convention:
     - [x] Create event envelope documentation in `docs/events/event-envelope.md`.
     - [x] Document `schemaVersion`.
@@ -207,47 +207,47 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [x] Add TODO marker for later gRPC metadata propagation.
     - [x] Add TODO marker for later Kafka header propagation.
     - [x] Add TODO marker for later RabbitMQ header propagation.
-- [ ] Add first contract-only REST endpoint:
-    - [ ] Create a lightweight `GET /api/v1/contract/ping` endpoint.
-    - [ ] Return service name.
-    - [ ] Return API version.
-    - [ ] Return correlation ID.
-    - [ ] Use it to validate OpenAPI, errors, and correlation behavior before payment logic exists.
-- [ ] Add Spring API tests:
-    - [ ] Test contract ping returns `200`.
-    - [ ] Test contract ping includes `X-Correlation-Id`.
-    - [ ] Test inbound `X-Correlation-Id` is preserved.
-    - [ ] Test missing correlation ID is generated.
-    - [ ] Test validation failure returns `ApiErrorResponse`.
-    - [ ] Test unknown route returns structured error if supported by the handler.
-- [ ] Add protobuf contract tests:
-    - [ ] Add Go compile test for generated protobuf package.
-    - [ ] Add Java compile test for generated protobuf package.
-    - [ ] Add one sample `ScorePaymentRequest` construction test in Go.
-    - [ ] Add one sample `ScorePaymentRequest` construction test in Java.
-- [ ] Add contract documentation:
-    - [ ] Document REST conventions in `docs/api/rest-api-conventions.md`.
-    - [ ] Document risk gRPC contract in `docs/api/risk-grpc-contract.md`.
-    - [ ] Document error response format in `docs/api/error-contract.md`.
+- [x] Add first contract-only REST endpoint:
+    - [x] Create a lightweight `GET /api/v1/contract/ping` endpoint.
+    - [x] Return service name.
+    - [x] Return API version.
+    - [x] Return correlation ID.
+    - [x] Use it to validate OpenAPI, errors, and correlation behavior before payment logic exists.
+- [x] Add Spring API tests:
+    - [x] Test contract ping returns `200`.
+    - [x] Test contract ping includes `X-Correlation-Id`.
+    - [x] Test inbound `X-Correlation-Id` is preserved.
+    - [x] Test missing correlation ID is generated.
+    - [x] Test validation failure returns `ApiErrorResponse`.
+    - [x] Test unknown route returns structured error if supported by the handler.
+- [x] Add protobuf contract tests:
+    - [x] Add Go compile test for generated protobuf package.
+    - [x] Add Java compile test for generated protobuf package.
+    - [x] Add one sample `ScorePaymentRequest` construction test in Go.
+    - [x] Add one sample `ScorePaymentRequest` construction test in Java.
+- [x] Add contract documentation:
+    - [x] Document REST conventions in `docs/api/rest-api-conventions.md`.
+    - [x] Document risk gRPC contract in `docs/api/risk-grpc-contract.md`.
+    - [x] Document error response format in `docs/api/error-contract.md`.
     - [x] Document correlation ID behavior in `docs/api/correlation-id.md`.
-- [ ] Update developer commands:
+- [x] Update developer commands:
     - [x] Add `make proto`.
-    - [ ] Add `make java-run` or keep `make spring-run` documented.
-    - [ ] Add `make contract-test` if useful.
-    - [ ] Ensure `make test` runs Java and Go checks after generation.
+  - [x] Add `make java-run` or keep `make spring-run` documented.
+  - [x] Add `make contract-test` if useful.
+  - [x] Ensure `make test` runs Java and Go checks after generation.
 
 ### Acceptance Criteria
 
-- [ ] `proto/risk/v1/risk_scoring.proto` is the single source of truth for the risk gRPC contract.
-- [ ] `make proto` generates Go and Java contract code.
-- [ ] `make java-test` succeeds after protobuf generation.
-- [ ] `make go-test` succeeds after protobuf generation.
-- [ ] OpenAPI JSON exposes `GET /api/v1/contract/ping`.
-- [ ] `GET /api/v1/contract/ping` returns the API version and correlation ID.
+- [x] `proto/risk/v1/risk_scoring.proto` is the single source of truth for the risk gRPC contract.
+- [x] `make proto` generates Go and Java contract code.
+- [x] `make java-test` succeeds after protobuf generation.
+- [x] `make go-test` succeeds after protobuf generation.
+- [x] OpenAPI JSON exposes `GET /api/v1/contract/ping`.
+- [x] `GET /api/v1/contract/ping` returns the API version and correlation ID.
 - [x] Missing correlation IDs are generated.
 - [x] Inbound correlation IDs are preserved.
-- [ ] Validation failures return `ApiErrorResponse`.
-- [ ] REST, gRPC, event envelope, error, and correlation conventions are documented.
+- [x] Validation failures return `ApiErrorResponse`.
+- [x] REST, gRPC, event envelope, error, and correlation conventions are documented.
 
 ## Phase 2: Payment Authorization API
 
@@ -264,6 +264,19 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] `payment/application/service`
     - [ ] `payment/domain`
     - [ ] `payment/domain/policy`
+  - [ ] `payment/infrastructure/persistence`
+  - [ ] `payment/infrastructure/risk`
+  - [ ] `payment/infrastructure/outbox`
+- [ ] Create idempotency package structure:
+    - [ ] `idempotency/application`
+    - [ ] `idempotency/domain`
+    - [ ] `idempotency/infrastructure/redis`
+- [ ] Create risk integration package structure:
+    - [ ] `risk/application`
+    - [ ] `risk/infrastructure/grpc`
+- [ ] Create outbox package structure:
+    - [ ] `outbox/domain`
+    - [ ] `outbox/infrastructure/persistence`
 - [ ] Create payment lifecycle enum:
     - [ ] `RECEIVED`
     - [ ] `RISK_PENDING`
@@ -272,6 +285,33 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] `DECLINED`
     - [ ] `REVERSED`
     - [ ] `FAILED`
+- [ ] Create payment domain value objects:
+    - [ ] `PaymentId`
+    - [ ] `MerchantId`
+    - [ ] `CustomerId`
+    - [ ] `AuthorizationCode`
+    - [ ] `Money`
+    - [ ] `PaymentMethodToken`
+    - [ ] `DeviceFingerprint`
+    - [ ] `ExternalReference`
+    - [ ] `IdempotencyKey`
+- [ ] Create payment domain aggregate/model:
+    - [ ] Add `Payment`.
+    - [ ] Add `PaymentAuthorization`.
+    - [ ] Add `PaymentRiskDecision`.
+    - [ ] Add factory for new authorization attempts.
+    - [ ] Add method to mark payment risk pending.
+    - [ ] Add method to mark payment authorized.
+    - [ ] Add method to mark payment declined.
+    - [ ] Add method to mark payment failed.
+- [ ] Create payment domain policies:
+    - [ ] Validate amount is positive.
+    - [ ] Validate currency format.
+    - [ ] Validate merchant ID presence.
+    - [ ] Validate customer ID presence.
+    - [ ] Validate payment method token presence.
+    - [ ] Validate device fingerprint presence.
+    - [ ] Validate valid authorization state transitions.
 - [ ] Add authorization request DTO:
     - [ ] `merchantId`
     - [ ] `customerId`
@@ -281,6 +321,8 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] `deviceFingerprint`
     - [ ] `externalReference`
     - [ ] `idempotencyKey`
+  - [ ] Add Bean Validation annotations.
+  - [ ] Add OpenAPI schema metadata where useful.
 - [ ] Add authorization response DTO:
     - [ ] `paymentId`
     - [ ] `status`
@@ -288,16 +330,167 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] `riskDecision`
     - [ ] `reasonCodes`
     - [ ] `correlationId`
-- [ ] Implement `POST /api/v1/payments/authorize`.
-- [ ] Validate authorization requests with Bean Validation and domain policies.
-- [ ] Require idempotency keys for authorization.
-- [ ] Persist `Payment`, `PaymentAuthorization`, `RiskDecision`, and `IdempotencyRecord`.
-- [ ] Call Go risk service through a Java gRPC client.
-- [ ] Apply explicit timeout budget to the risk call.
-- [ ] Map risk response to payment decision.
-- [ ] Store idempotency response snapshots in Redis with TTL.
-- [ ] Publish outbox event after successful state transition.
-- [ ] Mask sensitive payment and device fields in logs.
+  - [ ] `riskScore`
+  - [ ] `ruleVersion`
+  - [ ] `createdAt`
+- [ ] Add payment authorization API shell:
+    - [ ] Create `PaymentAuthorizationController`.
+    - [ ] Map `POST /api/v1/payments/authorize`.
+    - [ ] Accept `AuthorizationRequest`.
+    - [ ] Return `AuthorizationResponse`.
+    - [ ] Read correlation ID from WebFlux exchange attributes.
+    - [ ] Delegate to application service only.
+- [ ] Add authorization command model:
+    - [ ] Create `AuthorizePaymentCommand`.
+    - [ ] Map request DTO to command.
+    - [ ] Include correlation ID.
+    - [ ] Include idempotency key.
+    - [ ] Keep command immutable.
+- [ ] Add authorization application service:
+    - [ ] Create `AuthorizePaymentService`.
+    - [ ] Validate command through domain policies.
+    - [ ] Check idempotency before creating a new authorization.
+    - [ ] Create new payment authorization aggregate.
+    - [ ] Persist payment state.
+    - [ ] Call risk scoring client.
+    - [ ] Apply risk decision to payment state.
+    - [ ] Persist risk decision.
+    - [ ] Persist idempotency result snapshot.
+    - [ ] Create outbox event record.
+    - [ ] Return response DTO.
+- [ ] Add persistence migrations:
+    - [ ] Create `payments` table.
+    - [ ] Create `payment_authorizations` table.
+    - [ ] Create `payment_risk_decisions` table.
+    - [ ] Create `idempotency_records` table.
+    - [ ] Create `outbox_events` table.
+    - [ ] Add primary keys.
+    - [ ] Add foreign keys where portable.
+    - [ ] Add index for `payment_id`.
+    - [ ] Add index for `merchant_id`.
+    - [ ] Add index for `customer_id`.
+    - [ ] Add unique index for idempotency scope and key.
+    - [ ] Add index for outbox status and next retry time.
+- [ ] Add persistence models and repositories:
+    - [ ] Add payment row/entity model.
+    - [ ] Add authorization row/entity model.
+    - [ ] Add risk decision row/entity model.
+    - [ ] Add idempotency row/entity model.
+    - [ ] Add outbox row/entity model.
+    - [ ] Add reactive payment repository.
+    - [ ] Add reactive authorization repository.
+    - [ ] Add reactive risk decision repository.
+    - [ ] Add reactive idempotency repository.
+    - [ ] Add reactive outbox repository.
+    - [ ] Add mapper from domain model to persistence rows.
+    - [ ] Add mapper from persistence rows to domain model.
+- [ ] Add idempotency behavior:
+    - [ ] Define idempotency scope for payment authorization.
+    - [ ] Reject missing idempotency key.
+    - [ ] Validate idempotency key format and length.
+    - [ ] Detect duplicate key with same request fingerprint.
+    - [ ] Return stored response snapshot for duplicate key with same fingerprint.
+    - [ ] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
+    - [ ] Store request fingerprint.
+    - [ ] Store response snapshot.
+    - [ ] Store idempotency status.
+    - [ ] Store expiry time.
+    - [ ] Add Redis cache for response snapshot.
+    - [ ] Add TTL for Redis snapshot.
+    - [ ] Fall back to database idempotency record if Redis misses.
+- [ ] Add Java gRPC risk client:
+    - [ ] Create risk client interface in application layer.
+    - [ ] Create gRPC client adapter.
+    - [ ] Configure risk service host.
+    - [ ] Configure risk service port.
+    - [ ] Configure risk call timeout.
+    - [ ] Map `AuthorizePaymentCommand` to `ScorePaymentRequest`.
+    - [ ] Include correlation ID in `ScorePaymentRequest`.
+    - [ ] Map `ScorePaymentResponse` to internal risk result.
+    - [ ] Map approved risk decision.
+    - [ ] Map declined risk decision.
+    - [ ] Map review-required risk decision.
+    - [ ] Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
+    - [ ] Map unavailable gRPC status to `DOWNSTREAM_UNAVAILABLE`.
+- [ ] Add risk decision mapping policy:
+    - [ ] Approved risk response transitions payment to `AUTHORIZED`.
+    - [ ] Declined risk response transitions payment to `DECLINED`.
+    - [ ] Review-required risk response uses the selected Phase 2 policy.
+    - [ ] Timeout uses the selected Phase 2 policy.
+    - [ ] Persist risk score.
+    - [ ] Persist reason codes.
+    - [ ] Persist rule hits or rule hit summary.
+    - [ ] Persist rule version.
+- [ ] Add outbox event creation:
+    - [ ] Define `PaymentAuthorizationRequested` event payload.
+    - [ ] Define `PaymentAuthorized` event payload.
+    - [ ] Define `PaymentDeclined` event payload.
+    - [ ] Use event envelope fields from `docs/events/event-envelope.md`.
+    - [ ] Store outbox event in same transaction as payment state.
+    - [ ] Mark new outbox events as pending.
+    - [ ] Include correlation ID in outbox event.
+    - [ ] Include aggregate ID.
+    - [ ] Include aggregate type.
+- [ ] Add transaction boundary:
+    - [ ] Use reactive transaction manager.
+    - [ ] Wrap payment persistence and outbox insert in one transaction.
+    - [ ] Keep remote risk call outside long-running database transaction where practical.
+    - [ ] Document chosen transaction order in code or Phase 2 notes.
+- [ ] Add sensitive data masking:
+    - [ ] Do not log raw `paymentMethodToken`.
+    - [ ] Do not log full `deviceFingerprint`.
+    - [ ] Add masking helper for payment method token.
+    - [ ] Add masking helper for device fingerprint.
+    - [ ] Ensure API errors do not echo sensitive fields.
+- [ ] Add Phase 2 API documentation:
+    - [ ] Document `POST /api/v1/payments/authorize`.
+    - [ ] Document request fields.
+    - [ ] Document response fields.
+    - [ ] Document idempotency behavior.
+    - [ ] Document risk timeout behavior.
+    - [ ] Document emitted outbox events.
+- [ ] Add unit tests for domain model:
+    - [ ] New payment starts in `RECEIVED` or selected initial state.
+    - [ ] Payment can transition to `RISK_PENDING`.
+    - [ ] Risk-approved payment can transition to `AUTHORIZED`.
+    - [ ] Risk-declined payment can transition to `DECLINED`.
+    - [ ] Invalid state transition returns conflict/domain error.
+- [ ] Add unit tests for validation:
+    - [ ] Missing merchant ID fails.
+    - [ ] Missing customer ID fails.
+    - [ ] Non-positive amount fails.
+    - [ ] Invalid currency fails.
+    - [ ] Missing payment method token fails.
+    - [ ] Missing idempotency key fails.
+- [ ] Add unit tests for idempotency:
+    - [ ] New idempotency key creates a record.
+    - [ ] Duplicate key with same fingerprint returns stored response.
+    - [ ] Duplicate key with different fingerprint returns conflict.
+    - [ ] Redis miss falls back to database.
+- [ ] Add unit tests for risk mapping:
+    - [ ] Approved gRPC response maps to internal approved result.
+    - [ ] Declined gRPC response maps to internal declined result.
+    - [ ] Review-required gRPC response maps to selected policy result.
+    - [ ] gRPC timeout maps to stable timeout error.
+    - [ ] gRPC unavailable maps to downstream unavailable error.
+- [ ] Add repository/integration tests:
+    - [ ] Flyway migration applies successfully.
+    - [ ] Payment can be inserted and read.
+    - [ ] Authorization can be inserted and read.
+    - [ ] Risk decision can be inserted and read.
+    - [ ] Idempotency uniqueness is enforced.
+    - [ ] Outbox event can be inserted with payment transaction.
+- [ ] Add API tests for authorization endpoint:
+    - [ ] Valid request returns `200` or selected success status.
+    - [ ] Response includes `paymentId`.
+    - [ ] Response includes final payment status.
+    - [ ] Response includes risk decision.
+    - [ ] Response includes correlation ID.
+    - [ ] Missing idempotency key returns validation error.
+    - [ ] Invalid request returns `ApiErrorResponse`.
+    - [ ] Duplicate idempotency key returns stored response.
+    - [ ] Idempotency key conflict returns structured conflict error.
+    - [ ] Risk timeout returns stable downstream timeout error or selected fallback response.
 
 ### Acceptance Criteria
 
