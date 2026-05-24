@@ -197,16 +197,16 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [x] Handle authorization errors.
     - [x] Handle fallback internal errors.
     - [x] Add WebFlux exception handler tests.
-- [ ] Add correlation ID support:
-    - [ ] Create correlation ID constant for `X-Correlation-Id`.
-    - [ ] Add WebFlux filter.
-    - [ ] Accept inbound correlation ID.
-    - [ ] Generate missing correlation ID.
-    - [ ] Add correlation ID to response headers.
-    - [ ] Make correlation ID available to error responses.
-    - [ ] Add TODO marker for later gRPC metadata propagation.
-    - [ ] Add TODO marker for later Kafka header propagation.
-    - [ ] Add TODO marker for later RabbitMQ header propagation.
+- [x] Add correlation ID support:
+    - [x] Create correlation ID constant for `X-Correlation-Id`.
+    - [x] Add WebFlux filter.
+    - [x] Accept inbound correlation ID.
+    - [x] Generate missing correlation ID.
+    - [x] Add correlation ID to response headers.
+    - [x] Make correlation ID available to error responses.
+    - [x] Add TODO marker for later gRPC metadata propagation.
+    - [x] Add TODO marker for later Kafka header propagation.
+    - [x] Add TODO marker for later RabbitMQ header propagation.
 - [ ] Add first contract-only REST endpoint:
     - [ ] Create a lightweight `GET /api/v1/contract/ping` endpoint.
     - [ ] Return service name.
@@ -229,7 +229,7 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [ ] Document REST conventions in `docs/api/rest-api-conventions.md`.
     - [ ] Document risk gRPC contract in `docs/api/risk-grpc-contract.md`.
     - [ ] Document error response format in `docs/api/error-contract.md`.
-    - [ ] Document correlation ID behavior in `docs/api/correlation-id.md`.
+    - [x] Document correlation ID behavior in `docs/api/correlation-id.md`.
 - [ ] Update developer commands:
     - [x] Add `make proto`.
     - [ ] Add `make java-run` or keep `make spring-run` documented.
@@ -244,8 +244,8 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
 - [ ] `make go-test` succeeds after protobuf generation.
 - [ ] OpenAPI JSON exposes `GET /api/v1/contract/ping`.
 - [ ] `GET /api/v1/contract/ping` returns the API version and correlation ID.
-- [ ] Missing correlation IDs are generated.
-- [ ] Inbound correlation IDs are preserved.
+- [x] Missing correlation IDs are generated.
+- [x] Inbound correlation IDs are preserved.
 - [ ] Validation failures return `ApiErrorResponse`.
 - [ ] REST, gRPC, event envelope, error, and correlation conventions are documented.
 

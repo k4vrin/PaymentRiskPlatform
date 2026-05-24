@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.shared.api.error;
 
+import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIds;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +17,6 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalApiExceptionHandler {
-
-    private static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
 
     @ExceptionHandler(WebExchangeBindException.class)
     ResponseEntity<ApiErrorResponse> handleWebExchangeBindException(
@@ -154,7 +153,13 @@ public class GlobalApiExceptionHandler {
             ServerWebExchange exchange,
             List<ApiErrorResponse.FieldError> fieldErrors
     ) {
-        String correlationId = exchange.getRequest().getHeaders().getFirst(CORRELATION_ID_HEADER);
+        String correlationId = exchange.getAttribute(CorrelationIds.ATTRIBUTE_NAME);
+
+        if (correlationId == null || correlationId.isBlank()) {
+            correlationId = exchange.getRequest().getHeaders()
+                    .getFirst(CorrelationIds.HEADER_NAME);
+        }
+
         ApiErrorResponse response = ApiErrorResponse.of(
                 status.value(),
                 code,
