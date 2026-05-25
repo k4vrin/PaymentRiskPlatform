@@ -1,4 +1,4 @@
-package dev.kavrin.paymentrisk.payment.domain;
+package dev.kavrin.paymentrisk.payment.domain.model;
 
 import java.security.SecureRandom;
 

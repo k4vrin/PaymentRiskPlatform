@@ -253,9 +253,17 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
 
 Goal: Implement the main payment authorization REST flow with validation, idempotency, risk scoring, persistence, and clear state transitions.
 
+In this phase, we are building the first real business workflow of the platform: a merchant submits a payment
+authorization request, the Java payment orchestrator validates it, protects it with idempotency, asks the Go risk
+service for a decision, persists the result, and prepares durable outbox events for later asynchronous processing. The
+result should be a thin WebFlux API over a clear domain model, with stable error handling, correlation IDs, and tests
+that prove the main authorization paths.
+
 ### Steps
 
 - [x] Create payment package structure:
+    - Purpose: create the feature boundaries for API, application, domain, and infrastructure code before adding
+      behavior.
     - [x] `payment/api`
     - [x] `payment/api/dto`
     - [x] `payment/application`
@@ -268,16 +276,21 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [x] `payment/infrastructure/risk`
     - [x] `payment/infrastructure/outbox`
 - [x] Create idempotency package structure:
+    - Purpose: isolate duplicate-request protection from payment business logic so it can later be reused by reversal
+      and other command APIs.
     - [x] `idempotency/application`
     - [x] `idempotency/domain`
     - [x] `idempotency/infrastructure/redis`
 - [x] Create risk integration package structure:
+    - Purpose: separate the internal risk contract and gRPC adapter from payment orchestration code.
     - [x] `risk/application`
     - [x] `risk/infrastructure/grpc`
 - [x] Create outbox package structure:
+    - Purpose: prepare a clear boundary for durable event records that will be published asynchronously in later phases.
     - [x] `outbox/domain`
     - [x] `outbox/infrastructure/persistence`
 - [x] Create payment lifecycle enum:
+    - Purpose: define the allowed high-level payment states before implementing transitions.
     - [x] `RECEIVED`
     - [x] `RISK_PENDING`
     - [x] `RISK_APPROVED`
@@ -286,6 +299,8 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [x] `REVERSED`
     - [x] `FAILED`
 - [x] Create payment domain value objects:
+    - Purpose: replace raw strings and numbers with typed, self-validating concepts such as IDs, money, tokens, and
+      idempotency keys.
     - [x] `PaymentId`
     - [x] `MerchantId`
     - [x] `CustomerId`
@@ -295,24 +310,28 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [x] `DeviceFingerprint`
     - [x] `ExternalReference`
     - [x] `IdempotencyKey`
-- [ ] Create payment domain aggregate/model:
-    - [ ] Add `Payment`.
-    - [ ] Add `PaymentAuthorization`.
-    - [ ] Add `PaymentRiskDecision`.
-    - [ ] Add factory for new authorization attempts.
-    - [ ] Add method to mark payment risk pending.
-    - [ ] Add method to mark payment authorized.
-    - [ ] Add method to mark payment declined.
-    - [ ] Add method to mark payment failed.
-- [ ] Create payment domain policies:
-    - [ ] Validate amount is positive.
-    - [ ] Validate currency format.
-    - [ ] Validate merchant ID presence.
-    - [ ] Validate customer ID presence.
-    - [ ] Validate payment method token presence.
-    - [ ] Validate device fingerprint presence.
-    - [ ] Validate valid authorization state transitions.
+- [x] Create payment domain aggregate/model:
+    - Purpose: model payment authorization as domain behavior with explicit state changes instead of scattered
+      service-layer mutations.
+    - [x] Add `Payment`.
+    - [x] Add `PaymentAuthorization`.
+    - [x] Add `PaymentRiskDecision`.
+    - [x] Add factory for new authorization attempts.
+    - [x] Add method to mark payment risk pending.
+    - [x] Add method to mark payment authorized.
+    - [x] Add method to mark payment declined.
+    - [x] Add method to mark payment failed.
+- [x] Create payment domain policies:
+    - Purpose: centralize business validation rules so controllers and persistence code do not own domain decisions.
+    - [x] Validate amount is positive.
+    - [x] Validate currency format.
+    - [x] Validate merchant ID presence.
+    - [x] Validate customer ID presence.
+    - [x] Validate payment method token presence.
+    - [x] Validate device fingerprint presence.
+    - [x] Validate valid authorization state transitions.
 - [ ] Add authorization request DTO:
+    - Purpose: define the public JSON input contract for `POST /api/v1/payments/authorize`.
     - [ ] `merchantId`
     - [ ] `customerId`
     - [ ] `amountMinor`
@@ -321,19 +340,22 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] `deviceFingerprint`
     - [ ] `externalReference`
     - [ ] `idempotencyKey`
-  - [ ] Add Bean Validation annotations.
-  - [ ] Add OpenAPI schema metadata where useful.
+    - [ ] Add Bean Validation annotations.
+    - [ ] Add OpenAPI schema metadata where useful.
 - [ ] Add authorization response DTO:
+    - Purpose: define the stable public JSON output contract for a payment authorization result.
     - [ ] `paymentId`
     - [ ] `status`
     - [ ] `authorizationCode`
     - [ ] `riskDecision`
     - [ ] `reasonCodes`
     - [ ] `correlationId`
-  - [ ] `riskScore`
-  - [ ] `ruleVersion`
-  - [ ] `createdAt`
+    - [ ] `riskScore`
+    - [ ] `ruleVersion`
+    - [ ] `createdAt`
 - [ ] Add payment authorization API shell:
+    - Purpose: expose the endpoint with minimal controller logic and delegate all workflow decisions to the application
+      service.
     - [ ] Create `PaymentAuthorizationController`.
     - [ ] Map `POST /api/v1/payments/authorize`.
     - [ ] Accept `AuthorizationRequest`.
@@ -341,12 +363,15 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Read correlation ID from WebFlux exchange attributes.
     - [ ] Delegate to application service only.
 - [ ] Add authorization command model:
+    - Purpose: translate API input into an immutable application command that is independent from transport details.
     - [ ] Create `AuthorizePaymentCommand`.
     - [ ] Map request DTO to command.
     - [ ] Include correlation ID.
     - [ ] Include idempotency key.
     - [ ] Keep command immutable.
 - [ ] Add authorization application service:
+    - Purpose: orchestrate validation, idempotency, persistence, risk scoring, state transition, outbox creation, and
+      response mapping.
     - [ ] Create `AuthorizePaymentService`.
     - [ ] Validate command through domain policies.
     - [ ] Check idempotency before creating a new authorization.
@@ -359,6 +384,8 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Create outbox event record.
     - [ ] Return response DTO.
 - [ ] Add persistence migrations:
+    - Purpose: create the relational schema needed to durably store authorization state, risk decisions, idempotency
+      records, and pending events.
     - [ ] Create `payments` table.
     - [ ] Create `payment_authorizations` table.
     - [ ] Create `payment_risk_decisions` table.
@@ -372,6 +399,7 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Add unique index for idempotency scope and key.
     - [ ] Add index for outbox status and next retry time.
 - [ ] Add persistence models and repositories:
+    - Purpose: provide reactive persistence adapters while keeping domain types separate from database row shapes.
     - [ ] Add payment row/entity model.
     - [ ] Add authorization row/entity model.
     - [ ] Add risk decision row/entity model.
@@ -385,6 +413,8 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Add mapper from domain model to persistence rows.
     - [ ] Add mapper from persistence rows to domain model.
 - [ ] Add idempotency behavior:
+    - Purpose: make retries safe by returning the original result for duplicate requests and rejecting conflicting reuse
+      of a key.
     - [ ] Define idempotency scope for payment authorization.
     - [ ] Reject missing idempotency key.
     - [ ] Validate idempotency key format and length.
@@ -399,6 +429,8 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Add TTL for Redis snapshot.
     - [ ] Fall back to database idempotency record if Redis misses.
 - [ ] Add Java gRPC risk client:
+    - Purpose: connect the Java orchestrator to the Go risk service through the generated protobuf contract with
+      explicit timeout handling.
     - [ ] Create risk client interface in application layer.
     - [ ] Create gRPC client adapter.
     - [ ] Configure risk service host.
@@ -413,6 +445,7 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
     - [ ] Map unavailable gRPC status to `DOWNSTREAM_UNAVAILABLE`.
 - [ ] Add risk decision mapping policy:
+    - Purpose: convert risk service responses into payment outcomes and persisted risk decision records.
     - [ ] Approved risk response transitions payment to `AUTHORIZED`.
     - [ ] Declined risk response transitions payment to `DECLINED`.
     - [ ] Review-required risk response uses the selected Phase 2 policy.
@@ -422,6 +455,8 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Persist rule hits or rule hit summary.
     - [ ] Persist rule version.
 - [ ] Add outbox event creation:
+    - Purpose: record durable payment facts in the same workflow so later Kafka publishing can be reliable and
+      replayable.
     - [ ] Define `PaymentAuthorizationRequested` event payload.
     - [ ] Define `PaymentAuthorized` event payload.
     - [ ] Define `PaymentDeclined` event payload.
@@ -432,17 +467,21 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Include aggregate ID.
     - [ ] Include aggregate type.
 - [ ] Add transaction boundary:
+    - Purpose: make database writes and outbox creation consistent while avoiding long-running transactions around
+      remote calls.
     - [ ] Use reactive transaction manager.
     - [ ] Wrap payment persistence and outbox insert in one transaction.
     - [ ] Keep remote risk call outside long-running database transaction where practical.
     - [ ] Document chosen transaction order in code or Phase 2 notes.
 - [ ] Add sensitive data masking:
+    - Purpose: prevent payment tokens and device identifiers from leaking into logs, errors, or operational output.
     - [ ] Do not log raw `paymentMethodToken`.
     - [ ] Do not log full `deviceFingerprint`.
     - [ ] Add masking helper for payment method token.
     - [ ] Add masking helper for device fingerprint.
     - [ ] Ensure API errors do not echo sensitive fields.
 - [ ] Add Phase 2 API documentation:
+    - Purpose: document the authorization endpoint behavior before Phase 2 is considered complete.
     - [ ] Document `POST /api/v1/payments/authorize`.
     - [ ] Document request fields.
     - [ ] Document response fields.
@@ -450,12 +489,14 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Document risk timeout behavior.
     - [ ] Document emitted outbox events.
 - [ ] Add unit tests for domain model:
+    - Purpose: prove state transitions and aggregate rules without requiring Spring or infrastructure.
     - [ ] New payment starts in `RECEIVED` or selected initial state.
     - [ ] Payment can transition to `RISK_PENDING`.
     - [ ] Risk-approved payment can transition to `AUTHORIZED`.
     - [ ] Risk-declined payment can transition to `DECLINED`.
     - [ ] Invalid state transition returns conflict/domain error.
 - [ ] Add unit tests for validation:
+    - Purpose: prove invalid authorization input is rejected before persistence or risk calls.
     - [ ] Missing merchant ID fails.
     - [ ] Missing customer ID fails.
     - [ ] Non-positive amount fails.
@@ -463,17 +504,20 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Missing payment method token fails.
     - [ ] Missing idempotency key fails.
 - [ ] Add unit tests for idempotency:
+    - Purpose: prove duplicate and conflicting authorization requests behave deterministically.
     - [ ] New idempotency key creates a record.
     - [ ] Duplicate key with same fingerprint returns stored response.
     - [ ] Duplicate key with different fingerprint returns conflict.
     - [ ] Redis miss falls back to database.
 - [ ] Add unit tests for risk mapping:
+    - Purpose: prove gRPC risk outcomes and failures map to stable internal results and API errors.
     - [ ] Approved gRPC response maps to internal approved result.
     - [ ] Declined gRPC response maps to internal declined result.
     - [ ] Review-required gRPC response maps to selected policy result.
     - [ ] gRPC timeout maps to stable timeout error.
     - [ ] gRPC unavailable maps to downstream unavailable error.
 - [ ] Add repository/integration tests:
+    - Purpose: verify migrations, constraints, and reactive repositories against a real database-backed test setup.
     - [ ] Flyway migration applies successfully.
     - [ ] Payment can be inserted and read.
     - [ ] Authorization can be inserted and read.
@@ -481,6 +525,7 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
     - [ ] Idempotency uniqueness is enforced.
     - [ ] Outbox event can be inserted with payment transaction.
 - [ ] Add API tests for authorization endpoint:
+    - Purpose: prove the complete REST behavior for success, validation, idempotency, conflict, and risk timeout paths.
     - [ ] Valid request returns `200` or selected success status.
     - [ ] Response includes `paymentId`.
     - [ ] Response includes final payment status.
