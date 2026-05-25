@@ -255,46 +255,46 @@ Goal: Implement the main payment authorization REST flow with validation, idempo
 
 ### Steps
 
-- [ ] Create payment package structure:
-    - [ ] `payment/api`
-    - [ ] `payment/api/dto`
-    - [ ] `payment/application`
-    - [ ] `payment/application/command`
-    - [ ] `payment/application/query`
-    - [ ] `payment/application/service`
-    - [ ] `payment/domain`
-    - [ ] `payment/domain/policy`
-  - [ ] `payment/infrastructure/persistence`
-  - [ ] `payment/infrastructure/risk`
-  - [ ] `payment/infrastructure/outbox`
-- [ ] Create idempotency package structure:
-    - [ ] `idempotency/application`
-    - [ ] `idempotency/domain`
-    - [ ] `idempotency/infrastructure/redis`
-- [ ] Create risk integration package structure:
-    - [ ] `risk/application`
-    - [ ] `risk/infrastructure/grpc`
-- [ ] Create outbox package structure:
-    - [ ] `outbox/domain`
-    - [ ] `outbox/infrastructure/persistence`
-- [ ] Create payment lifecycle enum:
-    - [ ] `RECEIVED`
-    - [ ] `RISK_PENDING`
-    - [ ] `RISK_APPROVED`
-    - [ ] `AUTHORIZED`
-    - [ ] `DECLINED`
-    - [ ] `REVERSED`
-    - [ ] `FAILED`
-- [ ] Create payment domain value objects:
-    - [ ] `PaymentId`
-    - [ ] `MerchantId`
-    - [ ] `CustomerId`
-    - [ ] `AuthorizationCode`
-    - [ ] `Money`
-    - [ ] `PaymentMethodToken`
-    - [ ] `DeviceFingerprint`
-    - [ ] `ExternalReference`
-    - [ ] `IdempotencyKey`
+- [x] Create payment package structure:
+    - [x] `payment/api`
+    - [x] `payment/api/dto`
+    - [x] `payment/application`
+    - [x] `payment/application/command`
+    - [x] `payment/application/query`
+    - [x] `payment/application/service`
+    - [x] `payment/domain`
+    - [x] `payment/domain/policy`
+    - [x] `payment/infrastructure/persistence`
+    - [x] `payment/infrastructure/risk`
+    - [x] `payment/infrastructure/outbox`
+- [x] Create idempotency package structure:
+    - [x] `idempotency/application`
+    - [x] `idempotency/domain`
+    - [x] `idempotency/infrastructure/redis`
+- [x] Create risk integration package structure:
+    - [x] `risk/application`
+    - [x] `risk/infrastructure/grpc`
+- [x] Create outbox package structure:
+    - [x] `outbox/domain`
+    - [x] `outbox/infrastructure/persistence`
+- [x] Create payment lifecycle enum:
+    - [x] `RECEIVED`
+    - [x] `RISK_PENDING`
+    - [x] `RISK_APPROVED`
+    - [x] `AUTHORIZED`
+    - [x] `DECLINED`
+    - [x] `REVERSED`
+    - [x] `FAILED`
+- [x] Create payment domain value objects:
+    - [x] `PaymentId`
+    - [x] `MerchantId`
+    - [x] `CustomerId`
+    - [x] `AuthorizationCode`
+    - [x] `Money`
+    - [x] `PaymentMethodToken`
+    - [x] `DeviceFingerprint`
+    - [x] `ExternalReference`
+    - [x] `IdempotencyKey`
 - [ ] Create payment domain aggregate/model:
     - [ ] Add `Payment`.
     - [ ] Add `PaymentAuthorization`.
