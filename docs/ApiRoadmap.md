@@ -330,74 +330,74 @@ that prove the main authorization paths.
     - [x] Validate payment method token presence.
     - [x] Validate device fingerprint presence.
     - [x] Validate valid authorization state transitions.
-- [ ] Add authorization request DTO:
+- [x] Add authorization request DTO:
     - Purpose: define the public JSON input contract for `POST /api/v1/payments/authorize`.
-    - [ ] `merchantId`
-    - [ ] `customerId`
-    - [ ] `amountMinor`
-    - [ ] `currency`
-    - [ ] `paymentMethodToken`
-    - [ ] `deviceFingerprint`
-    - [ ] `externalReference`
-    - [ ] `idempotencyKey`
-    - [ ] Add Bean Validation annotations.
-    - [ ] Add OpenAPI schema metadata where useful.
-- [ ] Add authorization response DTO:
+  - [x] `merchantId`
+  - [x] `customerId`
+  - [x] `amountMinor`
+  - [x] `currency`
+  - [x] `paymentMethodToken`
+  - [x] `deviceFingerprint`
+  - [x] `externalReference`
+  - [x] `idempotencyKey`
+  - [x] Add Bean Validation annotations.
+  - [x] Add OpenAPI schema metadata where useful.
+- [x] Add authorization response DTO:
     - Purpose: define the stable public JSON output contract for a payment authorization result.
-    - [ ] `paymentId`
-    - [ ] `status`
-    - [ ] `authorizationCode`
-    - [ ] `riskDecision`
-    - [ ] `reasonCodes`
-    - [ ] `correlationId`
-    - [ ] `riskScore`
-    - [ ] `ruleVersion`
-    - [ ] `createdAt`
-- [ ] Add payment authorization API shell:
+  - [x] `paymentId`
+  - [x] `status`
+  - [x] `authorizationCode`
+  - [x] `riskDecision`
+  - [x] `reasonCodes`
+  - [x] `correlationId`
+  - [x] `riskScore`
+  - [x] `ruleVersion`
+  - [x] `createdAt`
+- [x] Add payment authorization API shell:
     - Purpose: expose the endpoint with minimal controller logic and delegate all workflow decisions to the application
       service.
-    - [ ] Create `PaymentAuthorizationController`.
-    - [ ] Map `POST /api/v1/payments/authorize`.
-    - [ ] Accept `AuthorizationRequest`.
-    - [ ] Return `AuthorizationResponse`.
-    - [ ] Read correlation ID from WebFlux exchange attributes.
-    - [ ] Delegate to application service only.
-- [ ] Add authorization command model:
+  - [x] Create `PaymentAuthorizationController`.
+  - [x] Map `POST /api/v1/payments/authorize`.
+  - [x] Accept `AuthorizationRequest`.
+  - [x] Return `AuthorizationResponse`.
+  - [x] Read correlation ID from WebFlux exchange attributes.
+  - [x] Delegate to application service only.
+- [x] Add authorization command model:
     - Purpose: translate API input into an immutable application command that is independent from transport details.
-    - [ ] Create `AuthorizePaymentCommand`.
-    - [ ] Map request DTO to command.
-    - [ ] Include correlation ID.
-    - [ ] Include idempotency key.
-    - [ ] Keep command immutable.
-- [ ] Add authorization application service:
+  - [x] Create `AuthorizePaymentCommand`.
+  - [x] Map request DTO to command.
+  - [x] Include correlation ID.
+  - [x] Include idempotency key.
+  - [x] Keep command immutable.
+- [x] Add authorization application service:
     - Purpose: orchestrate validation, idempotency, persistence, risk scoring, state transition, outbox creation, and
       response mapping.
-    - [ ] Create `AuthorizePaymentService`.
-    - [ ] Validate command through domain policies.
+  - [x] Create `AuthorizePaymentService`.
+  - [x] Validate command through domain policies.
     - [ ] Check idempotency before creating a new authorization.
-    - [ ] Create new payment authorization aggregate.
+  - [x] Create new payment authorization aggregate.
     - [ ] Persist payment state.
     - [ ] Call risk scoring client.
-    - [ ] Apply risk decision to payment state.
+  - [x] Apply risk decision to payment state.
     - [ ] Persist risk decision.
     - [ ] Persist idempotency result snapshot.
     - [ ] Create outbox event record.
-    - [ ] Return response DTO.
-- [ ] Add persistence migrations:
+  - [x] Return response DTO.
+- [x] Add persistence migrations:
     - Purpose: create the relational schema needed to durably store authorization state, risk decisions, idempotency
       records, and pending events.
-    - [ ] Create `payments` table.
-    - [ ] Create `payment_authorizations` table.
-    - [ ] Create `payment_risk_decisions` table.
-    - [ ] Create `idempotency_records` table.
-    - [ ] Create `outbox_events` table.
-    - [ ] Add primary keys.
-    - [ ] Add foreign keys where portable.
-    - [ ] Add index for `payment_id`.
-    - [ ] Add index for `merchant_id`.
-    - [ ] Add index for `customer_id`.
-    - [ ] Add unique index for idempotency scope and key.
-    - [ ] Add index for outbox status and next retry time.
+  - [x] Create `payments` table.
+  - [x] Create `payment_authorizations` table.
+  - [x] Create `payment_risk_decisions` table.
+  - [x] Create `idempotency_records` table.
+  - [x] Create `outbox_events` table.
+  - [x] Add primary keys.
+  - [x] Add foreign keys where portable.
+  - [x] Add index for `payment_id`.
+  - [x] Add index for `merchant_id`.
+  - [x] Add index for `customer_id`.
+  - [x] Add unique index for idempotency scope and key.
+  - [x] Add index for outbox status and next retry time.
 - [ ] Add persistence models and repositories:
     - Purpose: provide reactive persistence adapters while keeping domain types separate from database row shapes.
     - [ ] Add payment row/entity model.

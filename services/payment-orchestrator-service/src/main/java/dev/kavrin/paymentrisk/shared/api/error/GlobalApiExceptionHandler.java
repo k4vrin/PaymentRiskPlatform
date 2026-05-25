@@ -6,9 +6,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
@@ -81,6 +81,19 @@ public class GlobalApiExceptionHandler {
             ServerWebExchange exchange
     ) {
         return error(exception.status(), exception.code(), exception.getMessage(), exchange);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ApiErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException exception,
+            ServerWebExchange exchange
+    ) {
+        return error(
+                HttpStatus.BAD_REQUEST,
+                ApiErrorCode.Validation.INVALID_REQUEST,
+                exception.getMessage(),
+                exchange
+        );
     }
 
     @ExceptionHandler(ResponseStatusException.class)

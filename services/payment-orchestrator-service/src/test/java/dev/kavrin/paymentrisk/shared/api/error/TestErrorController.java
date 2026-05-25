@@ -32,6 +32,11 @@ class TestErrorController {
         throw new DownstreamTimeoutException("Risk service timed out.");
     }
 
+    @GetMapping("/test/invalid-request")
+    void invalidRequest() {
+        throw new IllegalArgumentException("idempotencyKey contains unsupported characters.");
+    }
+
     @GetMapping("/test/unexpected")
     void unexpected() {
         throw new IllegalStateException("boom");

@@ -100,6 +100,21 @@ class GlobalApiExceptionHandlerTest {
     }
 
     @Test
+    void invalidArgumentExceptionReturnsStructuredBadRequestResponse() {
+        webTestClient.get()
+                .uri("/test/invalid-request")
+                .header("X-Correlation-Id", "corr-invalid")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(400)
+                .jsonPath("$.code").isEqualTo("INVALID_REQUEST")
+                .jsonPath("$.message").isEqualTo("idempotencyKey contains unsupported characters.")
+                .jsonPath("$.path").isEqualTo("/test/invalid-request")
+                .jsonPath("$.correlationId").isEqualTo("corr-invalid");
+    }
+
+    @Test
     void unexpectedExceptionReturnsStructuredErrorResponse() {
         webTestClient.get()
                 .uri("/test/unexpected")
