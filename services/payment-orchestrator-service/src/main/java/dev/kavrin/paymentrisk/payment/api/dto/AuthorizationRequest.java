@@ -50,7 +50,11 @@ public record AuthorizationRequest(
 
         @Schema(example = "idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A")
         @NotBlank(message = "idempotencyKey is required")
-        @Size(min = 16, max = 120)
+        @Size(min = 8, max = 128, message = "idempotencyKey must be between 8 and 128 characters")
+        @Pattern(
+                regexp = "^[A-Za-z0-9._:-]+$",
+                message = "idempotencyKey may contain letters, numbers, dot, underscore, colon, and hyphen"
+        )
         String idempotencyKey
 ) {
 }

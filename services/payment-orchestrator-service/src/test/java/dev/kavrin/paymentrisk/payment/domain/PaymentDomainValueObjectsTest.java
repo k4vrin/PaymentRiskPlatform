@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.payment.domain;
 
+import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import org.junit.jupiter.api.Test;
 
@@ -72,12 +73,12 @@ class PaymentDomainValueObjectsTest {
 
         assertThat(key.value()).isEqualTo("merchant-123:request-456");
 
-        assertThatThrownBy(() -> IdempotencyKey.of("too-short"))
+        assertThatThrownBy(() -> IdempotencyKey.of("short"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("idempotencyKey must be at least 16 characters.");
+                .hasMessage("Idempotency key must be between 8 and 128 characters");
 
         assertThatThrownBy(() -> IdempotencyKey.of("merchant 123 request 456"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("idempotencyKey contains unsupported characters.");
+                .hasMessage("Idempotency key may contain letters, numbers, dot, underscore, colon, and hyphen");
     }
 }

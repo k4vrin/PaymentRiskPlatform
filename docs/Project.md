@@ -1,37 +1,247 @@
 ---
-type: project
-stack: [java, java-core, j2se, j2ee, spring-boot, webflux, reactor, spring-security, rest, soap, grpc, protobuf, go, microservices, oracle, postgresql, redis, kafka, jms, rabbitmq, docker, kubernetes, testcontainers, micrometer, prometheus, grafana, git, cicd]
-repo:
-status: planned
+type: prd
+product: Reactive Payment Risk Platform
+stack: [java, spring-boot, webflux, reactor, spring-security, rest, grpc, protobuf, go, microservices, postgresql, oracle-compatible-sql, redis, kafka, rabbitmq, docker, kubernetes, testcontainers, micrometer, prometheus, grafana, cicd]
+status: draft
 created: 2026-05-23
-updated: 2026-05-23
-tags: [project, java, spring-boot, fintech, payments, reactive, microservices]
+updated: 2026-05-26
+tags: [prd, fintech, payments, risk, reactive, microservices]
 ---
 
-# Reactive Payment Risk Platform (Java WebFlux + Go gRPC)
+# Product Requirements Document: Reactive Payment Risk Platform
 
-## Goal
-Build a Java-first payment authorization and risk platform that demonstrates senior backend skills for enterprise Java, fintech, and distributed microservice roles.
+## 1. Summary
 
-The project should prove strong Java fundamentals, modern Spring Boot service design, event-driven architecture, relational persistence, Redis caching, Kafka messaging, security, observability, and polyglot gRPC integration with a small Go microservice.
+Reactive Payment Risk Platform is a payment authorization and risk evaluation system for merchants and operations
+teams. It accepts payment authorization requests, evaluates fraud/risk signals, returns authorization outcomes,
+publishes durable business events, supports replay and audit workflows, and exposes operational visibility for failed
+payments, dead letters, callbacks, and system health.
 
-## Target job fit
-- Senior Java backend roles requiring Java Core, J2SE/J2EE concepts, Spring Boot, REST APIs, Oracle-compatible relational design, Redis, Kafka/JMS/MQ, security, testing, and CI/CD.
-- Fintech, payment, banking, or mission-critical enterprise roles that value correctness, auditability, reliability, performance, and operational troubleshooting.
-- Distributed-system roles that expect asynchronous processing, microservices, event-driven architecture, gRPC/protobuf, Docker/Kubernetes, and production-grade observability.
+The product is also intended to demonstrate production-grade backend engineering: Java Spring Boot WebFlux for the main
+orchestrator, a small Go gRPC risk service, relational persistence, Redis idempotency/cache behavior, Kafka event
+processing, RabbitMQ command dispatch, security, observability, and automated testing.
 
-## Scope
-- `payment-orchestrator-service`: Java Spring Boot WebFlux/Reactor service for payment authorization, reversal, lookup, idempotency, event publishing, and operations APIs.
-- `risk-scoring-service`: Go gRPC/protobuf microservice that evaluates risk and returns a score, decision, rule hits, and reason codes.
-- `event-relay-worker`: publishes transactional outbox records to Kafka and handles retry/dead-letter behavior.
-- `payment-audit-consumer`: consumes Kafka payment events and builds an audit/investigation history.
-- `settlement-projection-consumer`: consumes Kafka authorization and reversal events to build settlement-ready views.
-- `partner-callback-worker`: consumes RabbitMQ/JMS command messages for targeted partner webhook callbacks.
-- `ops-api`: operational endpoints for payment investigation, replay, failed events, health, and metrics.
-- `local-platform`: Docker Compose setup for PostgreSQL or Oracle-compatible local database, Redis, Kafka, RabbitMQ, Prometheus, Grafana, and the Go service.
+## 2. Problem Statement
 
-## Core domain
-### Payment lifecycle
+Payment authorization systems must make fast decisions while preserving correctness, auditability, and recovery paths.
+Retries must not double-authorize payments. Downstream failures must produce stable behavior. Events must not be lost
+after successful business transactions. Operations teams need enough visibility to investigate failures, replay work,
+and understand platform health.
+
+This platform solves those needs in a compact reference implementation with realistic fintech constraints.
+
+## 3. Goals
+
+- Provide a stable REST API for payment authorization, lookup, and reversal.
+- Ensure payment authorization retries are idempotent.
+- Evaluate each authorization through a risk-scoring service.
+- Persist payment, risk, idempotency, outbox, audit, replay, and dead-letter records.
+- Publish durable payment events through Kafka using the transactional outbox pattern.
+- Dispatch targeted partner callback work through RabbitMQ.
+- Provide operations APIs for investigation, replay, dead-letter review, and lag/health visibility.
+- Maintain stable API error contracts and correlation IDs across service boundaries.
+- Demonstrate enterprise Java, reactive Spring, distributed systems, and operational engineering practices.
+
+## 4. Non-Goals
+
+- Do not implement real card network integration.
+- Do not store raw PAN, CVV, or sensitive payment credentials.
+- Do not implement a full merchant onboarding product.
+- Do not implement real settlement file generation in the first release.
+- Do not make Kafka part of the synchronous authorization response path.
+- Do not treat Redis as the source of truth for idempotency; database records remain durable authority.
+
+## 5. Target Users
+
+- Merchant API client: submits authorization and reversal requests and receives stable outcomes.
+- Operations analyst: investigates failed payments, dead letters, outbox failures, replay jobs, and callback failures.
+- Auditor/compliance reviewer: reviews immutable payment and risk event history.
+- Platform engineer: operates services, monitors dashboards, diagnoses latency and failures, and manages recovery.
+- Developer/reviewer: evaluates architecture, code quality, tests, and production readiness.
+
+## 6. Personas And Jobs To Be Done
+
+### Merchant API Client
+
+- Submit a payment authorization request with an idempotency key.
+- Safely retry an authorization request after timeout or network failure.
+- Reverse a previously authorized payment.
+- Receive predictable success and error responses.
+
+### Operations Analyst
+
+- Search payments by status, merchant, customer, and time range.
+- Inspect risk decisions, reason codes, and payment lifecycle events.
+- Review dead-lettered events and failed callbacks.
+- Trigger replay or manual retry where allowed.
+
+### Platform Engineer
+
+- Track API latency, downstream latency, Kafka lag, outbox lag, Redis hit/miss rate, and database latency.
+- Diagnose risk-service timeouts, Redis failures, Kafka publish failures, and database pool exhaustion.
+- Use logs, metrics, traces/correlation IDs, runbooks, and dashboards to resolve incidents.
+
+## 7. Product Scope
+
+### In Scope
+
+- `payment-orchestrator-service`: Java Spring Boot WebFlux service for authorization, reversal, lookup, idempotency,
+  persistence orchestration, event creation, security, and operations APIs.
+- `risk-scoring-service`: Go gRPC service that returns score, decision, rule hits, reason codes, and rule version.
+- `event-relay-worker`: outbox publisher that emits durable payment events to Kafka.
+- `payment-audit-consumer`: Kafka consumer that stores audit/investigation history.
+- `settlement-projection-consumer`: Kafka consumer that builds settlement-ready read models.
+- `partner-callback-worker`: RabbitMQ command consumer for merchant webhook callbacks.
+- `local-platform`: Docker Compose stack for PostgreSQL, Redis, Kafka, RabbitMQ, Prometheus, Grafana, and local
+  services.
+
+### Out Of Scope For Initial Release
+
+- Full production Kubernetes operations.
+- Real external merchant webhook contracts beyond a simple callback command.
+- Full settlement accounting.
+- Multi-region deployment.
+- Real authentication provider integration; local/dev credentials and role simulation are acceptable initially.
+
+## 8. Functional Requirements
+
+### FR1: Payment Authorization
+
+- The system must expose `POST /api/v1/payments/authorize`.
+- The request must include merchant ID, customer ID, amount, currency, payment method token, device fingerprint,
+  optional external reference, and idempotency key.
+- The service must validate request shape and domain constraints before durable processing.
+- The service must create a payment authorization aggregate.
+- The service must evaluate risk before returning the final authorization outcome.
+- Approved risk decisions must transition payment to `AUTHORIZED`.
+- Declined risk decisions must transition payment to `DECLINED`.
+- Timeout/unavailable risk decisions must follow an explicit Phase 2 policy and return a stable response or error.
+- The response must include payment ID, payment status, authorization code when authorized, risk decision, reason codes,
+  correlation ID, risk score, rule version, and created timestamp.
+
+### FR1.1: Payment State Persistence
+
+- The system must persist the payment aggregate after authorization state changes.
+- The system must persist the current payment lifecycle status.
+- The system must persist the authorization state for each payment.
+- The system must persist the risk decision associated with the authorization outcome.
+- Persisted payment state must be queryable by payment ID for lookup, audit, replay, and operations workflows.
+- Payment state persistence, idempotency completion, and outbox event creation must be made consistent through the
+  selected transaction boundary.
+
+### FR2: Idempotency
+
+- Authorization and reversal requests must require idempotency keys.
+- Idempotency keys must be validated for length and allowed characters.
+- The system must compute a stable request fingerprint for idempotent commands.
+- A retry with the same scope, key, and fingerprint must return the original response.
+- A retry with the same scope and key but different fingerprint must return `IDEMPOTENCY_KEY_CONFLICT`.
+- Durable idempotency records must store scope, key, request fingerprint, status, response status, response snapshot,
+  expiry timestamp, and related payment ID when available.
+- Redis may cache completed response snapshots with TTL, but database records remain the source of truth.
+- On Redis miss, the system must fall back to the database idempotency record.
+
+### FR3: Risk Scoring
+
+- The Java orchestrator must call the Go gRPC risk service through protobuf.
+- The risk request must include payment ID, amount, currency, merchant ID, customer ID, device fingerprint, and
+  correlation ID.
+- The risk response must include score, decision, reason codes, rule hits, and rule version.
+- The Java service must map approved, declined, and review-required responses into internal payment outcomes.
+- gRPC deadline exceeded must map to `RISK_SERVICE_TIMEOUT`.
+- gRPC unavailable must map to `DOWNSTREAM_UNAVAILABLE`.
+
+### FR4: Payment Lookup And Reversal
+
+- The system must expose `GET /api/v1/payments/{paymentId}`.
+- The lookup response must include payment, authorization, risk, reversal, and audit summary fields.
+- The system must expose `POST /api/v1/payments/{paymentId}/reverse`.
+- Reversal must require an idempotency key.
+- Only reversible payment states may transition to `REVERSED`.
+- Duplicate reversal requests must be idempotent or conflict based on request identity.
+- Reversal must create a durable event.
+
+### FR5: Event Publishing
+
+- The platform must use a transactional outbox table for durable event creation.
+- Kafka publishing must happen after the business transaction commits.
+- Events must use stable event IDs, schema versions, occurred timestamps, producer names, correlation IDs, aggregate
+  type, aggregate ID, and payload.
+- Consumers must be idempotent.
+- Poison messages must route to dead-letter handling.
+- Replay status, retry count, last error, and next retry time must be tracked.
+
+### FR6: Partner Callback Commands
+
+- The platform must use RabbitMQ for targeted partner callback work.
+- After terminal payment states, the orchestrator may enqueue `CallPartnerWebhook`.
+- The callback worker must acknowledge only after successful delivery or terminal failure recording.
+- Transient failures must retry with backoff.
+- Exhausted messages must route to a dead-letter queue.
+- Operations APIs must expose callback status and retry controls.
+
+### FR7: Operations APIs
+
+- The system must expose operations endpoints for payment search, failed outbox rows, dead letters, replay, and consumer
+  lag.
+- Operations APIs must require appropriate roles.
+- Replay operations must be auditable and idempotent.
+
+### FR8: Security And Audit
+
+- The system must use role-based access for `MERCHANT`, `OPS`, `AUDITOR`, `ADMIN`, and `SERVICE`.
+- Sensitive payment, customer, and device fields must be masked or hashed in logs, audit records, and persistence where
+  raw values are not required.
+- API keys/secrets must not be stored in plaintext.
+- Authentication failures, authorization requests, reversals, replay attempts, and admin lookups must be auditable.
+- Error responses must not echo secrets, payment tokens, raw device identifiers, or stack traces.
+
+## 9. Non-Functional Requirements
+
+### Reliability
+
+- The authorization path must not double-create payments for retried requests with the same idempotency key and
+  fingerprint.
+- Payment state, idempotency completion, and outbox records must be committed consistently.
+- Kafka publishing failures must not lose events.
+- Redis failures must not make durable idempotency impossible when the database is available.
+
+### Performance
+
+- The authorization API must use explicit timeout budgets for Redis, database, gRPC, and messaging calls.
+- Blocking work must not run on WebFlux event-loop threads.
+- Rate limiting must protect authorization endpoints by merchant/client.
+- Hot operational reads may use Redis-backed views where stale-data rules are documented.
+
+### Observability
+
+- All API responses and downstream calls must carry or derive a correlation ID.
+- Logs must be structured and include correlation IDs.
+- Metrics must include API latency, authorization throughput, risk latency/timeouts, Kafka producer failures, consumer
+  lag, outbox lag, Redis hit/miss rate, database latency, dead-letter count, and replay outcomes.
+- Dashboards must expose core service health and operational backlog.
+
+### Maintainability
+
+- Controllers must stay thin; workflow logic belongs in application services and domain types.
+- Integrations must depend on ports/interfaces with infrastructure adapters for gRPC, Redis, database, Kafka, and
+  RabbitMQ.
+- Domain concepts must use typed value objects instead of raw strings where practical.
+- Migrations must remain Oracle-compatible while supporting PostgreSQL locally.
+
+### Testability
+
+- Unit tests must cover domain rules, state transitions, validation, idempotency, risk mapping, and error contracts.
+- Integration tests must cover REST APIs, database persistence, Redis cache/fallback, Kafka outbox publishing, RabbitMQ
+  callbacks, and Go gRPC calls.
+- Concurrency tests must cover duplicate authorization and replay behavior.
+- Failure tests must cover risk timeout, Redis unavailable, Kafka publish failure, RabbitMQ retry exhaustion, database
+  uniqueness conflict, and dead-letter recovery.
+
+## 10. Core Data Model
+
+### Payment Lifecycle
+
 - `RECEIVED`
 - `RISK_PENDING`
 - `RISK_APPROVED`
@@ -40,7 +250,8 @@ The project should prove strong Java fundamentals, modern Spring Boot service de
 - `REVERSED`
 - `FAILED`
 
-### Main aggregates and records
+### Main Records
+
 - `Payment`
 - `PaymentAuthorization`
 - `RiskDecision`
@@ -52,274 +263,136 @@ The project should prove strong Java fundamentals, modern Spring Boot service de
 - `ReplayJob`
 - `DeadLetterRecord`
 
-## Java, J2SE, and J2EE coverage
-1. **Java Core and J2SE fundamentals**
-   - Use collections, generics, exceptions, records, sealed classes where appropriate, streams, functional interfaces, and immutable value objects.
-   - Model domain decisions with clear Java types instead of stringly typed maps.
-   - Demonstrate safe resource management, defensive copying, clear exception boundaries, and deterministic validation.
+## 11. Public API Surface
 
-2. **Concurrency and asynchronous programming**
-   - Use Reactor for non-blocking request flow, backpressure, timeouts, retries, and composition.
-   - Include Java concurrency examples where they fit naturally:
-     - `ExecutorService` for bounded background tasks.
-     - `CompletableFuture` for bridge code or legacy async adapters.
-     - locks, atomics, or bounded queues only where shared-resource coordination is explicit.
-   - Document thread pool sizing, event-loop constraints, graceful shutdown, and overload behavior.
-
-3. **JVM fundamentals**
-   - Add notes for GC behavior, memory pressure, profiling, thread dumps, heap dumps, and connection pool tuning.
-   - Include a troubleshooting runbook for high latency, blocked threads, Kafka lag, Redis failures, and database pool exhaustion.
-
-4. **J2EE-style enterprise concepts**
-   - Document servlet/filter-chain awareness even though the main service uses WebFlux.
-   - Use Spring Security filters, Bean Validation, dependency injection, AOP-based logging/auditing, transaction boundaries, and JPA/R2DBC tradeoff notes.
-   - Include REST APIs and a SOAP compatibility note for legacy enterprise integration.
-   - Document JMS/MQ concepts through one small RabbitMQ command flow while Kafka remains the primary event-streaming implementation.
-
-## Reactive Spring design
-- Implement APIs with Spring Boot WebFlux and Reactor.
-- Keep controller logic thin and push business rules into application/domain services.
-- Avoid blocking calls on event-loop threads.
-- Use explicit timeout budgets for Redis, database, Kafka, and gRPC calls.
-- Apply backpressure and rate limiting to payment authorization endpoints.
-- Return stable error contracts for validation, conflicts, duplicate idempotency keys, downstream timeouts, and authorization failures.
-- Use correlation IDs across REST, logs, Redis, database records, Kafka events, and gRPC calls.
-
-## Go gRPC risk service
-- Implement `risk-scoring-service` in Go to demonstrate polyglot microservice design without weakening the Java focus.
-- Expose `RiskScoringService.ScorePayment` through protobuf.
-- Keep the Go service small and operationally serious:
-  - deterministic rule engine
-  - configurable risk thresholds
-  - structured logs
-  - health checks
-  - unit tests
-  - graceful shutdown
-
-### Protobuf contract
-- `ScorePaymentRequest`
-  - `payment_id`
-  - `amount`
-  - `currency`
-  - `merchant_id`
-  - `customer_id`
-  - `device_fingerprint`
-  - `correlation_id`
-- `ScorePaymentResponse`
-  - `score`
-  - `decision`
-  - `reason_codes`
-  - `rule_hits`
-  - `rule_version`
-
-## REST API examples
 ### Payment APIs
+
 - `POST /api/v1/payments/authorize`
 - `GET /api/v1/payments/{paymentId}`
 - `POST /api/v1/payments/{paymentId}/reverse`
 
 ### Operations APIs
+
 - `GET /api/v1/ops/payments?status=&from=&to=`
 - `GET /api/v1/ops/dead-letters`
 - `GET /api/v1/ops/outbox?status=FAILED`
 - `POST /api/v1/ops/replay/{eventId}`
 - `GET /api/v1/ops/consumer-lag`
 
-## Kafka event design
-Kafka is used for durable business events: facts that already happened and may need to be consumed by multiple services, replayed later, or used to build operational projections. The synchronous payment authorization path does not depend on Kafka to return the initial API response; Kafka handles downstream audit, settlement projections, monitoring, replay, and recovery.
+## 12. Event And Messaging Requirements
 
-### Topics and events
+### Kafka Topics
+
 - `payment.authorization.requested`
-  - `PaymentAuthorizationRequested`
 - `risk.score.completed`
-  - `RiskScoreCompleted`
 - `payment.authorization.completed`
-  - `PaymentAuthorized`
-  - `PaymentDeclined`
 - `payment.reversal.completed`
-  - `PaymentReversed`
 - `platform.dead-letter.recorded`
-  - `DeadLetterRecorded`
 
-### Event requirements
-- Use stable event IDs, schema versions, occurred timestamps, producer names, correlation IDs, and aggregate IDs.
-- Make consumers idempotent.
-- Route poison messages to dead-letter topics.
-- Track retry count, last error, next retry time, and replay status.
-- Document partition keys and ordering expectations for payment IDs and merchant IDs.
+### Kafka Event Types
 
-### Kafka producers and consumers
-- `event-relay-worker`
-  - Reads unpublished `OutboxEvent` rows from the relational database.
-  - Publishes payment and risk events to Kafka after the business transaction commits.
-  - Retries transient publish failures and marks permanently failed rows for operations review.
-- `payment-audit-consumer`
-  - Consumes `PaymentAuthorizationRequested`, `RiskScoreCompleted`, `PaymentAuthorized`, `PaymentDeclined`, and `PaymentReversed`.
-  - Stores audit-friendly event history for investigation, compliance-style review, and troubleshooting.
-- `settlement-projection-consumer`
-  - Consumes `PaymentAuthorized` and `PaymentReversed`.
-  - Builds a settlement-ready read model without coupling settlement logic to the synchronous payment API.
-- `ops-metrics-consumer`
-  - Consumes payment, risk, and dead-letter events.
-  - Updates operational counters for authorization rate, decline reasons, replay outcomes, and dead-letter volume.
+- `PaymentAuthorizationRequested`
+- `RiskScoreCompleted`
+- `PaymentAuthorized`
+- `PaymentDeclined`
+- `PaymentReversed`
+- `DeadLetterRecorded`
 
-## RabbitMQ/JMS command flow
-RabbitMQ is used for one targeted command-style workflow where the message means "please do this work" and only one worker should handle each task. This keeps the project honest about JMS/MQ experience without mixing command queues into the Kafka event log.
+### RabbitMQ Queue
 
-### Command queue
 - Queue: `partner.callback.commands`
+- Dead-letter queue: `partner.callback.commands.dlq`
 - Command: `CallPartnerWebhook`
-- Producer: `payment-orchestrator-service`
-- Consumer: `partner-callback-worker`
 
-### Flow
-1. After a payment reaches `AUTHORIZED`, `DECLINED`, or `REVERSED`, the Java service creates a `CallPartnerWebhook` command for merchants that configured callbacks.
-2. `partner-callback-worker` consumes one command at a time, calls the merchant webhook, and acknowledges the message only after a successful delivery or a terminal failure record.
-3. Transient failures are retried with backoff.
-4. Exhausted messages are routed to a RabbitMQ dead-letter queue such as `partner.callback.commands.dlq`.
-5. The operations API exposes callback status, retry count, last error, and manual retry controls.
+## 13. Milestones
 
-### Boundary with Kafka
-- Kafka publishes durable business facts such as `PaymentAuthorized`.
-- RabbitMQ dispatches targeted work such as `CallPartnerWebhook`.
-- Kafka events are replayable and may have many independent consumers.
-- RabbitMQ commands are short-lived work items intended for one worker group.
+### M1: API Contract Baseline
 
-## Persistence and cache design
-1. **Relational database**
-   - Use Oracle-compatible schema design for payments, risk decisions, idempotency records, outbox events, audit events, replay jobs, and dead-letter records.
-   - Use PostgreSQL locally if Oracle is not available.
-   - Write Flyway or Liquibase migrations with portability in mind.
-   - Add indexes for payment ID, merchant ID, customer ID, status, created time, idempotency key, outbox status, and replay job status.
+- REST API conventions documented.
+- Error contract documented and tested.
+- Correlation ID behavior documented and tested.
+- Protobuf contract generated for Java and Go.
+- OpenAPI endpoint available.
 
-2. **Redis**
-   - Store idempotency response snapshots with TTL.
-   - Cache risk decisions for safe duplicate payment attempts.
-   - Track rate-limit counters by merchant and client.
-   - Store hot operational views such as recent failed payments and replay status summaries.
-   - Define key naming, TTLs, invalidation behavior, and stale-data rules.
+### M2: Payment Authorization Workflow
 
-3. **Oracle and SQL talking points**
-   - Explain transaction isolation choices.
-   - Include reporting queries for daily authorization counts, decline reasons, top risky merchants, and replay outcomes.
-   - Document where PL/SQL-style reports or stored procedures would fit in an enterprise deployment.
+- Payment domain model and state transitions implemented.
+- Authorization endpoint implemented.
+- Durable payment persistence implemented.
+- Database-backed idempotency implemented.
+- Redis idempotency cache implemented.
+- Go risk service integrated through gRPC.
+- Outbox records created with payment state.
+- Authorization API tests cover success, validation failure, duplicate replay, conflict, and risk timeout.
 
-## Security requirements
-- Use Spring Security with role-based access:
-  - `MERCHANT`
-  - `OPS`
-  - `AUDITOR`
-  - `ADMIN`
-  - `SERVICE`
-- Require idempotency keys for payment authorization and reversal.
-- Mask sensitive payment, customer, and device fields in logs and audit records.
-- Hash API keys and avoid storing plaintext secrets.
-- Add audit events for authorization, reversal, replay, admin lookup, and failed authentication.
-- Define secure defaults for headers, CORS, rate limiting, and service-to-service credentials.
+### M3: Lookup And Reversal
 
-## Observability and operations
-- Use Micrometer, Prometheus, and Grafana.
-- Track metrics for:
-  - API latency
-  - payment authorization throughput
-  - risk service latency and timeout count
-  - Kafka producer failures
-  - Kafka consumer lag
-  - outbox lag
-  - Redis hit/miss rate
-  - database query latency
-  - dead-letter count
-  - replay success/failure count
-- Add structured logs with correlation IDs.
-- Add Linux runbook commands for:
-  - checking listening ports
-  - tailing service logs
-  - inspecting Docker Compose containers
-  - checking Kafka topics and consumer groups
-  - checking Redis keys and TTLs
-  - collecting thread dumps and heap dumps
+- Payment lookup endpoint implemented.
+- Reversal endpoint implemented.
+- Reversal idempotency implemented.
+- Reversal events emitted.
+- Reversal tests cover success, duplicate retry, conflict, and invalid state.
 
-## Testing strategy
-- Unit-test Java domain rules, validation, payment state transitions, idempotency logic, risk mapping, and error contracts.
-- Mock-test the gRPC risk client, downstream timeouts, retries, and fallback decisions.
-- Integration-test REST APIs, database persistence, Kafka producers/consumers, Redis idempotency/cache, and Go gRPC calls.
-- Integration-test the RabbitMQ `CallPartnerWebhook` command flow, retry behavior, acknowledgement behavior, and dead-letter routing.
-- Use Testcontainers for PostgreSQL, Redis, Kafka, and optionally the Go service.
-- Add concurrency tests for duplicate payment authorization and replay.
-- Add failure tests for:
-  - risk service timeout
-  - Redis unavailable
-  - Kafka publish failure
-  - RabbitMQ callback command retry exhaustion
-  - database unique constraint conflict
-  - dead-letter recovery
-- Add CI checks for Java tests, Go tests, protobuf generation, Docker Compose validation, linting, and container image build.
+### M4: Event Relay And Consumers
 
-## Design patterns to demonstrate
-- Adapter pattern for the gRPC risk client and any legacy SOAP integration.
-- Strategy pattern for risk decision rules and payment authorization policies.
-- Chain of responsibility for request validation and fraud/risk checks.
-- Transactional outbox for reliable event publishing.
-- Idempotent consumer pattern for Kafka handlers.
-- Circuit breaker, retry, timeout, and bulkhead patterns for downstream calls.
-- Repository pattern for persistence boundaries.
-- Command pattern for replay and reversal operations.
-- Specification pattern for operational payment search.
+- Outbox relay publishes Kafka events.
+- Audit consumer builds payment history.
+- Settlement projection consumer builds settlement-ready read model.
+- Dead-letter handling and replay implemented.
 
-## Interview talking points
-- Why Java remains the main implementation language for this project even though one small service is written in Go.
-- How WebFlux/Reactor differs from traditional servlet-based Spring MVC.
-- Where blocking calls can break reactive performance and how to isolate them.
-- How J2SE concurrency concepts still matter in modern Spring Boot systems.
-- How J2EE concepts such as filters, validation, transactions, dependency injection, and JMS/MQ map to modern Spring applications.
-- Why gRPC/protobuf is useful for internal service calls.
-- How Redis supports idempotency, rate limiting, and hot operational views.
-- How Kafka enables asynchronous event processing, replay, audit, settlement projections, and recovery.
-- Why RabbitMQ/JMS is used for targeted command work such as partner callbacks while Kafka is used for durable business events.
-- How the outbox pattern prevents lost events.
-- How to design Oracle-compatible schemas while using PostgreSQL locally.
-- How to investigate high latency, consumer lag, Redis cache misses, and failed replay jobs.
+### M5: Partner Callback Commands
 
-## Deliverables for CV/portfolio
-- Architecture diagram with Java service, Go service, Kafka, Redis, database, Prometheus, and Grafana.
-- OpenAPI documentation for REST APIs.
-- Protobuf contract for the Go risk service.
-- Kafka event schema documentation.
-- Redis key design.
-- Oracle-compatible ERD and migration notes.
-- Docker Compose setup.
-- Kubernetes manifests or Helm chart.
-- CI/CD pipeline.
-- Test report and coverage summary.
-- Load test and bottleneck analysis.
-- Linux operations runbook.
-- Incident write-up for one failed risk service or Kafka replay scenario.
-- ADRs for:
-  - Java WebFlux vs Spring MVC
-  - Go gRPC service boundary
-  - Kafka event log vs RabbitMQ/JMS command queue
-  - Oracle-compatible persistence strategy
-  - Redis idempotency and caching strategy
-  - outbox and replay strategy
+- RabbitMQ callback command producer implemented.
+- Callback worker implemented.
+- Retry and DLQ behavior implemented.
+- Operations visibility for callback state implemented.
 
-## Suggested implementation phases
-1. Define architecture, protobuf contract, REST API contract, and event envelope.
-2. Build Java payment domain model, validation, and state transition tests.
-3. Build `payment-orchestrator-service` with WebFlux REST APIs and stable error contracts.
-4. Add relational persistence, migrations, idempotency records, and audit logs.
-5. Add Redis idempotency cache, rate limits, and hot operational views.
-6. Build Go `risk-scoring-service` with gRPC/protobuf and unit tests.
-7. Integrate Java service with Go risk service using timeout, retry, and fallback policies.
-8. Add transactional outbox, Kafka producer, consumers, retries, and dead-letter handling.
-9. Add RabbitMQ/JMS `CallPartnerWebhook` command flow with retry, acknowledgement, DLQ, and operations visibility.
-10. Add Spring Security roles, service-to-service authentication, masking, and audit events.
-11. Add observability, dashboards, Linux runbook, Docker Compose, Kubernetes manifests, and CI/CD.
-12. Add Testcontainers integration tests, concurrency tests, failure tests, and load test report.
-13. Write ADRs, incident write-up, CV bullets, and interview talking points.
+### M6: Security, Observability, And Operations
 
-## Suggested CV bullets
-- Design a Java Spring Boot WebFlux payment authorization platform with reactive REST APIs, Redis-backed idempotency, Kafka outbox events, Oracle-compatible persistence, and production-grade observability.
-- Build a Go gRPC/protobuf risk-scoring microservice integrated with a Java payment orchestrator using timeout, retry, fallback, and correlation-ID propagation.
-- Implement event-driven payment workflows with Kafka consumers for audit, settlement projections, metrics, dead-letter handling, replay-safe processing, and Testcontainers-backed integration tests.
-- Add a RabbitMQ/JMS command queue for partner webhook callbacks with acknowledgement, retry, dead-letter routing, and operations visibility.
-- Document J2SE/J2EE fundamentals through Java concurrency, JVM troubleshooting, Spring Security filters, Bean Validation, transaction boundaries, JMS/MQ concepts, and enterprise API design.
+- Role-based access implemented.
+- Sensitive data masking/hashing implemented.
+- Metrics and dashboards implemented.
+- Linux/Docker runbook documented.
+- CI covers Java tests, Go tests, protobuf generation, compose validation, linting, and image build.
+
+## 14. Acceptance Criteria
+
+- A merchant can submit a valid authorization request and receive a stable authorization response.
+- Retrying the same authorization request with the same idempotency key returns the original response.
+- Reusing the same idempotency key for a different authorization request returns a structured conflict error.
+- Approved risk decisions produce `AUTHORIZED` payments.
+- Declined risk decisions produce `DECLINED` payments.
+- Risk timeout/unavailable cases produce the selected stable Phase 2 behavior.
+- Payment state and outbox records are persisted consistently.
+- Kafka events can be published, consumed, retried, dead-lettered, and replayed.
+- Operations users can inspect payments, outbox failures, dead letters, replay jobs, callback failures, and consumer
+  lag.
+- Sensitive values are not exposed in logs, error responses, or audit records.
+- Testcontainers-backed tests prove database, Redis, Kafka, RabbitMQ, and gRPC integration paths.
+
+## 15. Success Metrics
+
+- Duplicate authorization retries create zero additional payments.
+- Outbox relay eventually publishes all pending events or marks terminal failures for operations review.
+- API error responses conform to `ApiErrorResponse`.
+- Correlation IDs appear in API responses, logs, events, and gRPC metadata.
+- Integration tests cover all primary success, duplicate, conflict, timeout, and replay paths.
+- Local platform can start with one documented command and expose service health, metrics, and dashboards.
+
+## 16. Open Decisions
+
+- Review-required risk policy: authorize, decline, or return manual-review response.
+- Risk timeout policy: fail closed, fail open for selected merchants, or return downstream timeout.
+- Initial database target for CI: PostgreSQL only or PostgreSQL plus Oracle-compatible validation.
+- Redis cache TTL for idempotency snapshots.
+- Whether `PaymentAuthorizationRequested` should be emitted before or after risk scoring in Phase 2.
+- Authentication approach for local development versus production-like deployment.
+
+## 17. Reference Documents
+
+- API roadmap: `docs/ApiRoadmap.md`
+- Error contract: `docs/api/error-contract.md`
+- Correlation ID contract: `docs/api/correlation-id.md`
+- REST conventions: `docs/api/rest-api-conventions.md`
+- Risk gRPC contract: `docs/api/risk-grpc-contract.md`
+- Event envelope: `docs/events/event-envelope.md`

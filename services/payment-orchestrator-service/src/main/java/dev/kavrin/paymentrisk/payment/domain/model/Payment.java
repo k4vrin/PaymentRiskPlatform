@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.payment.domain.model;
 
+import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

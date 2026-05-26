@@ -259,7 +259,14 @@ service for a decision, persists the result, and prepares durable outbox events 
 result should be a thin WebFlux API over a clear domain model, with stable error handling, correlation IDs, and tests
 that prove the main authorization paths.
 
-### Steps
+### Chronicle And Next Steps
+
+Phase 2 is intentionally incremental. The project currently has the public API shell, domain model, persistence schema,
+row models, repositories, and a contract-only authorization service. It does **not** yet have the complete durable
+authorization workflow because payment persistence, database-backed idempotency, Redis replay cache, risk gRPC calls,
+outbox creation, and the final transaction boundary still need to be wired together.
+
+#### Completed Foundations
 
 - [x] Create payment package structure:
     - Purpose: create the feature boundaries for API, application, domain, and infrastructure code before adding
@@ -369,20 +376,6 @@ that prove the main authorization paths.
   - [x] Include correlation ID.
   - [x] Include idempotency key.
   - [x] Keep command immutable.
-- [x] Add authorization application service:
-    - Purpose: orchestrate validation, idempotency, persistence, risk scoring, state transition, outbox creation, and
-      response mapping.
-  - [x] Create `AuthorizePaymentService`.
-  - [x] Validate command through domain policies.
-    - [ ] Check idempotency before creating a new authorization.
-  - [x] Create new payment authorization aggregate.
-    - [ ] Persist payment state.
-    - [ ] Call risk scoring client.
-  - [x] Apply risk decision to payment state.
-    - [ ] Persist risk decision.
-    - [ ] Persist idempotency result snapshot.
-    - [ ] Create outbox event record.
-  - [x] Return response DTO.
 - [x] Add persistence migrations:
     - Purpose: create the relational schema needed to durably store authorization state, risk decisions, idempotency
       records, and pending events.
@@ -412,130 +405,201 @@ that prove the main authorization paths.
   - [x] Add reactive outbox repository.
   - [x] Add mapper from domain model to persistence rows.
   - [x] Add mapper from persistence rows to domain model.
-- [ ] Add idempotency behavior:
+
+#### Current Partial Workflow
+
+- [ ] Complete authorization application service:
+  - Purpose: orchestrate validation, idempotency, persistence, risk scoring, state transition, outbox creation, and
+    response mapping.
+  - [x] Create `AuthorizePaymentService`.
+  - [x] Validate command through command/domain value objects.
+  - [x] Create a contract-only payment authorization aggregate.
+  - [x] Apply a contract-only approved risk decision to payment state.
+  - [x] Return response DTO.
+  - [x] Check in-memory idempotency before creating a new contract-only authorization.
+  - [ ] Persist payment state.
+  - [ ] Call risk scoring client.
+  - [ ] Persist risk decision.
+  - [ ] Persist idempotency result snapshot.
+  - [ ] Create outbox event record.
+  - [ ] Return stored response from durable idempotency storage when a duplicate request is replayed.
+- [ ] Complete idempotency behavior:
     - Purpose: make retries safe by returning the original result for duplicate requests and rejecting conflicting reuse
       of a key.
-    - [ ] Define idempotency scope for payment authorization.
-    - [ ] Reject missing idempotency key.
-    - [ ] Validate idempotency key format and length.
-    - [ ] Detect duplicate key with same request fingerprint.
-    - [ ] Return stored response snapshot for duplicate key with same fingerprint.
-    - [ ] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
-    - [ ] Store request fingerprint.
-    - [ ] Store response snapshot.
-    - [ ] Store idempotency status.
-    - [ ] Store expiry time.
+  - [x] Define idempotency scope for payment authorization.
+  - [x] Reject missing idempotency key through request/command validation.
+  - [x] Validate idempotency key format and length.
+  - [x] Compute stable request fingerprint for authorization commands.
+  - [x] Detect duplicate key with same request fingerprint in the current process.
+  - [x] Return stored response snapshot for duplicate key with same fingerprint in the current process.
+  - [x] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
+  - [x] Store request fingerprint in the current in-memory implementation.
+  - [x] Store response snapshot in the current in-memory implementation.
+  - [x] Store idempotency status in the current in-memory implementation.
+  - [x] Store expiry time in the current in-memory implementation.
+  - [ ] Introduce an idempotency application port/interface so the authorization service does not depend on an
+    in-memory implementation.
+  - [ ] Persist request fingerprint in `idempotency_records`.
+  - [ ] Persist response snapshot in `idempotency_records`.
+  - [ ] Persist idempotency status in `idempotency_records`.
+  - [ ] Persist expiry time in `idempotency_records`.
     - [ ] Add Redis cache for response snapshot.
     - [ ] Add TTL for Redis snapshot.
     - [ ] Fall back to database idempotency record if Redis misses.
-- [ ] Add Java gRPC risk client:
-    - Purpose: connect the Java orchestrator to the Go risk service through the generated protobuf contract with
-      explicit timeout handling.
-    - [ ] Create risk client interface in application layer.
-    - [ ] Create gRPC client adapter.
-    - [ ] Configure risk service host.
-    - [ ] Configure risk service port.
-    - [ ] Configure risk call timeout.
-    - [ ] Map `AuthorizePaymentCommand` to `ScorePaymentRequest`.
-    - [ ] Include correlation ID in `ScorePaymentRequest`.
-    - [ ] Map `ScorePaymentResponse` to internal risk result.
-    - [ ] Map approved risk decision.
-    - [ ] Map declined risk decision.
-    - [ ] Map review-required risk decision.
-    - [ ] Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
-    - [ ] Map unavailable gRPC status to `DOWNSTREAM_UNAVAILABLE`.
-- [ ] Add risk decision mapping policy:
-    - Purpose: convert risk service responses into payment outcomes and persisted risk decision records.
-    - [ ] Approved risk response transitions payment to `AUTHORIZED`.
-    - [ ] Declined risk response transitions payment to `DECLINED`.
-    - [ ] Review-required risk response uses the selected Phase 2 policy.
-    - [ ] Timeout uses the selected Phase 2 policy.
-    - [ ] Persist risk score.
-    - [ ] Persist reason codes.
-    - [ ] Persist rule hits or rule hit summary.
-    - [ ] Persist rule version.
-- [ ] Add outbox event creation:
-    - Purpose: record durable payment facts in the same workflow so later Kafka publishing can be reliable and
-      replayable.
-    - [ ] Define `PaymentAuthorizationRequested` event payload.
-    - [ ] Define `PaymentAuthorized` event payload.
-    - [ ] Define `PaymentDeclined` event payload.
-    - [ ] Use event envelope fields from `docs/events/event-envelope.md`.
-    - [ ] Store outbox event in same transaction as payment state.
-    - [ ] Mark new outbox events as pending.
-    - [ ] Include correlation ID in outbox event.
-    - [ ] Include aggregate ID.
-    - [ ] Include aggregate type.
-- [ ] Add transaction boundary:
-    - Purpose: make database writes and outbox creation consistent while avoiding long-running transactions around
-      remote calls.
-    - [ ] Use reactive transaction manager.
-    - [ ] Wrap payment persistence and outbox insert in one transaction.
-    - [ ] Keep remote risk call outside long-running database transaction where practical.
-    - [ ] Document chosen transaction order in code or Phase 2 notes.
-- [ ] Add sensitive data masking:
-    - Purpose: prevent payment tokens and device identifiers from leaking into logs, errors, or operational output.
-    - [ ] Do not log raw `paymentMethodToken`.
-    - [ ] Do not log full `deviceFingerprint`.
-    - [ ] Add masking helper for payment method token.
-    - [ ] Add masking helper for device fingerprint.
-    - [ ] Ensure API errors do not echo sensitive fields.
-- [ ] Add Phase 2 API documentation:
-    - Purpose: document the authorization endpoint behavior before Phase 2 is considered complete.
-    - [ ] Document `POST /api/v1/payments/authorize`.
-    - [ ] Document request fields.
-    - [ ] Document response fields.
-    - [ ] Document idempotency behavior.
-    - [ ] Document risk timeout behavior.
-    - [ ] Document emitted outbox events.
-- [ ] Add unit tests for domain model:
-    - Purpose: prove state transitions and aggregate rules without requiring Spring or infrastructure.
-    - [ ] New payment starts in `RECEIVED` or selected initial state.
-    - [ ] Payment can transition to `RISK_PENDING`.
-    - [ ] Risk-approved payment can transition to `AUTHORIZED`.
-    - [ ] Risk-declined payment can transition to `DECLINED`.
-    - [ ] Invalid state transition returns conflict/domain error.
-- [ ] Add unit tests for validation:
-    - Purpose: prove invalid authorization input is rejected before persistence or risk calls.
-    - [ ] Missing merchant ID fails.
-    - [ ] Missing customer ID fails.
-    - [ ] Non-positive amount fails.
-    - [ ] Invalid currency fails.
-    - [ ] Missing payment method token fails.
-    - [ ] Missing idempotency key fails.
-- [ ] Add unit tests for idempotency:
-    - Purpose: prove duplicate and conflicting authorization requests behave deterministically.
-    - [ ] New idempotency key creates a record.
-    - [ ] Duplicate key with same fingerprint returns stored response.
-    - [ ] Duplicate key with different fingerprint returns conflict.
-    - [ ] Redis miss falls back to database.
-- [ ] Add unit tests for risk mapping:
-    - Purpose: prove gRPC risk outcomes and failures map to stable internal results and API errors.
-    - [ ] Approved gRPC response maps to internal approved result.
-    - [ ] Declined gRPC response maps to internal declined result.
-    - [ ] Review-required gRPC response maps to selected policy result.
-    - [ ] gRPC timeout maps to stable timeout error.
-    - [ ] gRPC unavailable maps to downstream unavailable error.
-- [ ] Add repository/integration tests:
-    - Purpose: verify migrations, constraints, and reactive repositories against a real database-backed test setup.
-    - [ ] Flyway migration applies successfully.
-    - [ ] Payment can be inserted and read.
-    - [ ] Authorization can be inserted and read.
-    - [ ] Risk decision can be inserted and read.
-    - [ ] Idempotency uniqueness is enforced.
-    - [ ] Outbox event can be inserted with payment transaction.
-- [ ] Add API tests for authorization endpoint:
-    - Purpose: prove the complete REST behavior for success, validation, idempotency, conflict, and risk timeout paths.
-    - [ ] Valid request returns `200` or selected success status.
-    - [ ] Response includes `paymentId`.
-    - [ ] Response includes final payment status.
-    - [ ] Response includes risk decision.
-    - [ ] Response includes correlation ID.
-    - [ ] Missing idempotency key returns validation error.
-    - [ ] Invalid request returns `ApiErrorResponse`.
-    - [ ] Duplicate idempotency key returns stored response.
-    - [ ] Idempotency key conflict returns structured conflict error.
-    - [ ] Risk timeout returns stable downstream timeout error or selected fallback response.
+
+#### Atomic Remaining Work
+
+1. [ ] Introduce idempotency port:
+  - Create `IdempotencyStore` or `IdempotencyResultStore` interface in `idempotency/application`.
+  - Move lookup/store method contracts behind the interface.
+  - Rename the current implementation to `InMemoryIdempotencyStore`.
+  - Inject the interface into `DefaultAuthorizePaymentService`.
+  - Keep duplicate and conflict unit tests green.
+2. [ ] Add idempotency record mapper:
+  - Map `IdempotencyScope` to `scope`.
+  - Map `IdempotencyKey` to `idempotency_key`.
+  - Map request fingerprint to `request_fingerprint`.
+  - Map response status to `response_status`.
+  - Map response snapshot JSON to `response_body_json`.
+  - Map status and expiry fields.
+  - Add mapper unit tests.
+3. [ ] Add JSON response snapshot serialization:
+  - Serialize `AuthorizePaymentResult` to JSON.
+  - Deserialize stored JSON back to `AuthorizePaymentResult`.
+  - Reject unsupported response snapshot types explicitly.
+  - Add stable snapshot round-trip tests.
+4. [ ] Add database idempotency read path:
+  - Read `idempotency_records` by `(scope, idempotency_key)`.
+  - Treat missing records as miss.
+  - Treat expired records as miss.
+  - Return stored response when fingerprint matches.
+  - Throw `IdempotencyKeyConflictException` when fingerprint differs.
+  - Add store tests.
+5. [ ] Add database idempotency write path:
+  - Insert `STARTED` before creating a new payment.
+  - Update to `COMPLETED` with response snapshot after successful authorization.
+  - Update to `FAILED` or expire when authorization fails before a durable result exists.
+  - Preserve unique `(scope, idempotency_key)` behavior.
+  - Add duplicate insert race test where practical.
+6. [ ] Wire database idempotency into authorization:
+  - Use the database-backed idempotency implementation in production wiring.
+  - Keep in-memory implementation only for focused tests if useful.
+  - Verify duplicate requests do not create a second payment.
+  - Verify conflicting requests return `IDEMPOTENCY_KEY_CONFLICT`.
+7. [ ] Add sensitive data hashing helpers:
+  - Hash `paymentMethodToken` before persistence.
+  - Derive token last four for storage where needed.
+  - Hash `deviceFingerprint` before persistence.
+  - Add deterministic hashing tests.
+8. [ ] Add payment state persistence port:
+  - Create a payment persistence interface in the payment application boundary.
+  - Define save methods for payment, authorization, and risk decision state.
+  - Keep the authorization service dependent on the interface, not concrete repositories.
+  - Add unit tests with a fake persistence implementation.
+9. [ ] Add durable payment write adapter:
+  - Save `PaymentRow`.
+  - Save `PaymentAuthorizationRow`.
+  - Save `PaymentRiskDecisionRow` when a risk decision exists.
+  - Use `PaymentPersistenceMapper`.
+  - Add adapter tests with mocked repositories.
+10. [ ] Wire payment state persistence into authorization:
+  - Persist the new payment aggregate after state transition.
+  - Persist the current authorization state for the payment.
+  - Persist the risk decision attached to the payment.
+  - Return response based on the persisted aggregate.
+  - Verify one request creates one payment row and one authorization row.
+  - Verify authorized and declined outcomes persist the expected state.
+11. [ ] Add risk client port:
+  - Create risk scoring interface in `risk/application`.
+  - Define internal risk request record.
+  - Define internal risk response record.
+  - Represent approved, declined, review-required, timeout, and unavailable outcomes.
+  - Add unit tests with a fake risk client.
+12. [ ] Add Java gRPC risk adapter:
+  - Create gRPC adapter in `risk/infrastructure/grpc`.
+  - Configure risk service host.
+  - Configure risk service port.
+  - Configure risk call timeout.
+  - Map `AuthorizePaymentCommand` or internal request to `ScorePaymentRequest`.
+  - Include correlation ID in `ScorePaymentRequest`.
+  - Map `ScorePaymentResponse` to internal risk response.
+  - Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
+  - Map unavailable status to `DOWNSTREAM_UNAVAILABLE`.
+13. [ ] Add risk decision mapping policy:
+  - Map approved risk result to `PaymentRiskDecision`.
+  - Map declined risk result to `PaymentRiskDecision`.
+  - Define review-required Phase 2 behavior.
+  - Define timeout Phase 2 behavior.
+  - Preserve risk score, reason codes, rule hit summary, and rule version.
+  - Add unit tests for each outcome.
+14. [ ] Wire risk client into authorization:
+  - Replace contract-only approval with risk client result.
+  - Mark payment `AUTHORIZED` for approved result.
+  - Mark payment `DECLINED` for declined result.
+  - Return stable downstream error or selected fallback for timeout.
+  - Return stable downstream error or selected fallback for unavailable.
+15. [ ] Add outbox payload records:
+  - Add `PaymentAuthorizationRequested` payload.
+  - Add `PaymentAuthorized` payload.
+  - Add `PaymentDeclined` payload.
+  - Include schema version constants.
+  - Add payload serialization tests.
+16. [ ] Add outbox mapper:
+  - Map payment aggregate to event envelope fields.
+  - Include `eventId`.
+  - Include `correlationId`.
+  - Include aggregate type.
+  - Include aggregate ID.
+  - Include occurred-at timestamp.
+  - Add mapper unit tests.
+17. [ ] Persist outbox events:
+  - Save requested event if selected for Phase 2.
+  - Save authorized event when payment is authorized.
+  - Save declined event when payment is declined.
+  - Mark new events as pending.
+  - Add repository tests.
+18. [ ] Add reactive transaction boundary:
+  - Verify `ReactiveTransactionManager` configuration.
+  - Wrap payment rows, idempotency completion update, and outbox insert in one transaction.
+  - Avoid holding a transaction open during the remote risk call where practical.
+  - Add rollback test for failed outbox insert.
+19. [ ] Add Redis idempotency cache adapter:
+  - Define Redis key format from scope and idempotency key.
+  - Read completed response snapshot from Redis before database lookup.
+  - Store completed response snapshot in Redis with TTL.
+  - Keep database as source of truth.
+  - Add adapter tests.
+20. [ ] Add Redis miss database fallback:
+  - On Redis miss, read `idempotency_records`.
+  - Repopulate Redis from durable database snapshot.
+  - Return database snapshot when fingerprint matches.
+  - Return conflict when fingerprint differs.
+  - Add tests for hit, miss, expired, and conflict paths.
+21. [ ] Update authorization API documentation:
+  - Document `POST /api/v1/payments/authorize`.
+  - Document idempotency key requirements.
+  - Document duplicate replay behavior.
+  - Document conflict behavior.
+  - Document risk timeout/unavailable behavior.
+  - Document emitted outbox events.
+22. [ ] Add repository/integration tests:
+  - Verify Flyway migration applies.
+  - Verify payment insert/read.
+  - Verify authorization insert/read.
+  - Verify risk decision insert/read.
+  - Verify idempotency uniqueness.
+  - Verify outbox insert with payment transaction.
+23. [ ] Add authorization API tests:
+  - Valid request returns selected success status.
+  - Response includes `paymentId`.
+  - Response includes final payment status.
+  - Response includes risk decision.
+  - Response includes correlation ID.
+  - Missing idempotency key returns validation error.
+  - Invalid request returns `ApiErrorResponse`.
+  - Duplicate idempotency key returns stored response.
+  - Idempotency key conflict returns structured conflict error.
+  - Risk timeout returns stable downstream timeout error or selected fallback response.
 
 ### Acceptance Criteria
 

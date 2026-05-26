@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.payment.application.service;
 
+import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKeyConflictException;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,29 @@ class DefaultAuthorizePaymentServiceTest {
 
         assertThatThrownBy(() -> service.authorize(command).block())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("idempotencyKey contains unsupported characters.");
+                .hasMessage("Idempotency key may contain letters, numbers, dot, underscore, colon, and hyphen");
+    }
+
+    @Test
+    void authorizeReturnsStoredResultForDuplicateIdempotencyKeyAndSameRequest() {
+        AuthorizePaymentCommand command = validCommand();
+
+        AuthorizePaymentResult firstResult = service.authorize(command).block();
+        AuthorizePaymentResult duplicateResult = service.authorize(command).block();
+
+        assertThat(duplicateResult).isEqualTo(firstResult);
+    }
+
+    @Test
+    void authorizeRejectsDuplicateIdempotencyKeyWithDifferentRequestFingerprint() {
+        AuthorizePaymentCommand originalCommand = validCommand();
+        AuthorizePaymentCommand conflictingCommand = validCommandWithAmount(1599);
+
+        service.authorize(originalCommand).block();
+
+        assertThatThrownBy(() -> service.authorize(conflictingCommand).block())
+                .isInstanceOf(IdempotencyKeyConflictException.class)
+                .hasMessage("Idempotency key was already used for a different request");
     }
 
     private static AuthorizePaymentCommand validCommand() {
@@ -60,6 +83,20 @@ class DefaultAuthorizePaymentServiceTest {
                 "mer_01HX7Q9K2V6M8P4A3B9C1D2E3F",
                 "cus_01HX7QAF4CQ8YFZ3M9N2W1P0VK",
                 1299,
+                "USD",
+                "pmt_tok_4f7b8d9c2a1e",
+                "dfp_6d9f1a2b3c4e5f678901",
+                "order_2026_000123",
+                "idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A",
+                "corr-authorization-service"
+        );
+    }
+
+    private static AuthorizePaymentCommand validCommandWithAmount(long amountMinor) {
+        return new AuthorizePaymentCommand(
+                "mer_01HX7Q9K2V6M8P4A3B9C1D2E3F",
+                "cus_01HX7QAF4CQ8YFZ3M9N2W1P0VK",
+                amountMinor,
                 "USD",
                 "pmt_tok_4f7b8d9c2a1e",
                 "dfp_6d9f1a2b3c4e5f678901",
