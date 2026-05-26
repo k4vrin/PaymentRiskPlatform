@@ -56,19 +56,19 @@ class IdempotencyRecordMapperTest {
 
     @Test
     void toStoredResultMapsDurableRowBackToApplicationResult() {
-        IdempotencyRecordRow row = new IdempotencyRecordRow(
-                "idem_rec_01",
-                "payment_authorization",
-                "idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A",
-                "fingerprint-sha256",
-                "pay_01HX7R0BYV9Y6CNW3HZ7R8E4P2",
-                "COMPLETED",
-                200,
-                "{\"paymentId\":\"pay_test\"}",
-                EXPIRES_AT,
-                CREATED_AT,
-                UPDATED_AT
-        );
+        IdempotencyRecordRow row = IdempotencyRecordRow.builder()
+                .idempotencyRecordId("idem_rec_01")
+                .scope("payment_authorization")
+                .idempotencyKey("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A")
+                .requestFingerprint("fingerprint-sha256")
+                .paymentId("pay_01HX7R0BYV9Y6CNW3HZ7R8E4P2")
+                .status("COMPLETED")
+                .responseStatus(200)
+                .responseBodyJson("{\"paymentId\":\"pay_test\"}")
+                .expiresAt(EXPIRES_AT)
+                .createdAt(CREATED_AT)
+                .updatedAt(UPDATED_AT)
+                .build();
         Map<String, String> responseSnapshot = Map.of("paymentId", "pay_test");
 
         StoredIdempotencyResult result = mapper.toStoredResult(row, responseSnapshot);
@@ -84,9 +84,10 @@ class IdempotencyRecordMapperTest {
 
     @Test
     void mapsScopeAndKeyFromRow() {
-        IdempotencyRecordRow row = new IdempotencyRecordRow();
-        row.setScope("payment_authorization");
-        row.setIdempotencyKey("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A");
+        IdempotencyRecordRow row = IdempotencyRecordRow.builder()
+                .scope("payment_authorization")
+                .idempotencyKey("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A")
+                .build();
 
         assertThat(mapper.toScope(row)).isEqualTo(IdempotencyScope.PAYMENT_AUTHORIZATION);
         assertThat(mapper.toKey(row)).isEqualTo(IdempotencyKey.of("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A"));

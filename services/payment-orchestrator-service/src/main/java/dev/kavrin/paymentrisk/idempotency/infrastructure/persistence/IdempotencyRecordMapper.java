@@ -24,19 +24,19 @@ public final class IdempotencyRecordMapper {
         Objects.requireNonNull(key, "key must not be null");
         Objects.requireNonNull(result, "result must not be null");
 
-        return new IdempotencyRecordRow(
-                idempotencyRecordId,
-                scope.value(),
-                key.value(),
-                result.requestFingerprint(),
-                paymentId,
-                result.status().name(),
-                result.responseStatus(),
-                responseBodyJson,
-                result.expiresAt(),
-                result.createdAt(),
-                result.updatedAt()
-        );
+        return IdempotencyRecordRow.builder()
+                .idempotencyRecordId(idempotencyRecordId)
+                .scope(scope.value())
+                .idempotencyKey(key.value())
+                .requestFingerprint(result.requestFingerprint())
+                .paymentId(paymentId)
+                .status(result.status().name())
+                .responseStatus(result.responseStatus())
+                .responseBodyJson(responseBodyJson)
+                .expiresAt(result.expiresAt())
+                .createdAt(result.createdAt())
+                .updatedAt(result.updatedAt())
+                .build();
     }
 
     public StoredIdempotencyResult toStoredResult(

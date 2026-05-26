@@ -8,11 +8,11 @@ import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationRow;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionRow;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRow;
+import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @Component
 public class PaymentPersistenceMapper {
@@ -22,13 +22,19 @@ public class PaymentPersistenceMapper {
             };
 
     private final ObjectMapper objectMapper;
+    private final PlatformIdGeneratorFactory idGenerator;
 
     public PaymentPersistenceMapper() {
-        this(new ObjectMapper());
+        this(new ObjectMapper(), new PlatformIdGeneratorFactory());
     }
 
     PaymentPersistenceMapper(ObjectMapper objectMapper) {
+        this(objectMapper, new PlatformIdGeneratorFactory());
+    }
+
+    PaymentPersistenceMapper(ObjectMapper objectMapper, PlatformIdGeneratorFactory idGenerator) {
         this.objectMapper = objectMapper;
+        this.idGenerator = idGenerator;
     }
 
     public PaymentRow toPaymentRow(
@@ -37,23 +43,23 @@ public class PaymentPersistenceMapper {
             String paymentMethodTokenLast4,
             String deviceFingerprintHash
     ) {
-        return new PaymentRow(
-                payment.getId().value(),
-                payment.getMerchantId().value(),
-                payment.getCustomerId().value(),
-                payment.getAmount().amountMinor(),
-                payment.getAmount().currencyCode(),
-                paymentMethodTokenHash,
-                paymentMethodTokenLast4,
-                deviceFingerprintHash,
-                payment.getExternalReference() == null
+        return PaymentRow.builder()
+                .paymentId(payment.getId().value())
+                .merchantId(payment.getMerchantId().value())
+                .customerId(payment.getCustomerId().value())
+                .amountMinor(payment.getAmount().amountMinor())
+                .currency(payment.getAmount().currencyCode())
+                .paymentMethodTokenHash(paymentMethodTokenHash)
+                .paymentMethodTokenLast4(paymentMethodTokenLast4)
+                .deviceFingerprintHash(deviceFingerprintHash)
+                .externalReference(payment.getExternalReference() == null
                         ? null
-                        : payment.getExternalReference().value(),
-                payment.getIdempotencyKey().value(),
-                payment.getStatus().name(),
-                payment.getCreatedAt(),
-                payment.getUpdatedAt()
-        );
+                        : payment.getExternalReference().value())
+                .idempotencyKey(payment.getIdempotencyKey().value())
+                .status(payment.getStatus().name())
+                .createdAt(payment.getCreatedAt())
+                .updatedAt(payment.getUpdatedAt())
+                .build();
     }
 
     public PaymentAuthorizationRow toAuthorizationRow(Payment payment) {
@@ -61,80 +67,58 @@ public class PaymentPersistenceMapper {
 
         return switch (authorization) {
 
-            case PaymentAuthorization.Requested requested -> new PaymentAuthorizationRow(
-                    newAuthorizationRowId(),
-                    payment.getId().value(),
-                    "REQUESTED",
-                    null,
-                    null,
-                    requested.requestedAt(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    payment.getCreatedAt(),
-                    payment.getUpdatedAt()
-            );
+            case PaymentAuthorization.Requested requested -> PaymentAuthorizationRow.builder()
+                    .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
+                    .paymentId(payment.getId().value())
+                    .status("REQUESTED")
+                    .requestedAt(requested.requestedAt())
+                    .createdAt(payment.getCreatedAt())
+                    .updatedAt(payment.getUpdatedAt())
+                    .build();
 
-            case PaymentAuthorization.RiskPending riskPending -> new PaymentAuthorizationRow(
-                    newAuthorizationRowId(),
-                    payment.getId().value(),
-                    "RISK_PENDING",
-                    null,
-                    null,
-                    riskPending.requestedAt(),
-                    riskPending.riskPendingAt(),
-                    null,
-                    null,
-                    null,
-                    payment.getCreatedAt(),
-                    payment.getUpdatedAt()
-            );
+            case PaymentAuthorization.RiskPending riskPending -> PaymentAuthorizationRow.builder()
+                    .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
+                    .paymentId(payment.getId().value())
+                    .status("RISK_PENDING")
+                    .requestedAt(riskPending.requestedAt())
+                    .riskPendingAt(riskPending.riskPendingAt())
+                    .createdAt(payment.getCreatedAt())
+                    .updatedAt(payment.getUpdatedAt())
+                    .build();
 
-            case PaymentAuthorization.Authorized authorized -> new PaymentAuthorizationRow(
-                    newAuthorizationRowId(),
-                    payment.getId().value(),
-                    "AUTHORIZED",
-                    authorized.authorizationCode().value(),
-                    null,
-                    authorized.requestedAt(),
-                    authorized.riskPendingAt(),
-                    authorized.authorizedAt(),
-                    null,
-                    null,
-                    payment.getCreatedAt(),
-                    payment.getUpdatedAt()
-            );
+            case PaymentAuthorization.Authorized authorized -> PaymentAuthorizationRow.builder()
+                    .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
+                    .paymentId(payment.getId().value())
+                    .status("AUTHORIZED")
+                    .authorizationCode(authorized.authorizationCode().value())
+                    .requestedAt(authorized.requestedAt())
+                    .riskPendingAt(authorized.riskPendingAt())
+                    .authorizedAt(authorized.authorizedAt())
+                    .createdAt(payment.getCreatedAt())
+                    .updatedAt(payment.getUpdatedAt())
+                    .build();
 
-            case PaymentAuthorization.Declined declined -> new PaymentAuthorizationRow(
-                    newAuthorizationRowId(),
-                    payment.getId().value(),
-                    "DECLINED",
-                    null,
-                    null,
-                    declined.requestedAt(),
-                    declined.riskPendingAt(),
-                    null,
-                    declined.declinedAt(),
-                    null,
-                    payment.getCreatedAt(),
-                    payment.getUpdatedAt()
-            );
+            case PaymentAuthorization.Declined declined -> PaymentAuthorizationRow.builder()
+                    .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
+                    .paymentId(payment.getId().value())
+                    .status("DECLINED")
+                    .requestedAt(declined.requestedAt())
+                    .riskPendingAt(declined.riskPendingAt())
+                    .declinedAt(declined.declinedAt())
+                    .createdAt(payment.getCreatedAt())
+                    .updatedAt(payment.getUpdatedAt())
+                    .build();
 
-            case PaymentAuthorization.Failed failed -> new PaymentAuthorizationRow(
-                    newAuthorizationRowId(),
-                    payment.getId().value(),
-                    "FAILED",
-                    null,
-                    failed.failureReason(),
-                    failed.requestedAt(),
-                    null,
-                    null,
-                    null,
-                    failed.failedAt(),
-                    payment.getCreatedAt(),
-                    payment.getUpdatedAt()
-            );
+            case PaymentAuthorization.Failed failed -> PaymentAuthorizationRow.builder()
+                    .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
+                    .paymentId(payment.getId().value())
+                    .status("FAILED")
+                    .failureReason(failed.failureReason())
+                    .requestedAt(failed.requestedAt())
+                    .failedAt(failed.failedAt())
+                    .createdAt(payment.getCreatedAt())
+                    .updatedAt(payment.getUpdatedAt())
+                    .build();
         };
     }
 
@@ -146,16 +130,16 @@ public class PaymentPersistenceMapper {
             return null;
         }
 
-        return new PaymentRiskDecisionRow(
-                newRiskDecisionRowId(),
-                payment.getId().value(),
-                riskDecision.decision().name(),
-                riskDecision.score(),
-                writeReasonCodes(riskDecision.reasonCodes()),
-                riskDecision.ruleVersion(),
-                riskDecision.decidedAt(),
-                Instant.now()
-        );
+        return PaymentRiskDecisionRow.builder()
+                .paymentRiskDecisionId(idGenerator.paymentRiskDecisionId())
+                .paymentId(payment.getId().value())
+                .decision(riskDecision.decision().name())
+                .score(riskDecision.score())
+                .reasonCodesJson(writeReasonCodes(riskDecision.reasonCodes()))
+                .ruleVersion(riskDecision.ruleVersion())
+                .decidedAt(riskDecision.decidedAt())
+                .createdAt(Instant.now())
+                .build();
     }
 
     public Payment toDomain(
@@ -272,17 +256,4 @@ public class PaymentPersistenceMapper {
         }
     }
 
-    private static String newAuthorizationRowId() {
-        return "pauth_" +
-                UUID.randomUUID()
-                        .toString()
-                        .replace("-", "");
-    }
-
-    private static String newRiskDecisionRowId() {
-        return "prd_" +
-                UUID.randomUUID()
-                        .toString()
-                        .replace("-", "");
-    }
 }

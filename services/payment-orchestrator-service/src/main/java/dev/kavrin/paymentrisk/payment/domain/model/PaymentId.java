@@ -1,8 +1,10 @@
 package dev.kavrin.paymentrisk.payment.domain.model;
 
-import java.util.UUID;
+import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 
 public record PaymentId(String value) {
+
+    private static final PlatformIdGeneratorFactory ID_GENERATOR = new PlatformIdGeneratorFactory();
 
     public PaymentId {
         value = RequiredText.require(value, "paymentId", 100);
@@ -13,6 +15,6 @@ public record PaymentId(String value) {
     }
 
     public static PaymentId generate() {
-        return new PaymentId("pay_" + UUID.randomUUID());
+        return new PaymentId(ID_GENERATOR.paymentId());
     }
 }

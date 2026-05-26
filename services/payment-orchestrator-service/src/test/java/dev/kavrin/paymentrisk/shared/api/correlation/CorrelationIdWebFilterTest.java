@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.shared.api.correlation;
 
+import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -12,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class CorrelationIdWebFilterTest {
 
-    private final CorrelationIdWebFilter filter = new CorrelationIdWebFilter();
+    private final CorrelationIdWebFilter filter = new CorrelationIdWebFilter(new PlatformIdGeneratorFactory());
 
     @Test
     void preservesInboundCorrelationId() {
