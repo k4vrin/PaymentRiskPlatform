@@ -490,6 +490,8 @@ Why this matters:
 
 ### Step 2: Idempotency Record Mapper
 
+Status: complete.
+
 Build a mapper that converts between application idempotency concepts and `IdempotencyRecordRow`.
 
 This should be small and heavily tested because mapping bugs cause dangerous retry behavior.

@@ -457,14 +457,14 @@ outbox creation, and the final transaction boundary still need to be wired toget
   - [x] Rename the current implementation to `InMemoryIdempotencyResultStore`.
   - [x] Inject the interface into `DefaultAuthorizePaymentService`.
   - [x] Keep duplicate and conflict unit tests green.
-2. [ ] Add idempotency record mapper:
-  - Map `IdempotencyScope` to `scope`.
-  - Map `IdempotencyKey` to `idempotency_key`.
-  - Map request fingerprint to `request_fingerprint`.
-  - Map response status to `response_status`.
-  - Map response snapshot JSON to `response_body_json`.
-  - Map status and expiry fields.
-  - Add mapper unit tests.
+2. [x] Add idempotency record mapper:
+  - [x] Map `IdempotencyScope` to `scope`.
+  - [x] Map `IdempotencyKey` to `idempotency_key`.
+  - [x] Map request fingerprint to `request_fingerprint`.
+  - [x] Map response status to `response_status`.
+  - [x] Map response snapshot JSON to `response_body_json`.
+  - [x] Map status and expiry fields.
+  - [x] Add mapper unit tests.
 3. [ ] Add JSON response snapshot serialization:
   - Serialize `AuthorizePaymentResult` to JSON.
   - Deserialize stored JSON back to `AuthorizePaymentResult`.

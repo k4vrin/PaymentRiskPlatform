@@ -5,7 +5,7 @@ import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyStatus;
 import java.time.Instant;
 import java.util.Objects;
 
-record StoredIdempotencyResult(
+public record StoredIdempotencyResult(
         String requestFingerprint,
         IdempotencyStatus status,
         int responseStatus,
@@ -15,7 +15,7 @@ record StoredIdempotencyResult(
         Instant updatedAt
 ) {
 
-    StoredIdempotencyResult {
+    public StoredIdempotencyResult {
         requestFingerprint = requireText(requestFingerprint, "requestFingerprint");
         Objects.requireNonNull(status, "status must not be null");
         Objects.requireNonNull(responseSnapshot, "responseSnapshot must not be null");
