@@ -15,20 +15,19 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 @Component
-public final class IdempotencyService {
-
-    public static final Duration DEFAULT_RESULT_TTL = Duration.ofHours(24);
+public final class InMemoryIdempotencyResultStore implements IdempotencyResultStore {
 
     private final Map<ScopedIdempotencyKey, StoredIdempotencyResult> results;
 
-    public IdempotencyService() {
+    public InMemoryIdempotencyResultStore() {
         this(new ConcurrentHashMap<>());
     }
 
-    IdempotencyService(Map<ScopedIdempotencyKey, StoredIdempotencyResult> results) {
+    InMemoryIdempotencyResultStore(Map<ScopedIdempotencyKey, StoredIdempotencyResult> results) {
         this.results = Objects.requireNonNull(results, "results must not be null");
     }
 
+    @Override
     public <T> T getOrCreateCompletedResult(
             IdempotencyScope scope,
             IdempotencyKey key,
@@ -39,6 +38,7 @@ public final class IdempotencyService {
         return getOrCreateCompletedResult(scope, key, requestFingerprint, now, DEFAULT_RESULT_TTL, responseSupplier);
     }
 
+    @Override
     public <T> T getOrCreateCompletedResult(
             IdempotencyScope scope,
             IdempotencyKey key,

@@ -391,6 +391,7 @@ This platform solves those needs in a compact reference implementation with real
 ## 17. Reference Documents
 
 - API roadmap: `docs/ApiRoadmap.md`
+- Phase 2 implementation guide: `docs/phase-2-payment-authorization.md`
 - Error contract: `docs/api/error-contract.md`
 - Correlation ID contract: `docs/api/correlation-id.md`
 - REST conventions: `docs/api/rest-api-conventions.md`

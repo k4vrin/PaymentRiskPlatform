@@ -253,6 +253,8 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
 
 Goal: Implement the main payment authorization REST flow with validation, idempotency, risk scoring, persistence, and clear state transitions.
 
+Detailed implementation guide: `docs/phase-2-payment-authorization.md`.
+
 In this phase, we are building the first real business workflow of the platform: a merchant submits a payment
 authorization request, the Java payment orchestrator validates it, protects it with idempotency, asks the Go risk
 service for a decision, persists the result, and prepares durable outbox events for later asynchronous processing. The
@@ -437,7 +439,7 @@ outbox creation, and the final transaction boundary still need to be wired toget
   - [x] Store response snapshot in the current in-memory implementation.
   - [x] Store idempotency status in the current in-memory implementation.
   - [x] Store expiry time in the current in-memory implementation.
-  - [ ] Introduce an idempotency application port/interface so the authorization service does not depend on an
+  - [x] Introduce an idempotency application port/interface so the authorization service does not depend on an
     in-memory implementation.
   - [ ] Persist request fingerprint in `idempotency_records`.
   - [ ] Persist response snapshot in `idempotency_records`.
@@ -449,12 +451,12 @@ outbox creation, and the final transaction boundary still need to be wired toget
 
 #### Atomic Remaining Work
 
-1. [ ] Introduce idempotency port:
-  - Create `IdempotencyStore` or `IdempotencyResultStore` interface in `idempotency/application`.
-  - Move lookup/store method contracts behind the interface.
-  - Rename the current implementation to `InMemoryIdempotencyStore`.
-  - Inject the interface into `DefaultAuthorizePaymentService`.
-  - Keep duplicate and conflict unit tests green.
+1. [x] Introduce idempotency port:
+  - [x] Create `IdempotencyResultStore` interface in `idempotency/application`.
+  - [x] Move lookup/store method contracts behind the interface.
+  - [x] Rename the current implementation to `InMemoryIdempotencyResultStore`.
+  - [x] Inject the interface into `DefaultAuthorizePaymentService`.
+  - [x] Keep duplicate and conflict unit tests green.
 2. [ ] Add idempotency record mapper:
   - Map `IdempotencyScope` to `scope`.
   - Map `IdempotencyKey` to `idempotency_key`.

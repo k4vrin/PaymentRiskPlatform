@@ -1,6 +1,7 @@
 package dev.kavrin.paymentrisk.payment.application.service;
 
-import dev.kavrin.paymentrisk.idempotency.application.IdempotencyService;
+import dev.kavrin.paymentrisk.idempotency.application.IdempotencyResultStore;
+import dev.kavrin.paymentrisk.idempotency.application.InMemoryIdempotencyResultStore;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
@@ -24,20 +25,20 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     private static final String CONTRACT_ONLY_RULE_VERSION = "contract-only-v1";
 
     private final Clock clock;
-    private final IdempotencyService idempotencyService;
+    private final IdempotencyResultStore idempotencyResultStore;
 
     @Autowired
-    public DefaultAuthorizePaymentService(IdempotencyService idempotencyService) {
-        this(Clock.systemUTC(), idempotencyService);
+    public DefaultAuthorizePaymentService(IdempotencyResultStore idempotencyResultStore) {
+        this(Clock.systemUTC(), idempotencyResultStore);
     }
 
     DefaultAuthorizePaymentService(Clock clock) {
-        this(clock, new IdempotencyService());
+        this(clock, new InMemoryIdempotencyResultStore());
     }
 
-    DefaultAuthorizePaymentService(Clock clock, IdempotencyService idempotencyService) {
+    DefaultAuthorizePaymentService(Clock clock, IdempotencyResultStore idempotencyResultStore) {
         this.clock = clock;
-        this.idempotencyService = idempotencyService;
+        this.idempotencyResultStore = idempotencyResultStore;
     }
 
     @Override
@@ -50,7 +51,7 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
         IdempotencyKey idempotencyKey = IdempotencyKey.of(command.idempotencyKey());
         String requestFingerprint = requestFingerprint(command);
 
-        return idempotencyService.getOrCreateCompletedResult(
+        return idempotencyResultStore.getOrCreateCompletedResult(
                 IdempotencyScope.PAYMENT_AUTHORIZATION,
                 idempotencyKey,
                 requestFingerprint,
