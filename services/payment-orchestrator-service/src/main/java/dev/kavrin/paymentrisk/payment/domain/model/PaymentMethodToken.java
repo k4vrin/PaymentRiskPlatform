@@ -16,4 +16,8 @@ public record PaymentMethodToken(String value) {
         }
         return "****" + value.substring(value.length() - 4);
     }
+
+    public static PaymentMethodToken restoredMasked() {
+        return new PaymentMethodToken("restored-masked-payment-method-token");
+    }
 }

@@ -16,4 +16,8 @@ public record DeviceFingerprint(String value) {
         }
         return value.substring(0, 6) + "..." + value.substring(value.length() - 4);
     }
+
+    public static DeviceFingerprint restoredMasked() {
+        return new DeviceFingerprint("restored-masked-device-fingerprint");
+    }
 }

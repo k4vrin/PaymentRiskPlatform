@@ -398,20 +398,20 @@ that prove the main authorization paths.
   - [x] Add index for `customer_id`.
   - [x] Add unique index for idempotency scope and key.
   - [x] Add index for outbox status and next retry time.
-- [ ] Add persistence models and repositories:
+- [x] Add persistence models and repositories:
     - Purpose: provide reactive persistence adapters while keeping domain types separate from database row shapes.
-    - [ ] Add payment row/entity model.
-    - [ ] Add authorization row/entity model.
-    - [ ] Add risk decision row/entity model.
-    - [ ] Add idempotency row/entity model.
-    - [ ] Add outbox row/entity model.
-    - [ ] Add reactive payment repository.
-    - [ ] Add reactive authorization repository.
-    - [ ] Add reactive risk decision repository.
-    - [ ] Add reactive idempotency repository.
-    - [ ] Add reactive outbox repository.
-    - [ ] Add mapper from domain model to persistence rows.
-    - [ ] Add mapper from persistence rows to domain model.
+  - [x] Add payment row/entity model.
+  - [x] Add authorization row/entity model.
+  - [x] Add risk decision row/entity model.
+  - [x] Add idempotency row/entity model.
+  - [x] Add outbox row/entity model.
+  - [x] Add reactive payment repository.
+  - [x] Add reactive authorization repository.
+  - [x] Add reactive risk decision repository.
+  - [x] Add reactive idempotency repository.
+  - [x] Add reactive outbox repository.
+  - [x] Add mapper from domain model to persistence rows.
+  - [x] Add mapper from persistence rows to domain model.
 - [ ] Add idempotency behavior:
     - Purpose: make retries safe by returning the original result for duplicate requests and rejecting conflicting reuse
       of a key.

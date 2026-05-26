@@ -12,10 +12,14 @@ public record ExternalReference(String value) {
         return new ExternalReference(value);
     }
 
-    public static Optional<ExternalReference> optional(String value) {
+    public static ExternalReference ofNullable(String value) {
         if (value == null || value.isBlank()) {
-            return Optional.empty();
+            return null;
         }
-        return Optional.of(new ExternalReference(value));
+        return new ExternalReference(value);
+    }
+
+    public static Optional<ExternalReference> optional(String value) {
+        return Optional.ofNullable(ofNullable(value));
     }
 }

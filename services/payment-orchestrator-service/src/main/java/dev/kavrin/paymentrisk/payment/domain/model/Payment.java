@@ -57,6 +57,40 @@ public class Payment {
         return payment;
     }
 
+    public static Payment restore(
+            PaymentId id,
+            MerchantId merchantId,
+            CustomerId customerId,
+            Money amount,
+            PaymentMethodToken paymentMethodToken,
+            DeviceFingerprint deviceFingerprint,
+            ExternalReference externalReference,
+            IdempotencyKey idempotencyKey,
+            PaymentStatus status,
+            PaymentAuthorization authorization,
+            PaymentRiskDecision riskDecision,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        Payment payment = new Payment(
+                Objects.requireNonNull(id),
+                Objects.requireNonNull(merchantId),
+                Objects.requireNonNull(customerId),
+                Objects.requireNonNull(amount),
+                Objects.requireNonNull(paymentMethodToken),
+                Objects.requireNonNull(deviceFingerprint),
+                externalReference,
+                Objects.requireNonNull(idempotencyKey),
+                Objects.requireNonNull(createdAt)
+        );
+
+        payment.status = Objects.requireNonNull(status);
+        payment.authorization = Objects.requireNonNull(authorization);
+        payment.riskDecision = riskDecision;
+        payment.updatedAt = Objects.requireNonNull(updatedAt);
+        return payment;
+    }
+
     public void markRiskPending(Instant occurredAt) {
         requireStatus(PaymentStatus.RECEIVED);
 
