@@ -1,9 +1,8 @@
 package dev.kavrin.paymentrisk.payment.application.service;
 
-import dev.kavrin.paymentrisk.idempotency.application.IdempotencyResultStore;
-import dev.kavrin.paymentrisk.idempotency.application.InMemoryIdempotencyResultStore;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
+import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIdempotencyResultOperations;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
@@ -15,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
@@ -25,39 +25,78 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     private static final String CONTRACT_ONLY_RULE_VERSION = "contract-only-v1";
 
     private final Clock clock;
-    private final IdempotencyResultStore idempotencyResultStore;
+    private final DatabaseIdempotencyResultOperations idempotencyStore;
 
     @Autowired
-    public DefaultAuthorizePaymentService(IdempotencyResultStore idempotencyResultStore) {
-        this(Clock.systemUTC(), idempotencyResultStore);
+    public DefaultAuthorizePaymentService(DatabaseIdempotencyResultOperations idempotencyStore) {
+        this(Clock.systemUTC(), idempotencyStore);
     }
 
-    DefaultAuthorizePaymentService(Clock clock) {
-        this(clock, new InMemoryIdempotencyResultStore());
-    }
-
-    DefaultAuthorizePaymentService(Clock clock, IdempotencyResultStore idempotencyResultStore) {
+    DefaultAuthorizePaymentService(Clock clock, DatabaseIdempotencyResultOperations idempotencyStore) {
         this.clock = clock;
-        this.idempotencyResultStore = idempotencyResultStore;
+        this.idempotencyStore = idempotencyStore;
     }
 
     @Override
     public Mono<AuthorizePaymentResult> authorize(AuthorizePaymentCommand command) {
-        return Mono.fromSupplier(() -> authorizeIdempotently(command));
+        IdempotencyScope scope = IdempotencyScope.PAYMENT_AUTHORIZATION;
+        IdempotencyKey idempotencyKey = IdempotencyKey.of(command.idempotencyKey());
+        String fingerprint = requestFingerprint(command);
+
+        Instant now = clock.instant();
+        Instant expiresAt = now.plus(Duration.ofHours(24));
+
+        return idempotencyStore
+                .findCompletedResult(
+                        scope,
+                        idempotencyKey,
+                        fingerprint,
+                        now,
+                        AuthorizePaymentResult.class
+                )
+                .switchIfEmpty(Mono.defer(() ->
+                        idempotencyStore.insertStarted(
+                                        scope,
+                                        idempotencyKey,
+                                        fingerprint,
+                                        now,
+                                        expiresAt
+                                )
+                                .then(createAndCompleteAuthorization(command, scope, idempotencyKey, fingerprint))
+                ));
     }
 
-    private AuthorizePaymentResult authorizeIdempotently(AuthorizePaymentCommand command) {
-        Instant now = clock.instant();
-        IdempotencyKey idempotencyKey = IdempotencyKey.of(command.idempotencyKey());
-        String requestFingerprint = requestFingerprint(command);
-
-        return idempotencyResultStore.getOrCreateCompletedResult(
-                IdempotencyScope.PAYMENT_AUTHORIZATION,
-                idempotencyKey,
-                requestFingerprint,
-                now,
-                () -> authorizeNewPayment(command, idempotencyKey, now)
-        );
+    private Mono<AuthorizePaymentResult> createAndCompleteAuthorization(
+            AuthorizePaymentCommand command,
+            IdempotencyScope scope,
+            IdempotencyKey idempotencyKey,
+            String fingerprint
+    ) {
+        return Mono.fromSupplier(() -> authorizeNewPayment(
+                        command,
+                        idempotencyKey,
+                        clock.instant()
+                ))
+                .flatMap(result ->
+                        idempotencyStore.markCompleted(
+                                        scope,
+                                        idempotencyKey,
+                                        fingerprint,
+                                        result,
+                                        200,
+                                        clock.instant()
+                                )
+                                .thenReturn(result)
+                )
+                .onErrorResume(error ->
+                        idempotencyStore.markFailedAndExpire(
+                                        scope,
+                                        idempotencyKey,
+                                        fingerprint,
+                                        clock.instant()
+                                )
+                                .then(Mono.error(error))
+                );
     }
 
     private AuthorizePaymentResult authorizeNewPayment(

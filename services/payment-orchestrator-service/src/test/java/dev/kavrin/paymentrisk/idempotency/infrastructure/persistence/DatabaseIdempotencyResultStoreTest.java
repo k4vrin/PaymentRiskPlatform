@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import reactor.core.publisher.Mono;
 
@@ -44,6 +45,9 @@ class DatabaseIdempotencyResultStoreTest {
     private IdempotencyRecordEntityRepository repository;
 
     @Autowired
+    private R2dbcEntityTemplate entityTemplate;
+
+    @Autowired
     private DatabaseIdempotencyResultStore store;
 
     @Autowired
@@ -63,10 +67,10 @@ class DatabaseIdempotencyResultStoreTest {
 
     @Test
     void expiredRecordReturnsMissWithoutCheckingFingerprint() {
-        repository.save(completedEntity()
+        insertEntity(completedEntity()
                 .requestFingerprint("different-fingerprint")
                 .expiresAt(NOW)
-                .build()).block();
+                .build());
 
         Optional<AuthorizePaymentResult> result = findCompletedResult().blockOptional();
 
@@ -76,9 +80,9 @@ class DatabaseIdempotencyResultStoreTest {
     @Test
     void completedRecordWithMatchingFingerprintReturnsStoredResponse() {
         AuthorizePaymentResult storedResponse = storedResponse();
-        repository.save(completedEntity()
+        insertEntity(completedEntity()
                 .responseBodyJson(snapshotSerializer.serialize(storedResponse))
-                .build()).block();
+                .build());
 
         AuthorizePaymentResult result = findCompletedResult().block();
 
@@ -87,9 +91,9 @@ class DatabaseIdempotencyResultStoreTest {
 
     @Test
     void completedRecordWithDifferentFingerprintThrowsConflict() {
-        repository.save(completedEntity()
+        insertEntity(completedEntity()
                 .requestFingerprint("different-fingerprint")
-                .build()).block();
+                .build());
 
         assertThatThrownBy(() -> findCompletedResult().block())
                 .isInstanceOf(IdempotencyKeyConflictException.class)
@@ -98,14 +102,96 @@ class DatabaseIdempotencyResultStoreTest {
 
     @Test
     void nonCompletedRecordWithMatchingFingerprintReturnsMiss() {
-        repository.save(completedEntity()
+        insertEntity(completedEntity()
                 .status(IdempotencyStatus.STARTED.name())
                 .responseBodyJson(null)
-                .build()).block();
+                .build());
 
         Optional<AuthorizePaymentResult> result = findCompletedResult().blockOptional();
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void insertStartedPersistsStartedRecordWithGeneratedId() {
+        store.insertStarted(
+                IdempotencyScope.PAYMENT_AUTHORIZATION,
+                IDEMPOTENCY_KEY,
+                FINGERPRINT,
+                NOW,
+                NOW.plusSeconds(3600)
+        ).block();
+
+        IdempotencyRecordEntity entity = repository
+                .findByScopeAndIdempotencyKey("payment_authorization", IDEMPOTENCY_KEY.value())
+                .block();
+
+        assertThat(entity).isNotNull();
+        assertThat(entity.getIdempotencyRecordId()).startsWith("idem_rec_");
+        assertThat(entity.getRequestFingerprint()).isEqualTo(FINGERPRINT);
+        assertThat(entity.getStatus()).isEqualTo(IdempotencyStatus.STARTED.name());
+        assertThat(entity.getResponseStatus()).isNull();
+        assertThat(entity.getResponseBodyJson()).isNull();
+        assertThat(entity.getExpiresAt()).isEqualTo(NOW.plusSeconds(3600));
+    }
+
+    @Test
+    void markCompletedStoresResponseSnapshot() {
+        store.insertStarted(
+                IdempotencyScope.PAYMENT_AUTHORIZATION,
+                IDEMPOTENCY_KEY,
+                FINGERPRINT,
+                NOW,
+                NOW.plusSeconds(3600)
+        ).block();
+        AuthorizePaymentResult response = storedResponse();
+
+        store.markCompleted(
+                IdempotencyScope.PAYMENT_AUTHORIZATION,
+                IDEMPOTENCY_KEY,
+                FINGERPRINT,
+                response,
+                200,
+                NOW.plusSeconds(10)
+        ).block();
+
+        IdempotencyRecordEntity entity = repository
+                .findByScopeAndIdempotencyKey("payment_authorization", IDEMPOTENCY_KEY.value())
+                .block();
+
+        assertThat(entity).isNotNull();
+        assertThat(entity.getStatus()).isEqualTo(IdempotencyStatus.COMPLETED.name());
+        assertThat(entity.getResponseStatus()).isEqualTo(200);
+        assertThat(snapshotSerializer.deserialize(entity.getResponseBodyJson(), AuthorizePaymentResult.class))
+                .isEqualTo(response);
+        assertThat(entity.getUpdatedAt()).isEqualTo(NOW.plusSeconds(10));
+    }
+
+    @Test
+    void markFailedAndExpireMarksRecordFailedAndExpired() {
+        store.insertStarted(
+                IdempotencyScope.PAYMENT_AUTHORIZATION,
+                IDEMPOTENCY_KEY,
+                FINGERPRINT,
+                NOW,
+                NOW.plusSeconds(3600)
+        ).block();
+
+        store.markFailedAndExpire(
+                IdempotencyScope.PAYMENT_AUTHORIZATION,
+                IDEMPOTENCY_KEY,
+                FINGERPRINT,
+                NOW.plusSeconds(30)
+        ).block();
+
+        IdempotencyRecordEntity entity = repository
+                .findByScopeAndIdempotencyKey("payment_authorization", IDEMPOTENCY_KEY.value())
+                .block();
+
+        assertThat(entity).isNotNull();
+        assertThat(entity.getStatus()).isEqualTo(IdempotencyStatus.FAILED.name());
+        assertThat(entity.getExpiresAt()).isEqualTo(NOW.plusSeconds(30));
+        assertThat(entity.getUpdatedAt()).isEqualTo(NOW.plusSeconds(30));
     }
 
     private Mono<AuthorizePaymentResult> findCompletedResult() {
@@ -118,13 +204,18 @@ class DatabaseIdempotencyResultStoreTest {
         );
     }
 
+    private void insertEntity(IdempotencyRecordEntity entity) {
+        entityTemplate.insert(IdempotencyRecordEntity.class)
+                .using(entity)
+                .block();
+    }
+
     private IdempotencyRecordEntity.IdempotencyRecordEntityBuilder completedEntity() {
         return IdempotencyRecordEntity.builder()
                 .idempotencyRecordId("idem_rec_01")
                 .scope("payment_authorization")
                 .idempotencyKey(IDEMPOTENCY_KEY.value())
                 .requestFingerprint(FINGERPRINT)
-                .paymentId("pay_01HX7R0BYV9Y6CNW3HZ7R8E4P2")
                 .status(IdempotencyStatus.COMPLETED.name())
                 .responseStatus(200)
                 .responseBodyJson(snapshotSerializer.serialize(storedResponse()))

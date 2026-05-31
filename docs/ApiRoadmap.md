@@ -73,6 +73,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── persistence
     │       │   │   │   │   │   ├── DatabaseIdempotencyResultStore.java
+    │       │   │   │   │   │   ├── DatabaseIdempotencyResultOperations.java
     │       │   │   │   │   │   ├── IdempotencyRecordMapper.java
     │       │   │   │   │   │   ├── IdempotencyRecordEntity.java
     │       │   │   │   │   │   └── IdempotencyRecordEntityRepository.java
@@ -134,6 +135,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── persistence
     │       │   │   │   │   │   ├── PaymentPersistenceMapper.java
+    │       │   │   │   │   │   ├── SensitivePaymentDataHasher.java
     │       │   │   │   │   │   ├── entities
     │       │   │   │   │   │   │   ├── OutboxEventEntity.java
     │       │   │   │   │   │   │   ├── PaymentAuthorizationEntity.java
@@ -199,7 +201,9 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   │   ├── AuthorizePaymentResultSnapshotSerializerTest.java
     │           │   │   └── DefaultAuthorizePaymentServiceTest.java
     │           │   ├── domain/PaymentDomainValueObjectsTest.java
-    │           │   └── infrastructure/persistence/PaymentPersistenceMapperTest.java
+    │           │   └── infrastructure/persistence
+    │           │       ├── PaymentPersistenceMapperTest.java
+    │           │       └── SensitivePaymentDataHasherTest.java
     │           └── shared
     │               ├── api
     │               │   ├── contract
@@ -486,8 +490,8 @@ that prove the main authorization paths.
 
 Phase 2 is intentionally incremental. The project currently has the public API shell, domain model, persistence schema,
 entity models, repositories, and a contract-only authorization service. It does **not** yet have the complete durable
-authorization workflow because payment persistence, database idempotency writes, Redis replay cache, risk gRPC calls,
-outbox creation, and the final transaction boundary still need to be wired together.
+authorization workflow because payment persistence, Redis replay cache, risk gRPC calls, outbox creation, and the final
+transaction boundary still need to be wired together.
 
 #### Completed Foundations
 
@@ -639,13 +643,14 @@ outbox creation, and the final transaction boundary still need to be wired toget
     - [x] Create a contract-only payment authorization aggregate.
     - [x] Apply a contract-only approved risk decision to payment state.
     - [x] Return response DTO.
-    - [x] Check in-memory idempotency before creating a new contract-only authorization.
+  - [x] Check database idempotency before creating a new contract-only authorization.
+  - [x] Insert a `STARTED` idempotency record before creating a new contract-only authorization.
+  - [x] Complete the idempotency record with the serialized response snapshot after authorization succeeds.
+  - [x] Return stored response from durable idempotency storage when a duplicate request is replayed.
     - [ ] Persist payment state.
     - [ ] Call risk scoring client.
     - [ ] Persist risk decision.
-    - [ ] Persist idempotency result snapshot.
     - [ ] Create outbox event record.
-    - [ ] Return stored response from durable idempotency storage when a duplicate request is replayed.
 - [ ] Complete idempotency behavior:
     - Purpose: make retries safe by returning the original result for duplicate requests and rejecting conflicting reuse
       of a key.
@@ -653,8 +658,8 @@ outbox creation, and the final transaction boundary still need to be wired toget
   - [x] Reject missing idempotency key through request/command validation.
   - [x] Validate idempotency key format and length.
   - [x] Compute stable request fingerprint for authorization commands.
-  - [x] Detect duplicate key with same request fingerprint in the current process.
-  - [x] Return stored response snapshot for duplicate key with same fingerprint in the current process.
+  - [x] Detect duplicate key with same request fingerprint.
+  - [x] Return stored response snapshot for duplicate key with same fingerprint.
   - [x] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
   - [x] Store request fingerprint in the current in-memory implementation.
   - [x] Store response snapshot in the current in-memory implementation.
@@ -662,10 +667,10 @@ outbox creation, and the final transaction boundary still need to be wired toget
   - [x] Store expiry time in the current in-memory implementation.
   - [x] Introduce an idempotency application port/interface so the authorization service does not depend on an
     in-memory implementation.
-  - [ ] Persist request fingerprint in `idempotency_records`.
-  - [ ] Persist response snapshot in `idempotency_records`.
-  - [ ] Persist idempotency status in `idempotency_records`.
-  - [ ] Persist expiry time in `idempotency_records`.
+  - [x] Persist request fingerprint in `idempotency_records`.
+  - [x] Persist response snapshot in `idempotency_records`.
+  - [x] Persist idempotency status in `idempotency_records`.
+  - [x] Persist expiry time in `idempotency_records`.
       - [ ] Add Redis cache for response snapshot.
       - [ ] Add TTL for Redis snapshot.
       - [ ] Fall back to database idempotency record if Redis misses.
@@ -708,7 +713,7 @@ outbox creation, and the final transaction boundary still need to be wired toget
 - [x] Wire the read path as a normal Spring bean backed directly by `IdempotencyRecordEntityRepository`.
 - [x] Use PostgreSQL-backed tests so the read path uses the same repository and schema shape as production.
 
-5. [ ] Add database idempotency write path:
+5. [x] Add database idempotency write path:
 
 - Insert `STARTED` before creating a new payment.
 - Update to `COMPLETED` with response snapshot after successful authorization.
@@ -716,19 +721,19 @@ outbox creation, and the final transaction boundary still need to be wired toget
 - Preserve unique `(scope, idempotency_key)` behavior.
 - Add duplicate insert race test where practical.
 
-6. [ ] Wire database idempotency into authorization:
+6. [x] Wire database idempotency into authorization:
 
-- Use the database-backed idempotency implementation in production wiring.
-- Keep in-memory implementation only for focused tests if useful.
-- Verify duplicate requests do not create a second payment.
-- Verify conflicting requests return `IDEMPOTENCY_KEY_CONFLICT`.
+- [x] Use the database-backed idempotency implementation in production wiring.
+- [x] Keep in-memory implementation out of the authorization service wiring.
+- [x] Verify duplicate replay returns the stored database response instead of creating a new contract-only payment.
+- [x] Verify conflicting requests return `IDEMPOTENCY_KEY_CONFLICT`.
 
-7. [ ] Add sensitive data hashing helpers:
+7. [x] Add sensitive data hashing helpers:
 
-- Hash `paymentMethodToken` before persistence.
-- Derive token last four for storage where needed.
-- Hash `deviceFingerprint` before persistence.
-- Add deterministic hashing tests.
+- [x] Hash `paymentMethodToken` before persistence.
+- [x] Derive token last four for storage where needed.
+- [x] Hash `deviceFingerprint` before persistence.
+- [x] Add deterministic hashing tests.
 
 8. [ ] Add payment state persistence port:
 

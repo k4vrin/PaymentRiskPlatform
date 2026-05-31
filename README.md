@@ -151,18 +151,18 @@ Completed foundations include:
 - Payment domain model, value objects, lifecycle states, and state-transition validation.
 - Flyway migration for payments, authorizations, risk decisions, idempotency records, and outbox events.
 - Reactive entity models, repositories, and persistence mappers.
-- Database idempotency read path for replaying completed stored authorization responses.
-- In-memory idempotency handling for the current authorization workflow.
+- Database idempotency read/write path for replaying completed stored authorization responses.
+- Authorization workflow wiring for database idempotency records and response snapshots.
+- Sensitive payment data hashing helpers for payment method tokens and device fingerprints.
 - Tests for API contracts, correlation IDs, error handling, domain value objects, persistence mappers, and the current
   authorization behavior.
 
 The current authorization endpoint is still a contract-only workflow. It validates the request, creates a payment
 aggregate in memory, applies a fake approved risk decision, returns an authorized response, and supports duplicate
-request replay through the in-memory idempotency store.
+request replay through the database idempotency store.
 
 Main work not implemented yet:
 
-- Database idempotency write path for creating and completing durable records during authorization.
 - Redis response snapshot cache with database fallback.
 - Durable payment, authorization, and risk decision writes inside the authorization workflow.
 - Java gRPC risk client and real Go risk scoring server implementation.

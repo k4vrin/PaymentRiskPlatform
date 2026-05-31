@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class PaymentPersistenceMapper {
@@ -35,6 +36,20 @@ public class PaymentPersistenceMapper {
     PaymentPersistenceMapper(ObjectMapper objectMapper, PlatformIdGeneratorFactory idGenerator) {
         this.objectMapper = objectMapper;
         this.idGenerator = idGenerator;
+    }
+
+    public PaymentEntity toPaymentEntity(
+            Payment payment,
+            SensitivePaymentDataHasher.SensitivePaymentDataHashes sensitiveDataHashes
+    ) {
+        Objects.requireNonNull(sensitiveDataHashes, "sensitiveDataHashes must not be null");
+
+        return toPaymentEntity(
+                payment,
+                sensitiveDataHashes.paymentMethodTokenHash(),
+                sensitiveDataHashes.paymentMethodTokenLastFour(),
+                sensitiveDataHashes.deviceFingerprintHash()
+        );
     }
 
     public PaymentEntity toPaymentEntity(

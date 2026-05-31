@@ -18,24 +18,25 @@ class PaymentPersistenceMapperTest {
     private static final Instant NOW = Instant.parse("2026-05-25T10:15:30Z");
 
     private final PaymentPersistenceMapper mapper = new PaymentPersistenceMapper(new ObjectMapper());
+    private final SensitivePaymentDataHasher sensitiveDataHasher =
+            SensitivePaymentDataHasher.withUtf8Key("test-hash-key");
 
     @Test
     void mapsAuthorizedPaymentToPersistenceEntitiesWithoutRawSensitiveValues() {
         Payment payment = authorizedPayment();
+        SensitivePaymentDataHasher.SensitivePaymentDataHashes hashes =
+                sensitiveDataHasher.hash(payment);
 
-        PaymentEntity paymentEntity = mapper.toPaymentEntity(
-                payment,
-                "hmac-token-hash",
-                "1234",
-                "hmac-device-hash"
-        );
+        PaymentEntity paymentEntity = mapper.toPaymentEntity(payment, hashes);
         PaymentAuthorizationEntity authorizationEntity = mapper.toAuthorizationEntity(payment);
         PaymentRiskDecisionEntity riskDecisionEntity = mapper.toRiskDecisionEntity(payment);
 
         assertThat(paymentEntity.getPaymentId()).isEqualTo("pay_test");
-        assertThat(paymentEntity.getPaymentMethodTokenHash()).isEqualTo("hmac-token-hash");
+        assertThat(paymentEntity.getPaymentMethodTokenHash())
+                .isEqualTo("2358e3b4d35c95c7c95ac0181be83b8a6b1e93c12a0511c97cd6cc099ae136c2");
         assertThat(paymentEntity.getPaymentMethodTokenLast4()).isEqualTo("1234");
-        assertThat(paymentEntity.getDeviceFingerprintHash()).isEqualTo("hmac-device-hash");
+        assertThat(paymentEntity.getDeviceFingerprintHash())
+                .isEqualTo("a1ef4ab59fe54c172ef9b6b334c5330c0e0da34cd452a4ee3c85dcf712d899ba");
         assertThat(paymentEntity.getStatus()).isEqualTo("AUTHORIZED");
 
         assertThat(authorizationEntity.getPaymentAuthorizationId()).startsWith("pauth_");
@@ -53,12 +54,9 @@ class PaymentPersistenceMapperTest {
     @Test
     void restoresDomainPaymentFromPersistenceEntitiesWithRedactedSensitiveValues() {
         Payment payment = authorizedPayment();
-        PaymentEntity paymentEntity = mapper.toPaymentEntity(
-                payment,
-                "hmac-token-hash",
-                "1234",
-                "hmac-device-hash"
-        );
+        SensitivePaymentDataHasher.SensitivePaymentDataHashes hashes =
+                sensitiveDataHasher.hash(payment);
+        PaymentEntity paymentEntity = mapper.toPaymentEntity(payment, hashes);
 
         Payment restored = mapper.toDomain(
                 paymentEntity,
