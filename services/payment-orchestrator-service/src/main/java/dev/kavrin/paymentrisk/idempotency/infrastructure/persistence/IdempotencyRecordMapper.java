@@ -4,7 +4,6 @@ import dev.kavrin.paymentrisk.idempotency.application.StoredIdempotencyResult;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyStatus;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.IdempotencyRecordRow;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -12,7 +11,7 @@ import java.util.Objects;
 @Component
 public final class IdempotencyRecordMapper {
 
-    public IdempotencyRecordRow toRow(
+    public IdempotencyRecordEntity toEntity(
             String idempotencyRecordId,
             IdempotencyScope scope,
             IdempotencyKey key,
@@ -24,7 +23,7 @@ public final class IdempotencyRecordMapper {
         Objects.requireNonNull(key, "key must not be null");
         Objects.requireNonNull(result, "result must not be null");
 
-        return IdempotencyRecordRow.builder()
+        return IdempotencyRecordEntity.builder()
                 .idempotencyRecordId(idempotencyRecordId)
                 .scope(scope.value())
                 .idempotencyKey(key.value())
@@ -40,29 +39,29 @@ public final class IdempotencyRecordMapper {
     }
 
     public StoredIdempotencyResult toStoredResult(
-            IdempotencyRecordRow row,
+            IdempotencyRecordEntity entity,
             Object responseSnapshot
     ) {
-        Objects.requireNonNull(row, "row must not be null");
+        Objects.requireNonNull(entity, "entity must not be null");
 
         return new StoredIdempotencyResult(
-                row.getRequestFingerprint(),
-                IdempotencyStatus.valueOf(row.getStatus()),
-                row.getResponseStatus(),
+                entity.getRequestFingerprint(),
+                IdempotencyStatus.valueOf(entity.getStatus()),
+                entity.getResponseStatus(),
                 responseSnapshot,
-                row.getExpiresAt(),
-                row.getCreatedAt(),
-                row.getUpdatedAt()
+                entity.getExpiresAt(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
         );
     }
 
-    public IdempotencyScope toScope(IdempotencyRecordRow row) {
-        Objects.requireNonNull(row, "row must not be null");
-        return IdempotencyScope.fromValue(row.getScope());
+    public IdempotencyScope toScope(IdempotencyRecordEntity entity) {
+        Objects.requireNonNull(entity, "entity must not be null");
+        return IdempotencyScope.fromValue(entity.getScope());
     }
 
-    public IdempotencyKey toKey(IdempotencyRecordRow row) {
-        Objects.requireNonNull(row, "row must not be null");
-        return IdempotencyKey.of(row.getIdempotencyKey());
+    public IdempotencyKey toKey(IdempotencyRecordEntity entity) {
+        Objects.requireNonNull(entity, "entity must not be null");
+        return IdempotencyKey.of(entity.getIdempotencyKey());
     }
 }

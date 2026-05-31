@@ -13,7 +13,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 @Table("outbox_events")
-public class OutboxEventRow {
+public class OutboxEventEntity {
 
     @Id
     @Column("event_id")

@@ -13,7 +13,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 @Table("payments")
-public class PaymentRow {
+public class PaymentEntity {
 
     @Id
     @Column("payment_id")

@@ -5,9 +5,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationRow;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionRow;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRow;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.springframework.stereotype.Component;
 
@@ -37,13 +37,13 @@ public class PaymentPersistenceMapper {
         this.idGenerator = idGenerator;
     }
 
-    public PaymentRow toPaymentRow(
+    public PaymentEntity toPaymentEntity(
             Payment payment,
             String paymentMethodTokenHash,
             String paymentMethodTokenLast4,
             String deviceFingerprintHash
     ) {
-        return PaymentRow.builder()
+        return PaymentEntity.builder()
                 .paymentId(payment.getId().value())
                 .merchantId(payment.getMerchantId().value())
                 .customerId(payment.getCustomerId().value())
@@ -62,12 +62,12 @@ public class PaymentPersistenceMapper {
                 .build();
     }
 
-    public PaymentAuthorizationRow toAuthorizationRow(Payment payment) {
+    public PaymentAuthorizationEntity toAuthorizationEntity(Payment payment) {
         PaymentAuthorization authorization = payment.getAuthorization();
 
         return switch (authorization) {
 
-            case PaymentAuthorization.Requested requested -> PaymentAuthorizationRow.builder()
+            case PaymentAuthorization.Requested requested -> PaymentAuthorizationEntity.builder()
                     .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
                     .paymentId(payment.getId().value())
                     .status("REQUESTED")
@@ -76,7 +76,7 @@ public class PaymentPersistenceMapper {
                     .updatedAt(payment.getUpdatedAt())
                     .build();
 
-            case PaymentAuthorization.RiskPending riskPending -> PaymentAuthorizationRow.builder()
+            case PaymentAuthorization.RiskPending riskPending -> PaymentAuthorizationEntity.builder()
                     .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
                     .paymentId(payment.getId().value())
                     .status("RISK_PENDING")
@@ -86,7 +86,7 @@ public class PaymentPersistenceMapper {
                     .updatedAt(payment.getUpdatedAt())
                     .build();
 
-            case PaymentAuthorization.Authorized authorized -> PaymentAuthorizationRow.builder()
+            case PaymentAuthorization.Authorized authorized -> PaymentAuthorizationEntity.builder()
                     .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
                     .paymentId(payment.getId().value())
                     .status("AUTHORIZED")
@@ -98,7 +98,7 @@ public class PaymentPersistenceMapper {
                     .updatedAt(payment.getUpdatedAt())
                     .build();
 
-            case PaymentAuthorization.Declined declined -> PaymentAuthorizationRow.builder()
+            case PaymentAuthorization.Declined declined -> PaymentAuthorizationEntity.builder()
                     .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
                     .paymentId(payment.getId().value())
                     .status("DECLINED")
@@ -109,7 +109,7 @@ public class PaymentPersistenceMapper {
                     .updatedAt(payment.getUpdatedAt())
                     .build();
 
-            case PaymentAuthorization.Failed failed -> PaymentAuthorizationRow.builder()
+            case PaymentAuthorization.Failed failed -> PaymentAuthorizationEntity.builder()
                     .paymentAuthorizationId(idGenerator.paymentAuthorizationId())
                     .paymentId(payment.getId().value())
                     .status("FAILED")
@@ -122,7 +122,7 @@ public class PaymentPersistenceMapper {
         };
     }
 
-    public PaymentRiskDecisionRow toRiskDecisionRow(Payment payment) {
+    public PaymentRiskDecisionEntity toRiskDecisionEntity(Payment payment) {
 
         PaymentRiskDecision riskDecision = payment.getRiskDecision();
 
@@ -130,7 +130,7 @@ public class PaymentPersistenceMapper {
             return null;
         }
 
-        return PaymentRiskDecisionRow.builder()
+        return PaymentRiskDecisionEntity.builder()
                 .paymentRiskDecisionId(idGenerator.paymentRiskDecisionId())
                 .paymentId(payment.getId().value())
                 .decision(riskDecision.decision().name())
@@ -143,94 +143,94 @@ public class PaymentPersistenceMapper {
     }
 
     public Payment toDomain(
-            PaymentRow paymentRow,
-            PaymentAuthorizationRow authorizationRow,
-            PaymentRiskDecisionRow riskDecisionRow
+            PaymentEntity paymentEntity,
+            PaymentAuthorizationEntity authorizationEntity,
+            PaymentRiskDecisionEntity riskDecisionEntity
     ) {
 
         PaymentAuthorization authorization =
-                toDomainAuthorization(authorizationRow);
+                toDomainAuthorization(authorizationEntity);
 
         PaymentRiskDecision riskDecision =
-                riskDecisionRow == null
+                riskDecisionEntity == null
                         ? null
-                        : toDomainRiskDecision(riskDecisionRow);
+                        : toDomainRiskDecision(riskDecisionEntity);
 
         return Payment.restore(
-                PaymentId.of(paymentRow.getPaymentId()),
-                MerchantId.of(paymentRow.getMerchantId()),
-                CustomerId.of(paymentRow.getCustomerId()),
+                PaymentId.of(paymentEntity.getPaymentId()),
+                MerchantId.of(paymentEntity.getMerchantId()),
+                CustomerId.of(paymentEntity.getCustomerId()),
                 Money.of(
-                        paymentRow.getAmountMinor(),
-                        paymentRow.getCurrency()
+                        paymentEntity.getAmountMinor(),
+                        paymentEntity.getCurrency()
                 ),
                 PaymentMethodToken.restoredMasked(),
                 DeviceFingerprint.restoredMasked(),
                 ExternalReference.ofNullable(
-                        paymentRow.getExternalReference()
+                        paymentEntity.getExternalReference()
                 ),
-                IdempotencyKey.of(paymentRow.getIdempotencyKey()),
-                PaymentStatus.valueOf(paymentRow.getStatus()),
+                IdempotencyKey.of(paymentEntity.getIdempotencyKey()),
+                PaymentStatus.valueOf(paymentEntity.getStatus()),
                 authorization,
                 riskDecision,
-                paymentRow.getCreatedAt(),
-                paymentRow.getUpdatedAt()
+                paymentEntity.getCreatedAt(),
+                paymentEntity.getUpdatedAt()
         );
     }
 
     private PaymentAuthorization toDomainAuthorization(
-            PaymentAuthorizationRow row
+            PaymentAuthorizationEntity entity
     ) {
 
-        return switch (row.getStatus()) {
+        return switch (entity.getStatus()) {
 
             case "REQUESTED" -> new PaymentAuthorization.Requested(
-                    row.getRequestedAt()
+                    entity.getRequestedAt()
             );
 
             case "RISK_PENDING" -> new PaymentAuthorization.RiskPending(
-                    row.getRequestedAt(),
-                    row.getRiskPendingAt()
+                    entity.getRequestedAt(),
+                    entity.getRiskPendingAt()
             );
 
             case "AUTHORIZED" -> new PaymentAuthorization.Authorized(
-                    row.getRequestedAt(),
-                    row.getRiskPendingAt(),
+                    entity.getRequestedAt(),
+                    entity.getRiskPendingAt(),
                     AuthorizationCode.of(
-                            row.getAuthorizationCode()
+                            entity.getAuthorizationCode()
                     ),
-                    row.getAuthorizedAt()
+                    entity.getAuthorizedAt()
             );
 
             case "DECLINED" -> new PaymentAuthorization.Declined(
-                    row.getRequestedAt(),
-                    row.getRiskPendingAt(),
-                    row.getDeclinedAt()
+                    entity.getRequestedAt(),
+                    entity.getRiskPendingAt(),
+                    entity.getDeclinedAt()
             );
 
             case "FAILED" -> new PaymentAuthorization.Failed(
-                    row.getRequestedAt(),
-                    row.getFailureReason(),
-                    row.getFailedAt()
+                    entity.getRequestedAt(),
+                    entity.getFailureReason(),
+                    entity.getFailedAt()
             );
 
             default -> throw new IllegalStateException(
                     "Unknown authorization status: "
-                            + row.getStatus()
+                            + entity.getStatus()
             );
         };
     }
 
     private PaymentRiskDecision toDomainRiskDecision(
-            PaymentRiskDecisionRow row
+            PaymentRiskDecisionEntity entity
     ) {
 
         return new PaymentRiskDecision(
-                RiskDecision.valueOf(row.getDecision()),
-                row.getScore(),
-                readReasonCodes(row.getReasonCodesJson()),
-                row.getRuleVersion(),
-                row.getDecidedAt()
+                RiskDecision.valueOf(entity.getDecision()),
+                entity.getScore(),
+                readReasonCodes(entity.getReasonCodesJson()),
+                entity.getRuleVersion(),
+                entity.getDecidedAt()
         );
     }
 

@@ -4,6 +4,227 @@ This roadmap breaks the API and service work into practical development phases. 
 
 Use the checkboxes as the implementation tracker.
 
+## Current Project Structure
+
+Update this section after each implementation step that adds, removes, renames, or moves files.
+
+```text
+.
+├── LICENSE
+├── Makefile
+├── README.md
+├── docs
+│   ├── ApiRoadmap.md
+│   ├── Project.md
+│   ├── adr
+│   │   ├── 0001-lock-project-stack-and-dependencies.md
+│   │   ├── 0002-use-kafka-and-rabbitmq-for-distinct-messaging-needs.md
+│   │   └── 0003-use-prefixed-application-generated-identifiers.md
+│   ├── api
+│   │   ├── correlation-id.md
+│   │   ├── error-contract.md
+│   │   ├── rest-api-conventions.md
+│   │   └── risk-grpc-contract.md
+│   ├── events
+│   │   └── event-envelope.md
+│   ├── phase-1-api-contract-baseline.md
+│   └── phase-2-payment-authorization.md
+├── platform
+│   ├── compose.local.yaml
+│   └── prometheus
+│       └── prometheus.yml
+├── proto
+│   ├── gen
+│   │   └── go
+│   │       ├── go.mod
+│   │       └── risk
+│   │           └── v1
+│   │               ├── risk_scoring.pb.go
+│   │               └── risk_scoring_grpc.pb.go
+│   └── risk
+│       └── v1
+│           └── risk_scoring.proto
+└── services
+    ├── payment-orchestrator-service
+    │   ├── .env.example
+    │   ├── mvnw
+    │   ├── mvnw.cmd
+    │   ├── pom.xml
+    │   └── src
+    │       ├── main
+    │       │   ├── java/dev/kavrin/paymentrisk
+    │       │   │   ├── PaymentOrchestratorServiceApplication.java
+    │       │   │   ├── audit/package-info.java
+    │       │   │   ├── customer/package-info.java
+    │       │   │   ├── idempotency
+    │       │   │   │   ├── application
+    │       │   │   │   │   ├── IdempotencyResultStore.java
+    │       │   │   │   │   ├── InMemoryIdempotencyResultStore.java
+    │       │   │   │   │   ├── ScopedIdempotencyKey.java
+    │       │   │   │   │   ├── StoredIdempotencyResult.java
+    │       │   │   │   │   └── package-info.java
+    │       │   │   │   ├── domain
+    │       │   │   │   │   ├── IdempotencyKey.java
+    │       │   │   │   │   ├── IdempotencyKeyConflictException.java
+    │       │   │   │   │   ├── IdempotencyScope.java
+    │       │   │   │   │   ├── IdempotencyStatus.java
+    │       │   │   │   │   └── package-info.java
+    │       │   │   │   ├── infrastructure
+    │       │   │   │   │   ├── package-info.java
+    │       │   │   │   │   ├── persistence
+    │       │   │   │   │   │   ├── DatabaseIdempotencyResultStore.java
+    │       │   │   │   │   │   ├── IdempotencyRecordMapper.java
+    │       │   │   │   │   │   ├── IdempotencyRecordEntity.java
+    │       │   │   │   │   │   └── IdempotencyRecordEntityRepository.java
+    │       │   │   │   │   └── redis/package-info.java
+    │       │   │   │   └── package-info.java
+    │       │   │   ├── merchant/package-info.java
+    │       │   │   ├── ops/package-info.java
+    │       │   │   ├── outbox
+    │       │   │   │   ├── domain/package-info.java
+    │       │   │   │   ├── infrastructure
+    │       │   │   │   │   ├── package-info.java
+    │       │   │   │   │   └── persistence/package-info.java
+    │       │   │   │   └── package-info.java
+    │       │   │   ├── payment
+    │       │   │   │   ├── api
+    │       │   │   │   │   ├── contract
+    │       │   │   │   │   │   ├── AuthorizationRequestMapper.java
+    │       │   │   │   │   │   ├── AuthorizationResponseMapper.java
+    │       │   │   │   │   │   └── PaymentAuthorizationController.java
+    │       │   │   │   │   ├── dto
+    │       │   │   │   │   │   ├── AuthorizationRequest.java
+    │       │   │   │   │   │   ├── AuthorizationResponse.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   └── package-info.java
+    │       │   │   │   ├── application
+    │       │   │   │   │   ├── command
+    │       │   │   │   │   │   ├── AuthorizePaymentCommand.java
+    │       │   │   │   │   │   ├── AuthorizePaymentResult.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── package-info.java
+    │       │   │   │   │   ├── query/package-info.java
+    │       │   │   │   │   └── service
+    │       │   │   │   │       ├── AuthorizePaymentResultSnapshotSerializer.java
+    │       │   │   │   │       ├── AuthorizePaymentService.java
+    │       │   │   │   │       ├── DefaultAuthorizePaymentService.java
+    │       │   │   │   │       └── package-info.java
+    │       │   │   │   ├── domain
+    │       │   │   │   │   ├── model
+    │       │   │   │   │   │   ├── AuthorizationCode.java
+    │       │   │   │   │   │   ├── CustomerId.java
+    │       │   │   │   │   │   ├── DeviceFingerprint.java
+    │       │   │   │   │   │   ├── ExternalReference.java
+    │       │   │   │   │   │   ├── MerchantId.java
+    │       │   │   │   │   │   ├── Money.java
+    │       │   │   │   │   │   ├── Payment.java
+    │       │   │   │   │   │   ├── PaymentAuthorization.java
+    │       │   │   │   │   │   ├── PaymentId.java
+    │       │   │   │   │   │   ├── PaymentMethodToken.java
+    │       │   │   │   │   │   ├── PaymentRiskDecision.java
+    │       │   │   │   │   │   ├── PaymentStateTransitionException.java
+    │       │   │   │   │   │   ├── PaymentStatus.java
+    │       │   │   │   │   │   ├── RequiredText.java
+    │       │   │   │   │   │   ├── RiskDecision.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── package-info.java
+    │       │   │   │   │   └── policy/package-info.java
+    │       │   │   │   ├── infrastructure
+    │       │   │   │   │   ├── outbox/package-info.java
+    │       │   │   │   │   ├── package-info.java
+    │       │   │   │   │   ├── persistence
+    │       │   │   │   │   │   ├── PaymentPersistenceMapper.java
+    │       │   │   │   │   │   ├── entities
+    │       │   │   │   │   │   │   ├── OutboxEventEntity.java
+    │       │   │   │   │   │   │   ├── PaymentAuthorizationEntity.java
+    │       │   │   │   │   │   │   ├── PaymentRiskDecisionEntity.java
+    │       │   │   │   │   │   │   ├── PaymentEntity.java
+    │       │   │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   │   ├── package-info.java
+    │       │   │   │   │   │   └── repository
+    │       │   │   │   │   │       ├── OutboxEventEntityRepository.java
+    │       │   │   │   │   │       ├── PaymentAuthorizationEntityRepository.java
+    │       │   │   │   │   │       ├── PaymentRiskDecisionEntityRepository.java
+    │       │   │   │   │   │       ├── PaymentEntityRepository.java
+    │       │   │   │   │   │       └── package-info.java
+    │       │   │   │   │   └── risk/package-info.java
+    │       │   │   │   └── package-info.java
+    │       │   │   ├── risk
+    │       │   │   │   ├── application/package-info.java
+    │       │   │   │   ├── infrastructure
+    │       │   │   │   │   ├── grpc/package-info.java
+    │       │   │   │   │   └── package-info.java
+    │       │   │   │   └── package-info.java
+    │       │   │   ├── security/package-info.java
+    │       │   │   └── shared
+    │       │   │       ├── api
+    │       │   │       │   ├── contract/ContractPingController.java
+    │       │   │       │   ├── correlation
+    │       │   │       │   │   ├── CorrelationIdWebFilter.java
+    │       │   │       │   │   ├── CorrelationIds.java
+    │       │   │       │   │   └── package-info.java
+    │       │   │       │   ├── error
+    │       │   │       │   │   ├── ApiErrorCode.java
+    │       │   │       │   │   ├── ApiErrorResponse.java
+    │       │   │       │   │   ├── ConflictException.java
+    │       │   │       │   │   ├── DownstreamTimeoutException.java
+    │       │   │       │   │   ├── DownstreamUnavailableException.java
+    │       │   │       │   │   ├── GlobalApiExceptionHandler.java
+    │       │   │       │   │   ├── PaymentRiskApiException.java
+    │       │   │       │   │   ├── ResourceNotFoundException.java
+    │       │   │       │   │   └── package-info.java
+    │       │   │       │   ├── package-info.java
+    │       │   │       │   └── version
+    │       │   │       │       ├── ApiPaths.java
+    │       │   │       │       └── package-info.java
+    │       │   │       ├── id/PlatformIdGeneratorFactory.java
+    │       │   │       └── package-info.java
+    │       │   └── resources
+    │       │       ├── application-local.yaml
+    │       │       ├── application-prod.yaml
+    │       │       ├── application-test.yaml
+    │       │       ├── application.yaml
+    │       │       └── db/migration/V1__create_payment_authorization_tables.sql
+    │       └── test/java/dev/kavrin/paymentrisk
+    │           ├── PaymentOrchestratorServiceApplicationTests.java
+    │           ├── TestPostgresConfiguration.java
+    │           ├── TestPaymentOrchestratorServiceApplication.java
+    │           ├── TestcontainersConfiguration.java
+    │           ├── idempotency/infrastructure/persistence
+    │           │   ├── DatabaseIdempotencyResultStoreTest.java
+    │           │   └── IdempotencyRecordMapperTest.java
+    │           ├── payment
+    │           │   ├── api/contract/PaymentAuthorizationControllerTest.java
+    │           │   ├── application/service
+    │           │   │   ├── AuthorizePaymentResultSnapshotSerializerTest.java
+    │           │   │   └── DefaultAuthorizePaymentServiceTest.java
+    │           │   ├── domain/PaymentDomainValueObjectsTest.java
+    │           │   └── infrastructure/persistence/PaymentPersistenceMapperTest.java
+    │           └── shared
+    │               ├── api
+    │               │   ├── contract
+    │               │   │   ├── ContractPingControllerTest.java
+    │               │   │   ├── OpenApiContractTest.java
+    │               │   │   └── RiskGrpcContractTest.java
+    │               │   ├── correlation/CorrelationIdWebFilterTest.java
+    │               │   └── error
+    │               │       ├── GlobalApiExceptionHandlerTest.java
+    │               │       └── TestErrorController.java
+    │               └── id/PlatformIdGeneratorFactoryTest.java
+    └── risk-scoring-service
+        ├── .env.example
+        ├── cmd/risk-scoring-service/main.go
+        ├── go.mod
+        ├── go.sum
+        └── internal
+            ├── config/doc.go
+            ├── grpc
+            │   ├── doc.go
+            │   └── risk_contract_test.go
+            ├── health/doc.go
+            └── risk/doc.go
+```
+
 ## Phase 0: Project Foundation
 
 Goal: Verify the generated services, align runtime versions with the accepted ADR, and prepare the project conventions before domain implementation starts.
@@ -264,8 +485,8 @@ that prove the main authorization paths.
 ### Chronicle And Next Steps
 
 Phase 2 is intentionally incremental. The project currently has the public API shell, domain model, persistence schema,
-row models, repositories, and a contract-only authorization service. It does **not** yet have the complete durable
-authorization workflow because payment persistence, database-backed idempotency, Redis replay cache, risk gRPC calls,
+entity models, repositories, and a contract-only authorization service. It does **not** yet have the complete durable
+authorization workflow because payment persistence, database idempotency writes, Redis replay cache, risk gRPC calls,
 outbox creation, and the final transaction boundary still need to be wired together.
 
 #### Completed Foundations
@@ -394,37 +615,37 @@ outbox creation, and the final transaction boundary still need to be wired toget
   - [x] Add unique index for idempotency scope and key.
   - [x] Add index for outbox status and next retry time.
 - [x] Add persistence models and repositories:
-    - Purpose: provide reactive persistence adapters while keeping domain types separate from database row shapes.
-  - [x] Add payment row/entity model.
-  - [x] Add authorization row/entity model.
-  - [x] Add risk decision row/entity model.
-  - [x] Add idempotency row/entity model.
-  - [x] Add outbox row/entity model.
-  - [x] Add reactive payment repository.
-  - [x] Add reactive authorization repository.
-  - [x] Add reactive risk decision repository.
-  - [x] Add reactive idempotency repository.
-  - [x] Add reactive outbox repository.
-  - [x] Add mapper from domain model to persistence rows.
-  - [x] Add mapper from persistence rows to domain model.
+    - Purpose: provide reactive persistence adapters while keeping domain types separate from database entity shapes.
+    - [x] Add payment entity model.
+    - [x] Add authorization entity model.
+    - [x] Add risk decision entity model.
+    - [x] Add idempotency entity model.
+    - [x] Add outbox entity model.
+    - [x] Add reactive payment repository.
+    - [x] Add reactive authorization repository.
+    - [x] Add reactive risk decision repository.
+    - [x] Add reactive idempotency repository.
+    - [x] Add reactive outbox repository.
+    - [x] Add mapper from domain model to persistence entities.
+    - [x] Add mapper from persistence entities to domain model.
 
 #### Current Partial Workflow
 
 - [ ] Complete authorization application service:
-  - Purpose: orchestrate validation, idempotency, persistence, risk scoring, state transition, outbox creation, and
-    response mapping.
-  - [x] Create `AuthorizePaymentService`.
-  - [x] Validate command through command/domain value objects.
-  - [x] Create a contract-only payment authorization aggregate.
-  - [x] Apply a contract-only approved risk decision to payment state.
-  - [x] Return response DTO.
-  - [x] Check in-memory idempotency before creating a new contract-only authorization.
-  - [ ] Persist payment state.
-  - [ ] Call risk scoring client.
-  - [ ] Persist risk decision.
-  - [ ] Persist idempotency result snapshot.
-  - [ ] Create outbox event record.
-  - [ ] Return stored response from durable idempotency storage when a duplicate request is replayed.
+    - Purpose: orchestrate validation, idempotency, persistence, risk scoring, state transition, outbox creation, and
+      response mapping.
+    - [x] Create `AuthorizePaymentService`.
+    - [x] Validate command through command/domain value objects.
+    - [x] Create a contract-only payment authorization aggregate.
+    - [x] Apply a contract-only approved risk decision to payment state.
+    - [x] Return response DTO.
+    - [x] Check in-memory idempotency before creating a new contract-only authorization.
+    - [ ] Persist payment state.
+    - [ ] Call risk scoring client.
+    - [ ] Persist risk decision.
+    - [ ] Persist idempotency result snapshot.
+    - [ ] Create outbox event record.
+    - [ ] Return stored response from durable idempotency storage when a duplicate request is replayed.
 - [ ] Complete idempotency behavior:
     - Purpose: make retries safe by returning the original result for duplicate requests and rejecting conflicting reuse
       of a key.
@@ -445,163 +666,210 @@ outbox creation, and the final transaction boundary still need to be wired toget
   - [ ] Persist response snapshot in `idempotency_records`.
   - [ ] Persist idempotency status in `idempotency_records`.
   - [ ] Persist expiry time in `idempotency_records`.
-    - [ ] Add Redis cache for response snapshot.
-    - [ ] Add TTL for Redis snapshot.
-    - [ ] Fall back to database idempotency record if Redis misses.
+      - [ ] Add Redis cache for response snapshot.
+      - [ ] Add TTL for Redis snapshot.
+      - [ ] Fall back to database idempotency record if Redis misses.
 
 #### Atomic Remaining Work
 
 1. [x] Introduce idempotency port:
-  - [x] Create `IdempotencyResultStore` interface in `idempotency/application`.
-  - [x] Move lookup/store method contracts behind the interface.
-  - [x] Rename the current implementation to `InMemoryIdempotencyResultStore`.
-  - [x] Inject the interface into `DefaultAuthorizePaymentService`.
-  - [x] Keep duplicate and conflict unit tests green.
+
+- [x] Create `IdempotencyResultStore` interface in `idempotency/application`.
+- [x] Move lookup/store method contracts behind the interface.
+- [x] Rename the current implementation to `InMemoryIdempotencyResultStore`.
+- [x] Inject the interface into `DefaultAuthorizePaymentService`.
+- [x] Keep duplicate and conflict unit tests green.
+
 2. [x] Add idempotency record mapper:
-  - [x] Map `IdempotencyScope` to `scope`.
-  - [x] Map `IdempotencyKey` to `idempotency_key`.
-  - [x] Map request fingerprint to `request_fingerprint`.
-  - [x] Map response status to `response_status`.
-  - [x] Map response snapshot JSON to `response_body_json`.
-  - [x] Map status and expiry fields.
-  - [x] Add mapper unit tests.
-3. [ ] Add JSON response snapshot serialization:
-  - Serialize `AuthorizePaymentResult` to JSON.
-  - Deserialize stored JSON back to `AuthorizePaymentResult`.
-  - Reject unsupported response snapshot types explicitly.
-  - Add stable snapshot round-trip tests.
-4. [ ] Add database idempotency read path:
-  - Read `idempotency_records` by `(scope, idempotency_key)`.
-  - Treat missing records as miss.
-  - Treat expired records as miss.
-  - Return stored response when fingerprint matches.
-  - Throw `IdempotencyKeyConflictException` when fingerprint differs.
-  - Add store tests.
+
+- [x] Map `IdempotencyScope` to `scope`.
+- [x] Map `IdempotencyKey` to `idempotency_key`.
+- [x] Map request fingerprint to `request_fingerprint`.
+- [x] Map response status to `response_status`.
+- [x] Map response snapshot JSON to `response_body_json`.
+- [x] Map status and expiry fields.
+- [x] Add mapper unit tests.
+
+3. [x] Add JSON response snapshot serialization:
+
+- Serialize `AuthorizePaymentResult` to JSON.
+- Deserialize stored JSON back to `AuthorizePaymentResult`.
+- Reject unsupported response snapshot types explicitly.
+- Add stable snapshot round-trip tests.
+
+4. [x] Add database idempotency read path:
+
+- [x] Read `idempotency_records` by `(scope, idempotency_key)`.
+- [x] Treat missing records as miss.
+- [x] Treat expired records as miss.
+- [x] Return stored response when fingerprint matches.
+- [x] Throw `IdempotencyKeyConflictException` when fingerprint differs.
+- [x] Add store tests.
+- [x] Wire the read path as a normal Spring bean backed directly by `IdempotencyRecordEntityRepository`.
+- [x] Use PostgreSQL-backed tests so the read path uses the same repository and schema shape as production.
+
 5. [ ] Add database idempotency write path:
-  - Insert `STARTED` before creating a new payment.
-  - Update to `COMPLETED` with response snapshot after successful authorization.
-  - Update to `FAILED` or expire when authorization fails before a durable result exists.
-  - Preserve unique `(scope, idempotency_key)` behavior.
-  - Add duplicate insert race test where practical.
+
+- Insert `STARTED` before creating a new payment.
+- Update to `COMPLETED` with response snapshot after successful authorization.
+- Update to `FAILED` or expire when authorization fails before a durable result exists.
+- Preserve unique `(scope, idempotency_key)` behavior.
+- Add duplicate insert race test where practical.
+
 6. [ ] Wire database idempotency into authorization:
-  - Use the database-backed idempotency implementation in production wiring.
-  - Keep in-memory implementation only for focused tests if useful.
-  - Verify duplicate requests do not create a second payment.
-  - Verify conflicting requests return `IDEMPOTENCY_KEY_CONFLICT`.
+
+- Use the database-backed idempotency implementation in production wiring.
+- Keep in-memory implementation only for focused tests if useful.
+- Verify duplicate requests do not create a second payment.
+- Verify conflicting requests return `IDEMPOTENCY_KEY_CONFLICT`.
+
 7. [ ] Add sensitive data hashing helpers:
-  - Hash `paymentMethodToken` before persistence.
-  - Derive token last four for storage where needed.
-  - Hash `deviceFingerprint` before persistence.
-  - Add deterministic hashing tests.
+
+- Hash `paymentMethodToken` before persistence.
+- Derive token last four for storage where needed.
+- Hash `deviceFingerprint` before persistence.
+- Add deterministic hashing tests.
+
 8. [ ] Add payment state persistence port:
-  - Create a payment persistence interface in the payment application boundary.
-  - Define save methods for payment, authorization, and risk decision state.
-  - Keep the authorization service dependent on the interface, not concrete repositories.
-  - Add unit tests with a fake persistence implementation.
+
+- Create a payment persistence interface in the payment application boundary.
+- Define save methods for payment, authorization, and risk decision state.
+- Keep the authorization service dependent on the interface, not concrete repositories.
+- Add unit tests with a fake persistence implementation.
+
 9. [ ] Add durable payment write adapter:
-  - Save `PaymentRow`.
-  - Save `PaymentAuthorizationRow`.
-  - Save `PaymentRiskDecisionRow` when a risk decision exists.
-  - Use `PaymentPersistenceMapper`.
-  - Add adapter tests with mocked repositories.
+
+- Save `PaymentEntity`.
+- Save `PaymentAuthorizationEntity`.
+- Save `PaymentRiskDecisionEntity` when a risk decision exists.
+- Use `PaymentPersistenceMapper`.
+- Add adapter tests with mocked repositories.
+
 10. [ ] Wire payment state persistence into authorization:
-  - Persist the new payment aggregate after state transition.
-  - Persist the current authorization state for the payment.
-  - Persist the risk decision attached to the payment.
-  - Return response based on the persisted aggregate.
-  - Verify one request creates one payment row and one authorization row.
-  - Verify authorized and declined outcomes persist the expected state.
+
+- Persist the new payment aggregate after state transition.
+- Persist the current authorization state for the payment.
+- Persist the risk decision attached to the payment.
+- Return response based on the persisted aggregate.
+- Verify one request creates one payment entity and one authorization entity.
+- Verify authorized and declined outcomes persist the expected state.
+
 11. [ ] Add risk client port:
-  - Create risk scoring interface in `risk/application`.
-  - Define internal risk request record.
-  - Define internal risk response record.
-  - Represent approved, declined, review-required, timeout, and unavailable outcomes.
-  - Add unit tests with a fake risk client.
+
+- Create risk scoring interface in `risk/application`.
+- Define internal risk request record.
+- Define internal risk response record.
+- Represent approved, declined, review-required, timeout, and unavailable outcomes.
+- Add unit tests with a fake risk client.
+
 12. [ ] Add Java gRPC risk adapter:
-  - Create gRPC adapter in `risk/infrastructure/grpc`.
-  - Configure risk service host.
-  - Configure risk service port.
-  - Configure risk call timeout.
-  - Map `AuthorizePaymentCommand` or internal request to `ScorePaymentRequest`.
-  - Include correlation ID in `ScorePaymentRequest`.
-  - Map `ScorePaymentResponse` to internal risk response.
-  - Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
-  - Map unavailable status to `DOWNSTREAM_UNAVAILABLE`.
+
+- Create gRPC adapter in `risk/infrastructure/grpc`.
+- Configure risk service host.
+- Configure risk service port.
+- Configure risk call timeout.
+- Map `AuthorizePaymentCommand` or internal request to `ScorePaymentRequest`.
+- Include correlation ID in `ScorePaymentRequest`.
+- Map `ScorePaymentResponse` to internal risk response.
+- Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
+- Map unavailable status to `DOWNSTREAM_UNAVAILABLE`.
+
 13. [ ] Add risk decision mapping policy:
-  - Map approved risk result to `PaymentRiskDecision`.
-  - Map declined risk result to `PaymentRiskDecision`.
-  - Define review-required Phase 2 behavior.
-  - Define timeout Phase 2 behavior.
-  - Preserve risk score, reason codes, rule hit summary, and rule version.
-  - Add unit tests for each outcome.
+
+- Map approved risk result to `PaymentRiskDecision`.
+- Map declined risk result to `PaymentRiskDecision`.
+- Define review-required Phase 2 behavior.
+- Define timeout Phase 2 behavior.
+- Preserve risk score, reason codes, rule hit summary, and rule version.
+- Add unit tests for each outcome.
+
 14. [ ] Wire risk client into authorization:
-  - Replace contract-only approval with risk client result.
-  - Mark payment `AUTHORIZED` for approved result.
-  - Mark payment `DECLINED` for declined result.
-  - Return stable downstream error or selected fallback for timeout.
-  - Return stable downstream error or selected fallback for unavailable.
+
+- Replace contract-only approval with risk client result.
+- Mark payment `AUTHORIZED` for approved result.
+- Mark payment `DECLINED` for declined result.
+- Return stable downstream error or selected fallback for timeout.
+- Return stable downstream error or selected fallback for unavailable.
+
 15. [ ] Add outbox payload records:
-  - Add `PaymentAuthorizationRequested` payload.
-  - Add `PaymentAuthorized` payload.
-  - Add `PaymentDeclined` payload.
-  - Include schema version constants.
-  - Add payload serialization tests.
+
+- Add `PaymentAuthorizationRequested` payload.
+- Add `PaymentAuthorized` payload.
+- Add `PaymentDeclined` payload.
+- Include schema version constants.
+- Add payload serialization tests.
+
 16. [ ] Add outbox mapper:
-  - Map payment aggregate to event envelope fields.
-  - Include `eventId`.
-  - Include `correlationId`.
-  - Include aggregate type.
-  - Include aggregate ID.
-  - Include occurred-at timestamp.
-  - Add mapper unit tests.
+
+- Map payment aggregate to event envelope fields.
+- Include `eventId`.
+- Include `correlationId`.
+- Include aggregate type.
+- Include aggregate ID.
+- Include occurred-at timestamp.
+- Add mapper unit tests.
+
 17. [ ] Persist outbox events:
-  - Save requested event if selected for Phase 2.
-  - Save authorized event when payment is authorized.
-  - Save declined event when payment is declined.
-  - Mark new events as pending.
-  - Add repository tests.
+
+- Save requested event if selected for Phase 2.
+- Save authorized event when payment is authorized.
+- Save declined event when payment is declined.
+- Mark new events as pending.
+- Add repository tests.
+
 18. [ ] Add reactive transaction boundary:
-  - Verify `ReactiveTransactionManager` configuration.
-  - Wrap payment rows, idempotency completion update, and outbox insert in one transaction.
-  - Avoid holding a transaction open during the remote risk call where practical.
-  - Add rollback test for failed outbox insert.
+
+- Verify `ReactiveTransactionManager` configuration.
+- Wrap payment entities, idempotency completion update, and outbox insert in one transaction.
+- Avoid holding a transaction open during the remote risk call where practical.
+- Add rollback test for failed outbox insert.
+
 19. [ ] Add Redis idempotency cache adapter:
-  - Define Redis key format from scope and idempotency key.
-  - Read completed response snapshot from Redis before database lookup.
-  - Store completed response snapshot in Redis with TTL.
-  - Keep database as source of truth.
-  - Add adapter tests.
+
+- Define Redis key format from scope and idempotency key.
+- Read completed response snapshot from Redis before database lookup.
+- Store completed response snapshot in Redis with TTL.
+- Keep database as source of truth.
+- Add adapter tests.
+
 20. [ ] Add Redis miss database fallback:
-  - On Redis miss, read `idempotency_records`.
-  - Repopulate Redis from durable database snapshot.
-  - Return database snapshot when fingerprint matches.
-  - Return conflict when fingerprint differs.
-  - Add tests for hit, miss, expired, and conflict paths.
+
+- On Redis miss, read `idempotency_records`.
+- Repopulate Redis from durable database snapshot.
+- Return database snapshot when fingerprint matches.
+- Return conflict when fingerprint differs.
+- Add tests for hit, miss, expired, and conflict paths.
+
 21. [ ] Update authorization API documentation:
-  - Document `POST /api/v1/payments/authorize`.
-  - Document idempotency key requirements.
-  - Document duplicate replay behavior.
-  - Document conflict behavior.
-  - Document risk timeout/unavailable behavior.
-  - Document emitted outbox events.
+
+- Document `POST /api/v1/payments/authorize`.
+- Document idempotency key requirements.
+- Document duplicate replay behavior.
+- Document conflict behavior.
+- Document risk timeout/unavailable behavior.
+- Document emitted outbox events.
+
 22. [ ] Add repository/integration tests:
-  - Verify Flyway migration applies.
-  - Verify payment insert/read.
-  - Verify authorization insert/read.
-  - Verify risk decision insert/read.
-  - Verify idempotency uniqueness.
-  - Verify outbox insert with payment transaction.
+
+- Verify Flyway migration applies.
+- Verify payment insert/read.
+- Verify authorization insert/read.
+- Verify risk decision insert/read.
+- Verify idempotency uniqueness.
+- Verify outbox insert with payment transaction.
+
 23. [ ] Add authorization API tests:
-  - Valid request returns selected success status.
-  - Response includes `paymentId`.
-  - Response includes final payment status.
-  - Response includes risk decision.
-  - Response includes correlation ID.
-  - Missing idempotency key returns validation error.
-  - Invalid request returns `ApiErrorResponse`.
-  - Duplicate idempotency key returns stored response.
-  - Idempotency key conflict returns structured conflict error.
-  - Risk timeout returns stable downstream timeout error or selected fallback response.
+
+- Valid request returns selected success status.
+- Response includes `paymentId`.
+- Response includes final payment status.
+- Response includes risk decision.
+- Response includes correlation ID.
+- Missing idempotency key returns validation error.
+- Invalid request returns `ApiErrorResponse`.
+- Duplicate idempotency key returns stored response.
+- Idempotency key conflict returns structured conflict error.
+- Risk timeout returns stable downstream timeout error or selected fallback response.
 
 ### Acceptance Criteria
 
@@ -769,7 +1037,7 @@ Goal: Implement the transactional outbox, Kafka events, consumers, RabbitMQ call
 - [ ] Payment authorization creates Kafka-ready outbox records.
 - [ ] Outbox relay publishes events after transaction commit.
 - [ ] Audit consumer builds payment history from events.
-- [ ] Settlement consumer builds settlement projection rows.
+- [ ] Settlement consumer builds settlement projection entities.
 - [ ] Poison Kafka records create dead-letter records.
 - [ ] RabbitMQ callback commands are acknowledged only after terminal handling.
 - [ ] Callback failures retry and eventually route to DLQ.

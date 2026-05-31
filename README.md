@@ -136,4 +136,41 @@ make risk-run
 
 ## Current Implementation Status
 
-The repository currently contains the generated Spring Boot service, the Go risk service skeleton, the first stack ADR, and the API roadmap. The next implementation step is the API contract baseline: shared protobuf files, generated Java and Go stubs, and the first REST error/correlation contract.
+The project has completed the foundation and API contract baseline work and is currently in Phase 2: Payment
+Authorization API.
+
+Completed foundations include:
+
+- Spring Boot WebFlux payment orchestrator service structure.
+- Go risk scoring service skeleton.
+- Local Docker Compose platform for PostgreSQL, Redis, Kafka, RabbitMQ, Prometheus, and Grafana.
+- REST API conventions, API versioning, OpenAPI setup, correlation ID handling, and global error responses.
+- Shared protobuf contract for the risk scoring gRPC API.
+- Generated Go protobuf and gRPC files.
+- Payment authorization API shell at `POST /api/v1/payments/authorize`.
+- Payment domain model, value objects, lifecycle states, and state-transition validation.
+- Flyway migration for payments, authorizations, risk decisions, idempotency records, and outbox events.
+- Reactive entity models, repositories, and persistence mappers.
+- Database idempotency read path for replaying completed stored authorization responses.
+- In-memory idempotency handling for the current authorization workflow.
+- Tests for API contracts, correlation IDs, error handling, domain value objects, persistence mappers, and the current
+  authorization behavior.
+
+The current authorization endpoint is still a contract-only workflow. It validates the request, creates a payment
+aggregate in memory, applies a fake approved risk decision, returns an authorized response, and supports duplicate
+request replay through the in-memory idempotency store.
+
+Main work not implemented yet:
+
+- Database idempotency write path for creating and completing durable records during authorization.
+- Redis response snapshot cache with database fallback.
+- Durable payment, authorization, and risk decision writes inside the authorization workflow.
+- Java gRPC risk client and real Go risk scoring server implementation.
+- Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
+- Outbox event payloads, mappers, and writes during authorization.
+- Reactive transaction boundary across payment persistence, idempotency completion, and outbox insertion.
+- Payment lookup and reversal APIs.
+- Kafka outbox relay, audit consumer, settlement projection consumer, and RabbitMQ callback worker.
+- Operations APIs, security roles/authentication, observability dashboards, CI, and release-readiness work.
+
+See `docs/ApiRoadmap.md` and `docs/phase-2-payment-authorization.md` for the detailed tracker.

@@ -1,15 +1,15 @@
 package dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository;
 
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.OutboxEventRow;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.OutboxEventEntity;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
 
 import java.time.Instant;
 
-public interface OutboxEventRowRepository
-        extends ReactiveCrudRepository<OutboxEventRow, String> {
+public interface OutboxEventEntityRepository
+        extends ReactiveCrudRepository<OutboxEventEntity, String> {
 
-    Flux<OutboxEventRow> findByStatusAndNextRetryAtLessThanEqual(
+    Flux<OutboxEventEntity> findByStatusAndNextRetryAtLessThanEqual(
             String status,
             Instant nextRetryAt
     );

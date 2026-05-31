@@ -3,9 +3,9 @@ package dev.kavrin.paymentrisk.payment.infrastructure.persistence;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationRow;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionRow;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRow;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -20,40 +20,40 @@ class PaymentPersistenceMapperTest {
     private final PaymentPersistenceMapper mapper = new PaymentPersistenceMapper(new ObjectMapper());
 
     @Test
-    void mapsAuthorizedPaymentToPersistenceRowsWithoutRawSensitiveValues() {
+    void mapsAuthorizedPaymentToPersistenceEntitiesWithoutRawSensitiveValues() {
         Payment payment = authorizedPayment();
 
-        PaymentRow paymentRow = mapper.toPaymentRow(
+        PaymentEntity paymentEntity = mapper.toPaymentEntity(
                 payment,
                 "hmac-token-hash",
                 "1234",
                 "hmac-device-hash"
         );
-        PaymentAuthorizationRow authorizationRow = mapper.toAuthorizationRow(payment);
-        PaymentRiskDecisionRow riskDecisionRow = mapper.toRiskDecisionRow(payment);
+        PaymentAuthorizationEntity authorizationEntity = mapper.toAuthorizationEntity(payment);
+        PaymentRiskDecisionEntity riskDecisionEntity = mapper.toRiskDecisionEntity(payment);
 
-        assertThat(paymentRow.getPaymentId()).isEqualTo("pay_test");
-        assertThat(paymentRow.getPaymentMethodTokenHash()).isEqualTo("hmac-token-hash");
-        assertThat(paymentRow.getPaymentMethodTokenLast4()).isEqualTo("1234");
-        assertThat(paymentRow.getDeviceFingerprintHash()).isEqualTo("hmac-device-hash");
-        assertThat(paymentRow.getStatus()).isEqualTo("AUTHORIZED");
+        assertThat(paymentEntity.getPaymentId()).isEqualTo("pay_test");
+        assertThat(paymentEntity.getPaymentMethodTokenHash()).isEqualTo("hmac-token-hash");
+        assertThat(paymentEntity.getPaymentMethodTokenLast4()).isEqualTo("1234");
+        assertThat(paymentEntity.getDeviceFingerprintHash()).isEqualTo("hmac-device-hash");
+        assertThat(paymentEntity.getStatus()).isEqualTo("AUTHORIZED");
 
-        assertThat(authorizationRow.getPaymentAuthorizationId()).startsWith("pauth_");
-        assertThat(authorizationRow.getPaymentId()).isEqualTo("pay_test");
-        assertThat(authorizationRow.getStatus()).isEqualTo("AUTHORIZED");
-        assertThat(authorizationRow.getAuthorizationCode()).isEqualTo("AUTH-ABCDEFG123");
-        assertThat(authorizationRow.getAuthorizedAt()).isEqualTo(NOW);
+        assertThat(authorizationEntity.getPaymentAuthorizationId()).startsWith("pauth_");
+        assertThat(authorizationEntity.getPaymentId()).isEqualTo("pay_test");
+        assertThat(authorizationEntity.getStatus()).isEqualTo("AUTHORIZED");
+        assertThat(authorizationEntity.getAuthorizationCode()).isEqualTo("AUTH-ABCDEFG123");
+        assertThat(authorizationEntity.getAuthorizedAt()).isEqualTo(NOW);
 
-        assertThat(riskDecisionRow.getPaymentRiskDecisionId()).startsWith("prd_");
-        assertThat(riskDecisionRow.getPaymentId()).isEqualTo("pay_test");
-        assertThat(riskDecisionRow.getDecision()).isEqualTo("APPROVED");
-        assertThat(riskDecisionRow.getReasonCodesJson()).isEqualTo("[\"LOW_RISK\"]");
+        assertThat(riskDecisionEntity.getPaymentRiskDecisionId()).startsWith("prd_");
+        assertThat(riskDecisionEntity.getPaymentId()).isEqualTo("pay_test");
+        assertThat(riskDecisionEntity.getDecision()).isEqualTo("APPROVED");
+        assertThat(riskDecisionEntity.getReasonCodesJson()).isEqualTo("[\"LOW_RISK\"]");
     }
 
     @Test
-    void restoresDomainPaymentFromPersistenceRowsWithRedactedSensitiveValues() {
+    void restoresDomainPaymentFromPersistenceEntitiesWithRedactedSensitiveValues() {
         Payment payment = authorizedPayment();
-        PaymentRow paymentRow = mapper.toPaymentRow(
+        PaymentEntity paymentEntity = mapper.toPaymentEntity(
                 payment,
                 "hmac-token-hash",
                 "1234",
@@ -61,9 +61,9 @@ class PaymentPersistenceMapperTest {
         );
 
         Payment restored = mapper.toDomain(
-                paymentRow,
-                mapper.toAuthorizationRow(payment),
-                mapper.toRiskDecisionRow(payment)
+                paymentEntity,
+                mapper.toAuthorizationEntity(payment),
+                mapper.toRiskDecisionEntity(payment)
         );
 
         assertThat(restored.getId()).isEqualTo(PaymentId.of("pay_test"));

@@ -4,7 +4,6 @@ import dev.kavrin.paymentrisk.idempotency.application.StoredIdempotencyResult;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyStatus;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.IdempotencyRecordRow;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -21,7 +20,7 @@ class IdempotencyRecordMapperTest {
     private final IdempotencyRecordMapper mapper = new IdempotencyRecordMapper();
 
     @Test
-    void toRowMapsScopeKeyFingerprintStatusResponseAndExpiryFields() {
+    void toEntityMapsScopeKeyFingerprintStatusResponseAndExpiryFields() {
         StoredIdempotencyResult result = new StoredIdempotencyResult(
                 "fingerprint-sha256",
                 IdempotencyStatus.COMPLETED,
@@ -32,7 +31,7 @@ class IdempotencyRecordMapperTest {
                 UPDATED_AT
         );
 
-        IdempotencyRecordRow row = mapper.toRow(
+        IdempotencyRecordEntity entity = mapper.toEntity(
                 "idem_rec_01",
                 IdempotencyScope.PAYMENT_AUTHORIZATION,
                 IdempotencyKey.of("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A"),
@@ -41,22 +40,22 @@ class IdempotencyRecordMapperTest {
                 "{\"paymentId\":\"pay_test\"}"
         );
 
-        assertThat(row.getIdempotencyRecordId()).isEqualTo("idem_rec_01");
-        assertThat(row.getScope()).isEqualTo("payment_authorization");
-        assertThat(row.getIdempotencyKey()).isEqualTo("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A");
-        assertThat(row.getRequestFingerprint()).isEqualTo("fingerprint-sha256");
-        assertThat(row.getPaymentId()).isEqualTo("pay_01HX7R0BYV9Y6CNW3HZ7R8E4P2");
-        assertThat(row.getStatus()).isEqualTo("COMPLETED");
-        assertThat(row.getResponseStatus()).isEqualTo(200);
-        assertThat(row.getResponseBodyJson()).isEqualTo("{\"paymentId\":\"pay_test\"}");
-        assertThat(row.getExpiresAt()).isEqualTo(EXPIRES_AT);
-        assertThat(row.getCreatedAt()).isEqualTo(CREATED_AT);
-        assertThat(row.getUpdatedAt()).isEqualTo(UPDATED_AT);
+        assertThat(entity.getIdempotencyRecordId()).isEqualTo("idem_rec_01");
+        assertThat(entity.getScope()).isEqualTo("payment_authorization");
+        assertThat(entity.getIdempotencyKey()).isEqualTo("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A");
+        assertThat(entity.getRequestFingerprint()).isEqualTo("fingerprint-sha256");
+        assertThat(entity.getPaymentId()).isEqualTo("pay_01HX7R0BYV9Y6CNW3HZ7R8E4P2");
+        assertThat(entity.getStatus()).isEqualTo("COMPLETED");
+        assertThat(entity.getResponseStatus()).isEqualTo(200);
+        assertThat(entity.getResponseBodyJson()).isEqualTo("{\"paymentId\":\"pay_test\"}");
+        assertThat(entity.getExpiresAt()).isEqualTo(EXPIRES_AT);
+        assertThat(entity.getCreatedAt()).isEqualTo(CREATED_AT);
+        assertThat(entity.getUpdatedAt()).isEqualTo(UPDATED_AT);
     }
 
     @Test
-    void toStoredResultMapsDurableRowBackToApplicationResult() {
-        IdempotencyRecordRow row = IdempotencyRecordRow.builder()
+    void toStoredResultMapsDurableEntityBackToApplicationResult() {
+        IdempotencyRecordEntity entity = IdempotencyRecordEntity.builder()
                 .idempotencyRecordId("idem_rec_01")
                 .scope("payment_authorization")
                 .idempotencyKey("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A")
@@ -71,7 +70,7 @@ class IdempotencyRecordMapperTest {
                 .build();
         Map<String, String> responseSnapshot = Map.of("paymentId", "pay_test");
 
-        StoredIdempotencyResult result = mapper.toStoredResult(row, responseSnapshot);
+        StoredIdempotencyResult result = mapper.toStoredResult(entity, responseSnapshot);
 
         assertThat(result.requestFingerprint()).isEqualTo("fingerprint-sha256");
         assertThat(result.status()).isEqualTo(IdempotencyStatus.COMPLETED);
@@ -83,13 +82,13 @@ class IdempotencyRecordMapperTest {
     }
 
     @Test
-    void mapsScopeAndKeyFromRow() {
-        IdempotencyRecordRow row = IdempotencyRecordRow.builder()
+    void mapsScopeAndKeyFromEntity() {
+        IdempotencyRecordEntity entity = IdempotencyRecordEntity.builder()
                 .scope("payment_authorization")
                 .idempotencyKey("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A")
                 .build();
 
-        assertThat(mapper.toScope(row)).isEqualTo(IdempotencyScope.PAYMENT_AUTHORIZATION);
-        assertThat(mapper.toKey(row)).isEqualTo(IdempotencyKey.of("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A"));
+        assertThat(mapper.toScope(entity)).isEqualTo(IdempotencyScope.PAYMENT_AUTHORIZATION);
+        assertThat(mapper.toKey(entity)).isEqualTo(IdempotencyKey.of("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A"));
     }
 }

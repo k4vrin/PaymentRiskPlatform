@@ -1,4 +1,4 @@
-package dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities;
+package dev.kavrin.paymentrisk.idempotency.infrastructure.persistence;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
@@ -13,7 +13,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 @Table("idempotency_records")
-public class IdempotencyRecordRow {
+public class IdempotencyRecordEntity {
 
     @Id
     @Column("idempotency_record_id")
