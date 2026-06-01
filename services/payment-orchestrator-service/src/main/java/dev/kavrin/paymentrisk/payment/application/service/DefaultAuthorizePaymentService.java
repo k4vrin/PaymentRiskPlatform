@@ -26,15 +26,24 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
 
     private final Clock clock;
     private final DatabaseIdempotencyResultOperations idempotencyStore;
+    private final PaymentStatePersistencePort paymentStatePersistence;
 
     @Autowired
-    public DefaultAuthorizePaymentService(DatabaseIdempotencyResultOperations idempotencyStore) {
-        this(Clock.systemUTC(), idempotencyStore);
+    public DefaultAuthorizePaymentService(
+            DatabaseIdempotencyResultOperations idempotencyStore,
+            PaymentStatePersistencePort paymentStatePersistence
+    ) {
+        this(Clock.systemUTC(), idempotencyStore, paymentStatePersistence);
     }
 
-    DefaultAuthorizePaymentService(Clock clock, DatabaseIdempotencyResultOperations idempotencyStore) {
+    DefaultAuthorizePaymentService(
+            Clock clock,
+            DatabaseIdempotencyResultOperations idempotencyStore,
+            PaymentStatePersistencePort paymentStatePersistence
+    ) {
         this.clock = clock;
         this.idempotencyStore = idempotencyStore;
+        this.paymentStatePersistence = paymentStatePersistence;
     }
 
     @Override
@@ -72,11 +81,13 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
             IdempotencyKey idempotencyKey,
             String fingerprint
     ) {
-        return Mono.fromSupplier(() -> authorizeNewPayment(
+        return Mono.fromSupplier(() -> createAuthorizedPayment(
                         command,
                         idempotencyKey,
                         clock.instant()
                 ))
+                .flatMap(paymentStatePersistence::save)
+                .map(payment -> toResult(payment, command.correlationId()))
                 .flatMap(result ->
                         idempotencyStore.markCompleted(
                                         scope,
@@ -99,7 +110,7 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                 );
     }
 
-    private AuthorizePaymentResult authorizeNewPayment(
+    private Payment createAuthorizedPayment(
             AuthorizePaymentCommand command,
             IdempotencyKey idempotencyKey,
             Instant now
@@ -129,16 +140,26 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
         AuthorizationCode authorizationCode = AuthorizationCode.generate();
         payment.markAuthorized(riskDecision, authorizationCode, now);
 
-        // TODO Phase 2 persistence: save payment, authorization, risk decision, and outbox event.
         // TODO Phase 2 risk integration: replace this contract-only approval with the Go gRPC risk service result.
+
+        return payment;
+    }
+
+    private static AuthorizePaymentResult toResult(Payment payment, String correlationId) {
+        PaymentRiskDecision riskDecision = payment.getRiskDecision();
+        PaymentAuthorization authorization = payment.getAuthorization();
+
+        if (!(authorization instanceof PaymentAuthorization.Authorized authorized)) {
+            throw new IllegalStateException("Payment authorization is not authorized");
+        }
 
         return new AuthorizePaymentResult(
                 payment.getId().value(),
                 payment.getStatus().name(),
-                authorizationCode.value(),
+                authorized.authorizationCode().value(),
                 riskDecision.decision().name(),
                 riskDecision.reasonCodes(),
-                command.correlationId(),
+                correlationId,
                 riskDecision.score(),
                 riskDecision.ruleVersion(),
                 payment.getCreatedAt()

@@ -6,6 +6,7 @@ import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIdempotencyResultOperations;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
+import dev.kavrin.paymentrisk.payment.domain.model.Payment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -24,14 +25,18 @@ class DefaultAuthorizePaymentServiceTest {
 
     private final FakeDatabaseIdempotencyResultOperations idempotencyStore =
             new FakeDatabaseIdempotencyResultOperations();
+    private final FakePaymentStatePersistencePort paymentStatePersistence =
+            new FakePaymentStatePersistencePort();
     private final DefaultAuthorizePaymentService service = new DefaultAuthorizePaymentService(
             Clock.fixed(NOW, ZoneOffset.UTC),
-            idempotencyStore
+            idempotencyStore,
+            paymentStatePersistence
     );
 
     @BeforeEach
-    void resetIdempotencyStore() {
+    void resetFakes() {
         idempotencyStore.reset();
+        paymentStatePersistence.reset();
     }
 
     @Test
@@ -60,6 +65,13 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.lastExpiresAt).isEqualTo(NOW.plusSeconds(86400));
         assertThat(idempotencyStore.lastCompletedResponse).isEqualTo(result);
         assertThat(idempotencyStore.lastResponseStatus).isEqualTo(200);
+
+        assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.lastPayment).isNotNull();
+        assertThat(paymentStatePersistence.lastPayment.getId().value()).isEqualTo(result.paymentId());
+        assertThat(paymentStatePersistence.lastPayment.getStatus().name()).isEqualTo(result.status());
+        assertThat(paymentStatePersistence.lastPayment.getRiskDecision().decision().name())
+                .isEqualTo(result.riskDecision());
     }
 
     @Test
@@ -94,6 +106,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.findCount).isEqualTo(1);
         assertThat(idempotencyStore.insertStartedCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
+        assertThat(paymentStatePersistence.saveCount).isZero();
     }
 
     @Test
@@ -116,7 +129,22 @@ class DefaultAuthorizePaymentServiceTest {
                 .hasMessage("completion failed");
 
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
         assertThat(idempotencyStore.markCompletedCount).isEqualTo(1);
+        assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+    }
+
+    @Test
+    void authorizeExpiresStartedRecordWhenPaymentPersistenceFails() {
+        paymentStatePersistence.saveError = new IllegalStateException("payment persistence failed");
+
+        assertThatThrownBy(() -> service.authorize(validCommand()).block())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("payment persistence failed");
+
+        assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
+        assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
     }
 
@@ -270,6 +298,31 @@ class DefaultAuthorizePaymentServiceTest {
             lastKey = key;
             lastNow = now;
             return Mono.empty();
+        }
+    }
+
+    private static final class FakePaymentStatePersistencePort implements PaymentStatePersistencePort {
+
+        private RuntimeException saveError;
+        private int saveCount;
+        private Payment lastPayment;
+
+        void reset() {
+            saveError = null;
+            saveCount = 0;
+            lastPayment = null;
+        }
+
+        @Override
+        public Mono<Payment> save(Payment payment) {
+            saveCount++;
+            lastPayment = payment;
+
+            if (saveError != null) {
+                return Mono.error(saveError);
+            }
+
+            return Mono.just(payment);
         }
     }
 }

@@ -18,3 +18,7 @@ spring:
     port: ${PAYMENT_RISK_RABBITMQ_PORT:5672}
     username: ${PAYMENT_RISK_RABBITMQ_USERNAME}
     password: ${PAYMENT_RISK_RABBITMQ_PASSWORD}
+
+payment:
+  sensitive-data:
+    hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY}

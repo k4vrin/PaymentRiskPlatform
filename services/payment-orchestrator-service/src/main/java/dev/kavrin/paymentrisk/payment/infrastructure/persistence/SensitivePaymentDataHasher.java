@@ -3,6 +3,9 @@ package dev.kavrin.paymentrisk.payment.infrastructure.persistence;
 import dev.kavrin.paymentrisk.payment.domain.model.DeviceFingerprint;
 import dev.kavrin.paymentrisk.payment.domain.model.Payment;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentMethodToken;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -12,6 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Objects;
 
+@Component
 public final class SensitivePaymentDataHasher {
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
@@ -21,18 +25,19 @@ public final class SensitivePaymentDataHasher {
 
     private final byte[] hashKey;
 
+    @Autowired
+    public SensitivePaymentDataHasher(
+            @Value("${payment.sensitive-data.hash-key}") String hashKey
+    ) {
+        this(normalizedHashKey(hashKey).getBytes(StandardCharsets.UTF_8));
+    }
+
     public SensitivePaymentDataHasher(byte[] hashKey) {
         this.hashKey = requireKey(hashKey);
     }
 
     public static SensitivePaymentDataHasher withUtf8Key(String hashKey) {
-        String normalized = Objects.requireNonNull(hashKey, "hashKey must not be null").trim();
-
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("hashKey must not be blank");
-        }
-
-        return new SensitivePaymentDataHasher(normalized.getBytes(StandardCharsets.UTF_8));
+        return new SensitivePaymentDataHasher(hashKey);
     }
 
     public SensitivePaymentDataHashes hash(Payment payment) {
@@ -89,6 +94,16 @@ public final class SensitivePaymentDataHasher {
         }
 
         return hashKey.clone();
+    }
+
+    private static String normalizedHashKey(String hashKey) {
+        String normalized = Objects.requireNonNull(hashKey, "hashKey must not be null").trim();
+
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("hashKey must not be blank");
+        }
+
+        return normalized;
     }
 
     public record SensitivePaymentDataHashes(

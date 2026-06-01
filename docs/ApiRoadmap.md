@@ -109,6 +109,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │       ├── AuthorizePaymentResultSnapshotSerializer.java
     │       │   │   │   │       ├── AuthorizePaymentService.java
     │       │   │   │   │       ├── DefaultAuthorizePaymentService.java
+    │       │   │   │   │       ├── PaymentStatePersistencePort.java
     │       │   │   │   │       └── package-info.java
     │       │   │   │   ├── domain
     │       │   │   │   │   ├── model
@@ -134,6 +135,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   ├── outbox/package-info.java
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── persistence
+    │       │   │   │   │   │   ├── DurablePaymentStatePersistenceAdapter.java
     │       │   │   │   │   │   ├── PaymentPersistenceMapper.java
     │       │   │   │   │   │   ├── SensitivePaymentDataHasher.java
     │       │   │   │   │   │   ├── entities
@@ -199,9 +201,11 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   ├── api/contract/PaymentAuthorizationControllerTest.java
     │           │   ├── application/service
     │           │   │   ├── AuthorizePaymentResultSnapshotSerializerTest.java
-    │           │   │   └── DefaultAuthorizePaymentServiceTest.java
+    │           │   │   ├── DefaultAuthorizePaymentServiceTest.java
+    │           │   │   └── PaymentStatePersistencePortTest.java
     │           │   ├── domain/PaymentDomainValueObjectsTest.java
     │           │   └── infrastructure/persistence
+    │           │       ├── DurablePaymentStatePersistenceAdapterTest.java
     │           │       ├── PaymentPersistenceMapperTest.java
     │           │       └── SensitivePaymentDataHasherTest.java
     │           └── shared
@@ -457,9 +461,9 @@ Goal: Define the external REST API, internal gRPC contract, event envelope, and 
     - [x] Document correlation ID behavior in `docs/api/correlation-id.md`.
 - [x] Update developer commands:
     - [x] Add `make proto`.
-  - [x] Add `make java-run` or keep `make spring-run` documented.
-  - [x] Add `make contract-test` if useful.
-  - [x] Ensure `make test` runs Java and Go checks after generation.
+    - [x] Add `make java-run` or keep `make spring-run` documented.
+    - [x] Add `make contract-test` if useful.
+    - [x] Ensure `make test` runs Java and Go checks after generation.
 
 ### Acceptance Criteria
 
@@ -566,58 +570,58 @@ transaction boundary still need to be wired together.
     - [x] Validate valid authorization state transitions.
 - [x] Add authorization request DTO:
     - Purpose: define the public JSON input contract for `POST /api/v1/payments/authorize`.
-  - [x] `merchantId`
-  - [x] `customerId`
-  - [x] `amountMinor`
-  - [x] `currency`
-  - [x] `paymentMethodToken`
-  - [x] `deviceFingerprint`
-  - [x] `externalReference`
-  - [x] `idempotencyKey`
-  - [x] Add Bean Validation annotations.
-  - [x] Add OpenAPI schema metadata where useful.
+    - [x] `merchantId`
+    - [x] `customerId`
+    - [x] `amountMinor`
+    - [x] `currency`
+    - [x] `paymentMethodToken`
+    - [x] `deviceFingerprint`
+    - [x] `externalReference`
+    - [x] `idempotencyKey`
+    - [x] Add Bean Validation annotations.
+    - [x] Add OpenAPI schema metadata where useful.
 - [x] Add authorization response DTO:
     - Purpose: define the stable public JSON output contract for a payment authorization result.
-  - [x] `paymentId`
-  - [x] `status`
-  - [x] `authorizationCode`
-  - [x] `riskDecision`
-  - [x] `reasonCodes`
-  - [x] `correlationId`
-  - [x] `riskScore`
-  - [x] `ruleVersion`
-  - [x] `createdAt`
+    - [x] `paymentId`
+    - [x] `status`
+    - [x] `authorizationCode`
+    - [x] `riskDecision`
+    - [x] `reasonCodes`
+    - [x] `correlationId`
+    - [x] `riskScore`
+    - [x] `ruleVersion`
+    - [x] `createdAt`
 - [x] Add payment authorization API shell:
     - Purpose: expose the endpoint with minimal controller logic and delegate all workflow decisions to the application
       service.
-  - [x] Create `PaymentAuthorizationController`.
-  - [x] Map `POST /api/v1/payments/authorize`.
-  - [x] Accept `AuthorizationRequest`.
-  - [x] Return `AuthorizationResponse`.
-  - [x] Read correlation ID from WebFlux exchange attributes.
-  - [x] Delegate to application service only.
+    - [x] Create `PaymentAuthorizationController`.
+    - [x] Map `POST /api/v1/payments/authorize`.
+    - [x] Accept `AuthorizationRequest`.
+    - [x] Return `AuthorizationResponse`.
+    - [x] Read correlation ID from WebFlux exchange attributes.
+    - [x] Delegate to application service only.
 - [x] Add authorization command model:
     - Purpose: translate API input into an immutable application command that is independent from transport details.
-  - [x] Create `AuthorizePaymentCommand`.
-  - [x] Map request DTO to command.
-  - [x] Include correlation ID.
-  - [x] Include idempotency key.
-  - [x] Keep command immutable.
+    - [x] Create `AuthorizePaymentCommand`.
+    - [x] Map request DTO to command.
+    - [x] Include correlation ID.
+    - [x] Include idempotency key.
+    - [x] Keep command immutable.
 - [x] Add persistence migrations:
     - Purpose: create the relational schema needed to durably store authorization state, risk decisions, idempotency
       records, and pending events.
-  - [x] Create `payments` table.
-  - [x] Create `payment_authorizations` table.
-  - [x] Create `payment_risk_decisions` table.
-  - [x] Create `idempotency_records` table.
-  - [x] Create `outbox_events` table.
-  - [x] Add primary keys.
-  - [x] Add foreign keys where portable.
-  - [x] Add index for `payment_id`.
-  - [x] Add index for `merchant_id`.
-  - [x] Add index for `customer_id`.
-  - [x] Add unique index for idempotency scope and key.
-  - [x] Add index for outbox status and next retry time.
+    - [x] Create `payments` table.
+    - [x] Create `payment_authorizations` table.
+    - [x] Create `payment_risk_decisions` table.
+    - [x] Create `idempotency_records` table.
+    - [x] Create `outbox_events` table.
+    - [x] Add primary keys.
+    - [x] Add foreign keys where portable.
+    - [x] Add index for `payment_id`.
+    - [x] Add index for `merchant_id`.
+    - [x] Add index for `customer_id`.
+    - [x] Add unique index for idempotency scope and key.
+    - [x] Add index for outbox status and next retry time.
 - [x] Add persistence models and repositories:
     - Purpose: provide reactive persistence adapters while keeping domain types separate from database entity shapes.
     - [x] Add payment entity model.
@@ -643,37 +647,39 @@ transaction boundary still need to be wired together.
     - [x] Create a contract-only payment authorization aggregate.
     - [x] Apply a contract-only approved risk decision to payment state.
     - [x] Return response DTO.
-  - [x] Check database idempotency before creating a new contract-only authorization.
-  - [x] Insert a `STARTED` idempotency record before creating a new contract-only authorization.
-  - [x] Complete the idempotency record with the serialized response snapshot after authorization succeeds.
-  - [x] Return stored response from durable idempotency storage when a duplicate request is replayed.
-    - [ ] Persist payment state.
+    - [x] Check database idempotency before creating a new contract-only authorization.
+    - [x] Insert a `STARTED` idempotency record before creating a new contract-only authorization.
+    - [x] Complete the idempotency record with the serialized response snapshot after authorization succeeds.
+    - [x] Return stored response from durable idempotency storage when a duplicate request is replayed.
+    - [x] Create a payment state persistence port.
+    - [x] Add a durable payment write adapter that maps payment state to database entities.
+    - [x] Persist payment state.
     - [ ] Call risk scoring client.
-    - [ ] Persist risk decision.
+    - [x] Persist risk decision.
     - [ ] Create outbox event record.
 - [ ] Complete idempotency behavior:
     - Purpose: make retries safe by returning the original result for duplicate requests and rejecting conflicting reuse
       of a key.
-  - [x] Define idempotency scope for payment authorization.
-  - [x] Reject missing idempotency key through request/command validation.
-  - [x] Validate idempotency key format and length.
-  - [x] Compute stable request fingerprint for authorization commands.
-  - [x] Detect duplicate key with same request fingerprint.
-  - [x] Return stored response snapshot for duplicate key with same fingerprint.
-  - [x] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
-  - [x] Store request fingerprint in the current in-memory implementation.
-  - [x] Store response snapshot in the current in-memory implementation.
-  - [x] Store idempotency status in the current in-memory implementation.
-  - [x] Store expiry time in the current in-memory implementation.
-  - [x] Introduce an idempotency application port/interface so the authorization service does not depend on an
-    in-memory implementation.
-  - [x] Persist request fingerprint in `idempotency_records`.
-  - [x] Persist response snapshot in `idempotency_records`.
-  - [x] Persist idempotency status in `idempotency_records`.
-  - [x] Persist expiry time in `idempotency_records`.
-      - [ ] Add Redis cache for response snapshot.
-      - [ ] Add TTL for Redis snapshot.
-      - [ ] Fall back to database idempotency record if Redis misses.
+    - [x] Define idempotency scope for payment authorization.
+    - [x] Reject missing idempotency key through request/command validation.
+    - [x] Validate idempotency key format and length.
+    - [x] Compute stable request fingerprint for authorization commands.
+    - [x] Detect duplicate key with same request fingerprint.
+    - [x] Return stored response snapshot for duplicate key with same fingerprint.
+    - [x] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
+    - [x] Store request fingerprint in the current in-memory implementation.
+    - [x] Store response snapshot in the current in-memory implementation.
+    - [x] Store idempotency status in the current in-memory implementation.
+    - [x] Store expiry time in the current in-memory implementation.
+    - [x] Introduce an idempotency application port/interface so the authorization service does not depend on an
+          in-memory implementation.
+    - [x] Persist request fingerprint in `idempotency_records`.
+    - [x] Persist response snapshot in `idempotency_records`.
+    - [x] Persist idempotency status in `idempotency_records`.
+    - [x] Persist expiry time in `idempotency_records`.
+    - [ ] Add Redis cache for response snapshot.
+    - [ ] Add TTL for Redis snapshot.
+    - [ ] Fall back to database idempotency record if Redis misses.
 
 #### Atomic Remaining Work
 
@@ -715,11 +721,11 @@ transaction boundary still need to be wired together.
 
 5. [x] Add database idempotency write path:
 
-- Insert `STARTED` before creating a new payment.
-- Update to `COMPLETED` with response snapshot after successful authorization.
-- Update to `FAILED` or expire when authorization fails before a durable result exists.
-- Preserve unique `(scope, idempotency_key)` behavior.
-- Add duplicate insert race test where practical.
+- [x] Insert `STARTED` before creating a new payment.
+- [x] Update to `COMPLETED` with response snapshot after successful authorization.
+- [x] Update to `FAILED` or expire when authorization fails before a durable result exists.
+- [x] Preserve unique `(scope, idempotency_key)` behavior.
+- [ ] Add duplicate insert race test where practical.
 
 6. [x] Wire database idempotency into authorization:
 
@@ -735,29 +741,29 @@ transaction boundary still need to be wired together.
 - [x] Hash `deviceFingerprint` before persistence.
 - [x] Add deterministic hashing tests.
 
-8. [ ] Add payment state persistence port:
+8. [x] Add payment state persistence port:
 
-- Create a payment persistence interface in the payment application boundary.
-- Define save methods for payment, authorization, and risk decision state.
-- Keep the authorization service dependent on the interface, not concrete repositories.
-- Add unit tests with a fake persistence implementation.
+- [x] Create a payment persistence interface in the payment application boundary.
+- [x] Define a save method for the payment aggregate, including authorization and risk decision state.
+- [x] Keep the persistence boundary as an interface so authorization wiring can avoid concrete repositories.
+- [x] Add unit tests with a fake persistence implementation.
 
-9. [ ] Add durable payment write adapter:
+9. [x] Add durable payment write adapter:
 
-- Save `PaymentEntity`.
-- Save `PaymentAuthorizationEntity`.
-- Save `PaymentRiskDecisionEntity` when a risk decision exists.
-- Use `PaymentPersistenceMapper`.
-- Add adapter tests with mocked repositories.
+- [x] Save `PaymentEntity`.
+- [x] Save `PaymentAuthorizationEntity`.
+- [x] Save `PaymentRiskDecisionEntity` when a risk decision exists.
+- [x] Use `PaymentPersistenceMapper`.
+- [x] Add adapter tests with mocked repositories.
 
-10. [ ] Wire payment state persistence into authorization:
+10. [x] Wire payment state persistence into authorization:
 
-- Persist the new payment aggregate after state transition.
-- Persist the current authorization state for the payment.
-- Persist the risk decision attached to the payment.
-- Return response based on the persisted aggregate.
-- Verify one request creates one payment entity and one authorization entity.
-- Verify authorized and declined outcomes persist the expected state.
+- [x] Persist the new payment aggregate after state transition.
+- [x] Persist the current authorization state for the payment.
+- [x] Persist the risk decision attached to the payment.
+- [x] Return response based on the persisted aggregate.
+- [x] Verify one request saves one payment aggregate through the persistence port.
+- [x] Verify the durable adapter writes payment, authorization, and risk decision entities for the current contract-only authorized outcome.
 
 11. [ ] Add risk client port:
 

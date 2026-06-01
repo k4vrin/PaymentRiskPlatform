@@ -1,3 +1,7 @@
 spring:
   flyway:
     clean-disabled: false
+
+payment:
+  sensitive-data:
+    hash-key: test-sensitive-data-hash-key

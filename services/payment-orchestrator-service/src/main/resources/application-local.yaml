@@ -28,3 +28,7 @@ spring:
         - OPS
         - AUDITOR
         - SERVICE
+
+payment:
+  sensitive-data:
+    hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY:local-development-sensitive-data-hash-key}
