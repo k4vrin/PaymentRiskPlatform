@@ -5,6 +5,7 @@ import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIdempotencyResultOperations;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
+import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
@@ -29,6 +30,7 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     private final PaymentStatePersistencePort paymentStatePersistence;
     private final RiskScoringClient riskScoringClient;
     private final RiskDecisionMappingPolicy riskDecisionMappingPolicy;
+    private final PaymentOutboxEventWriter paymentOutboxEventWriter;
 
     @Override
     public Mono<AuthorizePaymentResult> authorize(AuthorizePaymentCommand command) {
@@ -72,6 +74,13 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                                 .map(riskDecision -> applyRiskDecision(payment, riskDecision))
                 )
                 .flatMap(paymentStatePersistence::save)
+                .flatMap(payment ->
+                        paymentOutboxEventWriter.writeAuthorizationEvents(
+                                        payment,
+                                        command.correlationId()
+                                )
+                                .thenReturn(payment)
+                )
                 .map(payment -> toResult(payment, command.correlationId()))
                 .flatMap(result ->
                         idempotencyStore.markCompleted(
@@ -168,16 +177,11 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
         }
 
         var authorizationCode = switch (payment.getAuthorization()) {
-            case PaymentAuthorization.Authorized auth ->
-                    auth.authorizationCode().value();
-            case PaymentAuthorization.Requested ignored ->
-                    null;
-            case PaymentAuthorization.RiskPending ignored ->
-                    null;
-            case PaymentAuthorization.Declined ignored ->
-                    null;
-            case PaymentAuthorization.Failed ignored ->
-                    null;
+            case PaymentAuthorization.Authorized auth -> auth.authorizationCode().value();
+            case PaymentAuthorization.Requested ignored -> null;
+            case PaymentAuthorization.RiskPending ignored -> null;
+            case PaymentAuthorization.Declined ignored -> null;
+            case PaymentAuthorization.Failed ignored -> null;
         };
 
 

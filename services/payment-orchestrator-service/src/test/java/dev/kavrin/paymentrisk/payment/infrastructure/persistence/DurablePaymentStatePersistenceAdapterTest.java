@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.payment.infrastructure.persistence;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
@@ -8,13 +9,16 @@ import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.Paymen
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentAuthorizationEntityRepository;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentEntityRepository;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentRiskDecisionEntityRepository;
+import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,7 +41,11 @@ class DurablePaymentStatePersistenceAdapterTest {
                     paymentRepository,
                     authorizationRepository,
                     riskDecisionRepository,
-                    new PaymentPersistenceMapper(),
+                    new PaymentPersistenceMapper(
+                            new ObjectMapper(),
+                            new PlatformIdGeneratorFactory(),
+                            Clock.fixed(NOW, ZoneOffset.UTC)
+                    ),
                     SensitivePaymentDataHasher.withUtf8Key("test-hash-key")
             );
 

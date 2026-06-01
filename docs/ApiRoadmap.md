@@ -103,6 +103,12 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   ├── AuthorizePaymentCommand.java
     │       │   │   │   │   │   ├── AuthorizePaymentResult.java
     │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── outbox
+    │       │   │   │   │   │   ├── PaymentAuthorizationRequestedPayload.java
+    │       │   │   │   │   │   ├── PaymentAuthorizedPayload.java
+    │       │   │   │   │   │   ├── PaymentDeclinedPayload.java
+    │       │   │   │   │   │   ├── PaymentOutboxEventWriter.java
+    │       │   │   │   │   │   └── PaymentOutboxSchemaVersions.java
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── query/package-info.java
     │       │   │   │   │   └── service
@@ -133,7 +139,10 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   └── policy/package-info.java
     │       │   │   │   ├── infrastructure
-    │       │   │   │   │   ├── outbox/package-info.java
+    │       │   │   │   │   ├── outbox
+    │       │   │   │   │   │   ├── DatabasePaymentOutboxEventWriter.java
+    │       │   │   │   │   │   ├── PaymentOutboxEventMapper.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── persistence
     │       │   │   │   │   │   ├── DurablePaymentStatePersistenceAdapter.java
@@ -220,10 +229,15 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   │   ├── PaymentStatePersistencePortTest.java
     │           │   │   └── RiskDecisionMappingPolicyTest.java
     │           │   ├── domain/PaymentDomainValueObjectsTest.java
-    │           │   └── infrastructure/persistence
-    │           │       ├── DurablePaymentStatePersistenceAdapterTest.java
-    │           │       ├── PaymentPersistenceMapperTest.java
-    │           │       └── SensitivePaymentDataHasherTest.java
+    │           │   └── infrastructure
+    │           │       ├── outbox
+    │           │       │   ├── DatabasePaymentOutboxEventWriterTest.java
+    │           │       │   └── PaymentOutboxEventMapperTest.java
+    │           │       └── persistence
+    │           │           ├── DurablePaymentStatePersistenceAdapterTest.java
+    │           │           ├── PaymentPersistenceMapperTest.java
+    │           │           ├── repository/OutboxEventEntityRepositoryTest.java
+    │           │           └── SensitivePaymentDataHasherTest.java
     │           ├── risk
     │           │   ├── application/RiskScoringClientTest.java
     │           │   └── infrastructure/grpc/GrpcRiskScoringClientTest.java
@@ -821,85 +835,85 @@ transaction boundary still need to be wired together.
 - [x] Return stable downstream error or selected fallback for timeout.
 - [x] Return stable downstream error or selected fallback for unavailable.
 
-15. [ ] Add outbox payload records:
+15. [x] Add outbox payload records:
 
-- [ ] Add `PaymentAuthorizationRequested` payload.
-- [ ] Add `PaymentAuthorized` payload.
-- [ ] Add `PaymentDeclined` payload.
-- [ ] Include schema version constants.
-- [ ] Add payload serialization tests.
+- [x] Add `PaymentAuthorizationRequested` payload.
+- [x] Add `PaymentAuthorized` payload.
+- [x] Add `PaymentDeclined` payload.
+- [x] Include schema version constants.
+- [x] Add payload serialization tests.
 
-16. [ ] Add outbox mapper:
+16. [x] Add outbox mapper:
 
-- [ ] Map payment aggregate to event envelope fields.
-- [ ] Include `eventId`.
-- [ ] Include `correlationId`.
-- [ ] Include aggregate type.
-- [ ] Include aggregate ID.
-- [ ] Include occurred-at timestamp.
-- [ ] Add mapper unit tests.
+- [x] Map payment aggregate to event envelope fields.
+- [x] Include `eventId`.
+- [x] Include `correlationId`.
+- [x] Include aggregate type.
+- [x] Include aggregate ID.
+- [x] Include occurred-at timestamp.
+- [x] Add mapper unit tests.
 
-17. [ ] Persist outbox events:
+17. [x] Persist outbox events:
 
-- Save requested event if selected for Phase 2.
-- Save authorized event when payment is authorized.
-- Save declined event when payment is declined.
-- Mark new events as pending.
-- Add repository tests.
+- [x] Save requested event if selected for Phase 2.
+- [x] Save authorized event when payment is authorized.
+- [x] Save declined event when payment is declined.
+- [x] Mark new events as pending.
+- [x] Add repository tests.
 
 18. [ ] Add reactive transaction boundary:
 
-- Verify `ReactiveTransactionManager` configuration.
-- Wrap payment entities, idempotency completion update, and outbox insert in one transaction.
-- Avoid holding a transaction open during the remote risk call where practical.
-- Add rollback test for failed outbox insert.
+- [ ] Verify `ReactiveTransactionManager` configuration.
+- [ ] Wrap payment entities, idempotency completion update, and outbox insert in one transaction.
+- [ ] Avoid holding a transaction open during the remote risk call where practical.
+- [ ] Add rollback test for failed outbox insert.
 
 19. [ ] Add Redis idempotency cache adapter:
 
-- Define Redis key format from scope and idempotency key.
-- Read completed response snapshot from Redis before database lookup.
-- Store completed response snapshot in Redis with TTL.
-- Keep database as source of truth.
-- Add adapter tests.
+- [ ] Define Redis key format from scope and idempotency key.
+- [ ] Read completed response snapshot from Redis before database lookup.
+- [ ] Store completed response snapshot in Redis with TTL.
+- [ ] Keep database as source of truth.
+- [ ] Add adapter tests.
 
 20. [ ] Add Redis miss database fallback:
 
-- On Redis miss, read `idempotency_records`.
-- Repopulate Redis from durable database snapshot.
-- Return database snapshot when fingerprint matches.
-- Return conflict when fingerprint differs.
-- Add tests for hit, miss, expired, and conflict paths.
+- [ ] On Redis miss, read `idempotency_records`.
+- [ ] Repopulate Redis from durable database snapshot.
+- [ ] Return database snapshot when fingerprint matches.
+- [ ] Return conflict when fingerprint differs.
+- [ ] Add tests for hit, miss, expired, and conflict paths.
 
 21. [ ] Update authorization API documentation:
 
-- Document `POST /api/v1/payments/authorize`.
-- Document idempotency key requirements.
-- Document duplicate replay behavior.
-- Document conflict behavior.
-- Document risk timeout/unavailable behavior.
-- Document emitted outbox events.
+- [ ] Document `POST /api/v1/payments/authorize`.
+- [ ] Document idempotency key requirements.
+- [ ] Document duplicate replay behavior.
+- [ ] Document conflict behavior.
+- [ ] Document risk timeout/unavailable behavior.
+- [ ] Document emitted outbox events.
 
 22. [ ] Add repository/integration tests:
 
-- Verify Flyway migration applies.
-- Verify payment insert/read.
-- Verify authorization insert/read.
-- Verify risk decision insert/read.
-- Verify idempotency uniqueness.
-- Verify outbox insert with payment transaction.
+- [ ] Verify Flyway migration applies.
+- [ ] Verify payment insert/read.
+- [ ] Verify authorization insert/read.
+- [ ] Verify risk decision insert/read.
+- [ ] Verify idempotency uniqueness.
+- [ ] Verify outbox insert with payment transaction.
 
 23. [ ] Add authorization API tests:
 
-- Valid request returns selected success status.
-- Response includes `paymentId`.
-- Response includes final payment status.
-- Response includes risk decision.
-- Response includes correlation ID.
-- Missing idempotency key returns validation error.
-- Invalid request returns `ApiErrorResponse`.
-- Duplicate idempotency key returns stored response.
-- Idempotency key conflict returns structured conflict error.
-- Risk timeout returns stable downstream timeout error or selected fallback response.
+- [ ] Valid request returns selected success status.
+- [ ] Response includes `paymentId`.
+- [ ] Response includes final payment status.
+- [ ] Response includes risk decision.
+- [ ] Response includes correlation ID.
+- [ ] Missing idempotency key returns validation error.
+- [ ] Invalid request returns `ApiErrorResponse`.
+- [ ] Duplicate idempotency key returns stored response.
+- [ ] Idempotency key conflict returns structured conflict error.
+- [ ] Risk timeout returns stable downstream timeout error or selected fallback response.
 
 ### Acceptance Criteria
 

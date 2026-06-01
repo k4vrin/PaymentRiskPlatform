@@ -9,13 +9,16 @@ import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.Paymen
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
 @Component
+@RequiredArgsConstructor
 public class PaymentPersistenceMapper {
 
     private static final TypeReference<List<String>> STRING_LIST =
@@ -24,19 +27,7 @@ public class PaymentPersistenceMapper {
 
     private final ObjectMapper objectMapper;
     private final PlatformIdGeneratorFactory idGenerator;
-
-    public PaymentPersistenceMapper() {
-        this(new ObjectMapper(), new PlatformIdGeneratorFactory());
-    }
-
-    PaymentPersistenceMapper(ObjectMapper objectMapper) {
-        this(objectMapper, new PlatformIdGeneratorFactory());
-    }
-
-    PaymentPersistenceMapper(ObjectMapper objectMapper, PlatformIdGeneratorFactory idGenerator) {
-        this.objectMapper = objectMapper;
-        this.idGenerator = idGenerator;
-    }
+    private final Clock clock;
 
     public PaymentEntity toPaymentEntity(
             Payment payment,
@@ -153,7 +144,7 @@ public class PaymentPersistenceMapper {
                 .reasonCodesJson(writeReasonCodes(riskDecision.reasonCodes()))
                 .ruleVersion(riskDecision.ruleVersion())
                 .decidedAt(riskDecision.decidedAt())
-                .createdAt(Instant.now())
+                .createdAt(clock.instant())
                 .build();
     }
 

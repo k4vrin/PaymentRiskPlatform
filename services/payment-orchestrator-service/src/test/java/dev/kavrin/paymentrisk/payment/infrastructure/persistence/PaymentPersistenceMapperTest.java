@@ -6,9 +6,12 @@ import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
+import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,7 +20,11 @@ class PaymentPersistenceMapperTest {
 
     private static final Instant NOW = Instant.parse("2026-05-25T10:15:30Z");
 
-    private final PaymentPersistenceMapper mapper = new PaymentPersistenceMapper(new ObjectMapper());
+    private final PaymentPersistenceMapper mapper = new PaymentPersistenceMapper(
+            new ObjectMapper(),
+            new PlatformIdGeneratorFactory(),
+            Clock.fixed(NOW, ZoneOffset.UTC)
+    );
     private final SensitivePaymentDataHasher sensitiveDataHasher =
             SensitivePaymentDataHasher.withUtf8Key("test-hash-key");
 

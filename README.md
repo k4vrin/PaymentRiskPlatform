@@ -155,6 +155,7 @@ Completed foundations include:
 - Authorization workflow wiring for database idempotency records and response snapshots.
 - Sensitive payment data hashing helpers for payment method tokens and device fingerprints.
 - Durable payment, authorization, and risk decision writes during authorization.
+- Kafka-ready outbox payload records, event-envelope mapping, and pending outbox writes for authorization outcomes.
 - Java gRPC risk client adapter with configurable host, port, timeout, response mapping, and timeout/unavailable
   fallback outcomes.
 - Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
@@ -163,13 +164,12 @@ Completed foundations include:
 
 The current authorization endpoint validates the request, creates a payment aggregate, calls the risk scoring client,
 maps the risk result to an authorization or decline, persists the payment state, returns the authorization response,
-and supports duplicate request replay through the database idempotency store.
+writes pending outbox events, and supports duplicate request replay through the database idempotency store.
 
 Main work not implemented yet:
 
 - Redis response snapshot cache with database fallback.
 - Real Go risk scoring server implementation.
-- Outbox event payloads, mappers, and writes during authorization.
 - Reactive transaction boundary across payment persistence, idempotency completion, and outbox insertion.
 - Payment lookup and reversal APIs.
 - Kafka outbox relay, audit consumer, settlement projection consumer, and RabbitMQ callback worker.

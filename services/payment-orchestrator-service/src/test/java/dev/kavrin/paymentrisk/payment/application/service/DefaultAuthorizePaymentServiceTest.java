@@ -6,6 +6,7 @@ import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIdempotencyResultOperations;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
+import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
 import dev.kavrin.paymentrisk.payment.domain.model.Payment;
 import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
@@ -35,12 +36,15 @@ class DefaultAuthorizePaymentServiceTest {
             new FakePaymentStatePersistencePort();
     private final FakeRiskScoringClient riskScoringClient =
             new FakeRiskScoringClient();
+    private final FakePaymentOutboxEventWriter paymentOutboxEventWriter =
+            new FakePaymentOutboxEventWriter();
     private final DefaultAuthorizePaymentService service = new DefaultAuthorizePaymentService(
             clock,
             idempotencyStore,
             paymentStatePersistence,
             riskScoringClient,
-            new RiskDecisionMappingPolicy(clock)
+            new RiskDecisionMappingPolicy(clock),
+            paymentOutboxEventWriter
     );
 
     @BeforeEach
@@ -48,6 +52,7 @@ class DefaultAuthorizePaymentServiceTest {
         idempotencyStore.reset();
         paymentStatePersistence.reset();
         riskScoringClient.reset();
+        paymentOutboxEventWriter.reset();
     }
 
     @Test
@@ -99,6 +104,9 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(paymentStatePersistence.lastPayment.getStatus().name()).isEqualTo(result.status());
         assertThat(paymentStatePersistence.lastPayment.getRiskDecision().decision().name())
                 .isEqualTo(result.riskDecision());
+        assertThat(paymentOutboxEventWriter.writeCount).isEqualTo(1);
+        assertThat(paymentOutboxEventWriter.lastPayment).isSameAs(paymentStatePersistence.lastPayment);
+        assertThat(paymentOutboxEventWriter.lastCorrelationId).isEqualTo(validCommand().correlationId());
     }
 
     @Test
@@ -122,6 +130,8 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(riskScoringClient.scoreCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
         assertThat(paymentStatePersistence.lastPayment.getStatus().name()).isEqualTo("DECLINED");
+        assertThat(paymentOutboxEventWriter.writeCount).isEqualTo(1);
+        assertThat(paymentOutboxEventWriter.lastPayment.getStatus().name()).isEqualTo("DECLINED");
         assertThat(idempotencyStore.markCompletedCount).isEqualTo(1);
         assertThat(idempotencyStore.markFailedAndExpireCount).isZero();
     }
@@ -147,6 +157,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.insertStartedCount).isZero();
         assertThat(riskScoringClient.scoreCount).isZero();
         assertThat(paymentStatePersistence.saveCount).isZero();
+        assertThat(paymentOutboxEventWriter.writeCount).isZero();
     }
 
     @Test
@@ -162,6 +173,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(riskScoringClient.scoreCount).isZero();
         assertThat(paymentStatePersistence.saveCount).isZero();
+        assertThat(paymentOutboxEventWriter.writeCount).isZero();
     }
 
     @Test
@@ -175,6 +187,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.insertStartedCount).isZero();
         assertThat(riskScoringClient.scoreCount).isZero();
         assertThat(paymentStatePersistence.saveCount).isZero();
+        assertThat(paymentOutboxEventWriter.writeCount).isZero();
     }
 
     @Test
@@ -188,6 +201,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
         assertThat(riskScoringClient.scoreCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
+        assertThat(paymentOutboxEventWriter.writeCount).isEqualTo(1);
         assertThat(idempotencyStore.markCompletedCount).isEqualTo(1);
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
     }
@@ -203,6 +217,23 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
         assertThat(riskScoringClient.scoreCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
+        assertThat(paymentOutboxEventWriter.writeCount).isZero();
+        assertThat(idempotencyStore.markCompletedCount).isZero();
+        assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+    }
+
+    @Test
+    void authorizeExpiresStartedRecordWhenOutboxWriteFails() {
+        paymentOutboxEventWriter.writeError = new IllegalStateException("outbox write failed");
+
+        assertThatThrownBy(() -> service.authorize(validCommand()).block())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("outbox write failed");
+
+        assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(riskScoringClient.scoreCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
+        assertThat(paymentOutboxEventWriter.writeCount).isEqualTo(1);
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
     }
@@ -218,6 +249,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
         assertThat(riskScoringClient.scoreCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveCount).isZero();
+        assertThat(paymentOutboxEventWriter.writeCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
     }
@@ -233,6 +265,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
         assertThat(riskScoringClient.scoreCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveCount).isZero();
+        assertThat(paymentOutboxEventWriter.writeCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
     }
@@ -412,6 +445,37 @@ class DefaultAuthorizePaymentServiceTest {
             }
 
             return Mono.just(payment);
+        }
+    }
+
+    private static final class FakePaymentOutboxEventWriter implements PaymentOutboxEventWriter {
+
+        private RuntimeException writeError;
+        private int writeCount;
+        private Payment lastPayment;
+        private String lastCorrelationId;
+
+        void reset() {
+            writeError = null;
+            writeCount = 0;
+            lastPayment = null;
+            lastCorrelationId = null;
+        }
+
+        @Override
+        public Mono<Void> writeAuthorizationEvents(
+                Payment payment,
+                String correlationId
+        ) {
+            writeCount++;
+            lastPayment = payment;
+            lastCorrelationId = correlationId;
+
+            if (writeError != null) {
+                return Mono.error(writeError);
+            }
+
+            return Mono.empty();
         }
     }
 
