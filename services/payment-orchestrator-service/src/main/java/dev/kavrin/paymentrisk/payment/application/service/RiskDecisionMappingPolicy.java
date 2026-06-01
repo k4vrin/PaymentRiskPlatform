@@ -80,6 +80,7 @@ public final class RiskDecisionMappingPolicy {
                 response.outcome(),
                 response.score(),
                 reasonCodes,
+                response.ruleHits(),
                 response.ruleVersion()
         );
     }

@@ -4,8 +4,10 @@ import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringOutcome;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
+import dev.kavrin.paymentrisk.risk.application.dto.RiskRuleHitSummary;
 import dev.kavrin.paymentrisk.risk.v1.RiskDecision;
 import dev.kavrin.paymentrisk.risk.v1.RiskReasonCode;
+import dev.kavrin.paymentrisk.risk.v1.RiskRuleHit;
 import dev.kavrin.paymentrisk.risk.v1.RiskScoringServiceGrpc;
 import dev.kavrin.paymentrisk.risk.v1.ScorePaymentRequest;
 import dev.kavrin.paymentrisk.risk.v1.ScorePaymentResponse;
@@ -84,7 +86,19 @@ public class GrpcRiskScoringClient implements RiskScoringClient {
                 response.getReasonCodesList().stream()
                         .map(GrpcRiskScoringClient::toInternalReasonCode)
                         .toList(),
+                response.getRuleHitsList().stream()
+                        .map(GrpcRiskScoringClient::toInternalRuleHit)
+                        .toList(),
                 response.getRuleVersion()
+        );
+    }
+
+    private static RiskRuleHitSummary toInternalRuleHit(RiskRuleHit ruleHit) {
+        return new RiskRuleHitSummary(
+                ruleHit.getRuleId(),
+                toInternalReasonCode(ruleHit.getReasonCode()),
+                ruleHit.getScoreDelta(),
+                ruleHit.getMessage()
         );
     }
 

@@ -160,7 +160,8 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   ├── dto
     │       │   │   │   │   │   ├── RiskScoringOutcome.java
     │       │   │   │   │   │   ├── RiskScoringRequest.java
-    │       │   │   │   │   │   └── RiskScoringResponse.java
+    │       │   │   │   │   │   ├── RiskScoringResponse.java
+    │       │   │   │   │   │   └── RiskRuleHitSummary.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   ├── infrastructure
     │       │   │   │   │   ├── grpc
@@ -672,7 +673,7 @@ transaction boundary still need to be wired together.
     - [x] Create a payment state persistence port.
     - [x] Add a durable payment write adapter that maps payment state to database entities.
     - [x] Persist payment state.
-    - [ ] Call risk scoring client.
+    - [x] Call risk scoring client.
     - [x] Persist risk decision.
     - [ ] Create outbox event record.
 - [ ] Complete idempotency behavior:
@@ -803,22 +804,22 @@ transaction boundary still need to be wired together.
 - [x] Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
 - [x] Map unavailable status to `DOWNSTREAM_UNAVAILABLE`.
 
-13. [ ] Add risk decision mapping policy:
+13. [x] Add risk decision mapping policy:
 
-- [ ] Map approved risk result to `PaymentRiskDecision`.
-- [ ] Map declined risk result to `PaymentRiskDecision`.
-- [ ] Define review-required Phase 2 behavior.
-- [ ] Define timeout Phase 2 behavior.
-- [ ] Preserve risk score, reason codes, rule hit summary, and rule version.
-- [ ] Add unit tests for each outcome.
+- [x] Map approved risk result to `PaymentRiskDecision`.
+- [x] Map declined risk result to `PaymentRiskDecision`.
+- [x] Define review-required Phase 2 behavior.
+- [x] Define timeout Phase 2 behavior.
+- [x] Preserve risk score, reason codes, rule hit summary, and rule version.
+- [x] Add unit tests for each outcome.
 
-14. [ ] Wire risk client into authorization:
+14. [x] Wire risk client into authorization:
 
-- [ ] Replace contract-only approval with risk client result.
-- [ ] Mark payment `AUTHORIZED` for approved result.
-- [ ] Mark payment `DECLINED` for declined result.
-- [ ] Return stable downstream error or selected fallback for timeout.
-- [ ] Return stable downstream error or selected fallback for unavailable.
+- [x] Replace contract-only approval with risk client result.
+- [x] Mark payment `AUTHORIZED` for approved result.
+- [x] Mark payment `DECLINED` for declined result.
+- [x] Return stable downstream error or selected fallback for timeout.
+- [x] Return stable downstream error or selected fallback for unavailable.
 
 15. [ ] Add outbox payload records:
 

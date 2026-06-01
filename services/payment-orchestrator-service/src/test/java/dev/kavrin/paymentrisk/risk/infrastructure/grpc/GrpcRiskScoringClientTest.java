@@ -40,6 +40,12 @@ class GrpcRiskScoringClientTest {
                 .setDecision(RiskDecision.RISK_DECISION_APPROVED)
                 .setScore(12)
                 .addReasonCodes(RiskReasonCode.RISK_REASON_CODE_LOW_RISK_PAYMENT)
+                .addRuleHits(RiskRuleHit.newBuilder()
+                        .setRuleId("LOW_RISK_RULE")
+                        .setReasonCode(RiskReasonCode.RISK_REASON_CODE_LOW_RISK_PAYMENT)
+                        .setScoreDelta(-5)
+                        .setMessage("Low risk payment")
+                        .build())
                 .setRuleVersion("risk-rules-v1")
                 .build();
         respondWith(grpcResponse);
@@ -49,6 +55,11 @@ class GrpcRiskScoringClientTest {
                     assertThat(response.outcome()).isEqualTo(RiskScoringOutcome.APPROVED);
                     assertThat(response.score()).isEqualTo(12);
                     assertThat(response.reasonCodes()).containsExactly("LOW_RISK_PAYMENT");
+                    assertThat(response.ruleHits()).hasSize(1);
+                    assertThat(response.ruleHits().getFirst().ruleId()).isEqualTo("LOW_RISK_RULE");
+                    assertThat(response.ruleHits().getFirst().reasonCode()).isEqualTo("LOW_RISK_PAYMENT");
+                    assertThat(response.ruleHits().getFirst().scoreDelta()).isEqualTo(-5);
+                    assertThat(response.ruleHits().getFirst().message()).isEqualTo("Low risk payment");
                     assertThat(response.ruleVersion()).isEqualTo("risk-rules-v1");
                 })
                 .verifyComplete();

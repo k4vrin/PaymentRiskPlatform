@@ -7,6 +7,7 @@ public record RiskScoringResponse(
         RiskScoringOutcome outcome,
         int score,
         List<String> reasonCodes,
+        List<RiskRuleHitSummary> ruleHits,
         String ruleVersion
 ) {
 
@@ -16,6 +17,7 @@ public record RiskScoringResponse(
                 .stream()
                 .map(reasonCode -> requiredText(reasonCode, "reasonCode"))
                 .toList();
+        ruleHits = List.copyOf(Objects.requireNonNullElse(ruleHits, List.of()));
         ruleVersion = requiredText(ruleVersion, "ruleVersion");
 
         if (score < 0) {
@@ -32,6 +34,7 @@ public record RiskScoringResponse(
                 RiskScoringOutcome.APPROVED,
                 score,
                 List.copyOf(reasonCodes),
+                List.of(),
                 ruleVersion
         );
     }
@@ -45,6 +48,7 @@ public record RiskScoringResponse(
                 RiskScoringOutcome.DECLINED,
                 score,
                 List.copyOf(reasonCodes),
+                List.of(),
                 ruleVersion
         );
     }
@@ -58,6 +62,7 @@ public record RiskScoringResponse(
                 RiskScoringOutcome.REVIEW_REQUIRED,
                 score,
                 List.copyOf(reasonCodes),
+                List.of(),
                 ruleVersion
         );
     }
@@ -67,6 +72,7 @@ public record RiskScoringResponse(
                 RiskScoringOutcome.TIMEOUT,
                 0,
                 List.of("RISK_SERVICE_TIMEOUT"),
+                List.of(),
                 "unavailable"
         );
     }
@@ -76,6 +82,7 @@ public record RiskScoringResponse(
                 RiskScoringOutcome.UNAVAILABLE,
                 0,
                 List.of("DOWNSTREAM_UNAVAILABLE"),
+                List.of(),
                 "unavailable"
         );
     }

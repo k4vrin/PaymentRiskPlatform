@@ -154,21 +154,21 @@ Completed foundations include:
 - Database idempotency read/write path for replaying completed stored authorization responses.
 - Authorization workflow wiring for database idempotency records and response snapshots.
 - Sensitive payment data hashing helpers for payment method tokens and device fingerprints.
-- Durable payment, authorization, and contract-only risk decision writes during authorization.
+- Durable payment, authorization, and risk decision writes during authorization.
 - Java gRPC risk client adapter with configurable host, port, timeout, response mapping, and timeout/unavailable
   fallback outcomes.
+- Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
 - Tests for API contracts, correlation IDs, error handling, domain value objects, persistence mappers, and the current
   authorization behavior.
 
-The current authorization endpoint is still a contract-only workflow. It validates the request, creates a payment
-aggregate, applies a fake approved risk decision, persists the payment state, returns an authorized response, and
-supports duplicate request replay through the database idempotency store.
+The current authorization endpoint validates the request, creates a payment aggregate, calls the risk scoring client,
+maps the risk result to an authorization or decline, persists the payment state, returns the authorization response,
+and supports duplicate request replay through the database idempotency store.
 
 Main work not implemented yet:
 
 - Redis response snapshot cache with database fallback.
 - Real Go risk scoring server implementation.
-- Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
 - Outbox event payloads, mappers, and writes during authorization.
 - Reactive transaction boundary across payment persistence, idempotency completion, and outbox insertion.
 - Payment lookup and reversal APIs.

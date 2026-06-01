@@ -6,6 +6,8 @@ import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIde
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
+import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
+import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -17,17 +19,16 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
 
-    private static final String CONTRACT_ONLY_RULE_VERSION = "contract-only-v1";
-
     private final Clock clock;
     private final DatabaseIdempotencyResultOperations idempotencyStore;
     private final PaymentStatePersistencePort paymentStatePersistence;
+    private final RiskScoringClient riskScoringClient;
+    private final RiskDecisionMappingPolicy riskDecisionMappingPolicy;
 
     @Override
     public Mono<AuthorizePaymentResult> authorize(AuthorizePaymentCommand command) {
@@ -64,11 +65,12 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
             IdempotencyKey idempotencyKey,
             String fingerprint
     ) {
-        return Mono.fromSupplier(() -> createAuthorizedPayment(
-                        command,
-                        idempotencyKey,
-                        clock.instant()
-                ))
+        return Mono.fromSupplier(() -> createPayment(command, idempotencyKey))
+                .flatMap(payment ->
+                        riskScoringClient.score(toRiskScoringRequest(command, payment))
+                                .map(riskDecisionMappingPolicy::map)
+                                .map(riskDecision -> applyRiskDecision(payment, riskDecision))
+                )
                 .flatMap(paymentStatePersistence::save)
                 .map(payment -> toResult(payment, command.correlationId()))
                 .flatMap(result ->
@@ -93,11 +95,52 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                 );
     }
 
-    private Payment createAuthorizedPayment(
-            AuthorizePaymentCommand command,
-            IdempotencyKey idempotencyKey,
-            Instant now
+    private Payment applyRiskDecision(
+            Payment payment,
+            PaymentRiskDecision riskDecision
     ) {
+        if (riskDecision.decision() == RiskDecision.APPROVED) {
+            payment.markAuthorized(
+                    riskDecision,
+                    AuthorizationCode.generate(),
+                    clock.instant()
+            );
+            return payment;
+        }
+
+        if (riskDecision.decision() == RiskDecision.DECLINED) {
+            payment.markDeclined(
+                    riskDecision,
+                    clock.instant()
+            );
+            return payment;
+        }
+
+        throw new IllegalStateException(
+                "Unsupported mapped risk decision: " + riskDecision.decision()
+        );
+    }
+
+    private static RiskScoringRequest toRiskScoringRequest(
+            AuthorizePaymentCommand command,
+            Payment payment
+    ) {
+        return new RiskScoringRequest(
+                payment.getId().value(),
+                command.amountMinor(),
+                command.currency(),
+                command.merchantId(),
+                command.customerId(),
+                command.deviceFingerprint(),
+                command.correlationId()
+        );
+    }
+
+    private Payment createPayment(
+            AuthorizePaymentCommand command,
+            IdempotencyKey idempotencyKey
+    ) {
+        Instant now = clock.instant();
         Payment payment = Payment.newAuthorizationAttempt(
                 PaymentId.generate(),
                 MerchantId.of(command.merchantId()),
@@ -105,41 +148,43 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                 Money.of(command.amountMinor(), command.currency()),
                 PaymentMethodToken.of(command.paymentMethodToken()),
                 DeviceFingerprint.of(command.deviceFingerprint()),
-                ExternalReference.optional(command.externalReference()).orElse(null),
+                ExternalReference.ofNullable(command.externalReference()),
                 idempotencyKey,
                 now
         );
 
         payment.markRiskPending(now);
-
-        PaymentRiskDecision riskDecision = new PaymentRiskDecision(
-                RiskDecision.APPROVED,
-                0,
-                List.of("CONTRACT_ONLY_APPROVAL"),
-                CONTRACT_ONLY_RULE_VERSION,
-                now
-        );
-
-        AuthorizationCode authorizationCode = AuthorizationCode.generate();
-        payment.markAuthorized(riskDecision, authorizationCode, now);
-
-        // TODO Phase 2 risk integration: replace this contract-only approval with the Go gRPC risk service result.
-
         return payment;
     }
 
-    private static AuthorizePaymentResult toResult(Payment payment, String correlationId) {
-        PaymentRiskDecision riskDecision = payment.getRiskDecision();
-        PaymentAuthorization authorization = payment.getAuthorization();
+    private static AuthorizePaymentResult toResult(
+            Payment payment,
+            String correlationId
+    ) {
+        var riskDecision = payment.getRiskDecision();
 
-        if (!(authorization instanceof PaymentAuthorization.Authorized authorized)) {
-            throw new IllegalStateException("Payment authorization is not authorized");
+        if (riskDecision == null) {
+            throw new IllegalStateException("Payment is missing risk decision");
         }
+
+        var authorizationCode = switch (payment.getAuthorization()) {
+            case PaymentAuthorization.Authorized auth ->
+                    auth.authorizationCode().value();
+            case PaymentAuthorization.Requested ignored ->
+                    null;
+            case PaymentAuthorization.RiskPending ignored ->
+                    null;
+            case PaymentAuthorization.Declined ignored ->
+                    null;
+            case PaymentAuthorization.Failed ignored ->
+                    null;
+        };
+
 
         return new AuthorizePaymentResult(
                 payment.getId().value(),
                 payment.getStatus().name(),
-                authorized.authorizationCode().value(),
+                authorizationCode,
                 riskDecision.decision().name(),
                 riskDecision.reasonCodes(),
                 correlationId,

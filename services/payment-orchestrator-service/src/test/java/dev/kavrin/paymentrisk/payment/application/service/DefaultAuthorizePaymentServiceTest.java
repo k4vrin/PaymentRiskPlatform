@@ -7,6 +7,11 @@ import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIde
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
 import dev.kavrin.paymentrisk.payment.domain.model.Payment;
+import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
+import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
+import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
+import dev.kavrin.paymentrisk.shared.api.error.DownstreamTimeoutException;
+import dev.kavrin.paymentrisk.shared.api.error.DownstreamUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -23,24 +28,36 @@ class DefaultAuthorizePaymentServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-05-25T10:15:30Z");
 
+    private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     private final FakeDatabaseIdempotencyResultOperations idempotencyStore =
             new FakeDatabaseIdempotencyResultOperations();
     private final FakePaymentStatePersistencePort paymentStatePersistence =
             new FakePaymentStatePersistencePort();
+    private final FakeRiskScoringClient riskScoringClient =
+            new FakeRiskScoringClient();
     private final DefaultAuthorizePaymentService service = new DefaultAuthorizePaymentService(
-            Clock.fixed(NOW, ZoneOffset.UTC),
+            clock,
             idempotencyStore,
-            paymentStatePersistence
+            paymentStatePersistence,
+            riskScoringClient,
+            new RiskDecisionMappingPolicy(clock)
     );
 
     @BeforeEach
     void resetFakes() {
         idempotencyStore.reset();
         paymentStatePersistence.reset();
+        riskScoringClient.reset();
     }
 
     @Test
-    void authorizeCreatesContractOnlyAuthorizedResultAndStoresCompletedIdempotencyResult() {
+    void authorizeApprovesPaymentFromRiskResultAndStoresCompletedIdempotencyResult() {
+        riskScoringClient.response = RiskScoringResponse.approved(
+                12,
+                List.of("LOW_RISK_PAYMENT"),
+                "risk-rules-v1"
+        );
+
         AuthorizePaymentResult result = service.authorize(validCommand()).block();
 
         assertThat(result).isNotNull();
@@ -49,10 +66,10 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(result.authorizationCode()).startsWith("AUTH-");
         assertThat(result.authorizationCode()).hasSize(17);
         assertThat(result.riskDecision()).isEqualTo("APPROVED");
-        assertThat(result.reasonCodes()).containsExactly("CONTRACT_ONLY_APPROVAL");
+        assertThat(result.reasonCodes()).containsExactly("LOW_RISK_PAYMENT");
         assertThat(result.correlationId()).isEqualTo("corr-authorization-service");
-        assertThat(result.riskScore()).isZero();
-        assertThat(result.ruleVersion()).isEqualTo("contract-only-v1");
+        assertThat(result.riskScore()).isEqualTo(12);
+        assertThat(result.ruleVersion()).isEqualTo("risk-rules-v1");
         assertThat(result.createdAt()).isEqualTo(NOW);
 
         assertThat(idempotencyStore.findCount).isEqualTo(1);
@@ -66,12 +83,47 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.lastCompletedResponse).isEqualTo(result);
         assertThat(idempotencyStore.lastResponseStatus).isEqualTo(200);
 
+        assertThat(riskScoringClient.scoreCount).isEqualTo(1);
+        assertThat(riskScoringClient.lastRequest).isNotNull();
+        assertThat(riskScoringClient.lastRequest.paymentId()).isEqualTo(result.paymentId());
+        assertThat(riskScoringClient.lastRequest.amountMinor()).isEqualTo(validCommand().amountMinor());
+        assertThat(riskScoringClient.lastRequest.currency()).isEqualTo(validCommand().currency());
+        assertThat(riskScoringClient.lastRequest.merchantId()).isEqualTo(validCommand().merchantId());
+        assertThat(riskScoringClient.lastRequest.customerId()).isEqualTo(validCommand().customerId());
+        assertThat(riskScoringClient.lastRequest.deviceFingerprint()).isEqualTo(validCommand().deviceFingerprint());
+        assertThat(riskScoringClient.lastRequest.correlationId()).isEqualTo(validCommand().correlationId());
+
         assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
         assertThat(paymentStatePersistence.lastPayment).isNotNull();
         assertThat(paymentStatePersistence.lastPayment.getId().value()).isEqualTo(result.paymentId());
         assertThat(paymentStatePersistence.lastPayment.getStatus().name()).isEqualTo(result.status());
         assertThat(paymentStatePersistence.lastPayment.getRiskDecision().decision().name())
                 .isEqualTo(result.riskDecision());
+    }
+
+    @Test
+    void authorizeDeclinesPaymentFromRiskResultAndCompletesIdempotencyResult() {
+        riskScoringClient.response = RiskScoringResponse.declined(
+                95,
+                List.of("HIGH_AMOUNT"),
+                "risk-rules-v1"
+        );
+
+        AuthorizePaymentResult result = service.authorize(validCommand()).block();
+
+        assertThat(result).isNotNull();
+        assertThat(result.status()).isEqualTo("DECLINED");
+        assertThat(result.authorizationCode()).isNull();
+        assertThat(result.riskDecision()).isEqualTo("DECLINED");
+        assertThat(result.reasonCodes()).containsExactly("HIGH_AMOUNT");
+        assertThat(result.riskScore()).isEqualTo(95);
+        assertThat(result.ruleVersion()).isEqualTo("risk-rules-v1");
+
+        assertThat(riskScoringClient.scoreCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.lastPayment.getStatus().name()).isEqualTo("DECLINED");
+        assertThat(idempotencyStore.markCompletedCount).isEqualTo(1);
+        assertThat(idempotencyStore.markFailedAndExpireCount).isZero();
     }
 
     @Test
@@ -93,6 +145,8 @@ class DefaultAuthorizePaymentServiceTest {
                 .hasMessage("Idempotency key may contain letters, numbers, dot, underscore, colon, and hyphen");
         assertThat(idempotencyStore.findCount).isZero();
         assertThat(idempotencyStore.insertStartedCount).isZero();
+        assertThat(riskScoringClient.scoreCount).isZero();
+        assertThat(paymentStatePersistence.saveCount).isZero();
     }
 
     @Test
@@ -106,6 +160,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencyStore.findCount).isEqualTo(1);
         assertThat(idempotencyStore.insertStartedCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
+        assertThat(riskScoringClient.scoreCount).isZero();
         assertThat(paymentStatePersistence.saveCount).isZero();
     }
 
@@ -118,6 +173,8 @@ class DefaultAuthorizePaymentServiceTest {
                 .hasMessage("Idempotency key was already used for a different request");
         assertThat(idempotencyStore.findCount).isEqualTo(1);
         assertThat(idempotencyStore.insertStartedCount).isZero();
+        assertThat(riskScoringClient.scoreCount).isZero();
+        assertThat(paymentStatePersistence.saveCount).isZero();
     }
 
     @Test
@@ -129,6 +186,7 @@ class DefaultAuthorizePaymentServiceTest {
                 .hasMessage("completion failed");
 
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(riskScoringClient.scoreCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
         assertThat(idempotencyStore.markCompletedCount).isEqualTo(1);
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
@@ -143,7 +201,38 @@ class DefaultAuthorizePaymentServiceTest {
                 .hasMessage("payment persistence failed");
 
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(riskScoringClient.scoreCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveCount).isEqualTo(1);
+        assertThat(idempotencyStore.markCompletedCount).isZero();
+        assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+    }
+
+    @Test
+    void authorizeReturnsStableTimeoutErrorWhenRiskServiceTimesOut() {
+        riskScoringClient.response = RiskScoringResponse.timeout();
+
+        assertThatThrownBy(() -> service.authorize(validCommand()).block())
+                .isInstanceOf(DownstreamTimeoutException.class)
+                .hasMessage("Risk service timed out");
+
+        assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(riskScoringClient.scoreCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.saveCount).isZero();
+        assertThat(idempotencyStore.markCompletedCount).isZero();
+        assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+    }
+
+    @Test
+    void authorizeReturnsStableUnavailableErrorWhenRiskServiceIsUnavailable() {
+        riskScoringClient.response = RiskScoringResponse.unavailable();
+
+        assertThatThrownBy(() -> service.authorize(validCommand()).block())
+                .isInstanceOf(DownstreamUnavailableException.class)
+                .hasMessage("Risk service is unavailable");
+
+        assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(riskScoringClient.scoreCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.saveCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
     }
@@ -323,6 +412,34 @@ class DefaultAuthorizePaymentServiceTest {
             }
 
             return Mono.just(payment);
+        }
+    }
+
+    private static final class FakeRiskScoringClient implements RiskScoringClient {
+
+        private RiskScoringResponse response = RiskScoringResponse.approved(
+                12,
+                List.of("LOW_RISK_PAYMENT"),
+                "risk-rules-v1"
+        );
+        private int scoreCount;
+        private RiskScoringRequest lastRequest;
+
+        void reset() {
+            response = RiskScoringResponse.approved(
+                    12,
+                    List.of("LOW_RISK_PAYMENT"),
+                    "risk-rules-v1"
+            );
+            scoreCount = 0;
+            lastRequest = null;
+        }
+
+        @Override
+        public Mono<RiskScoringResponse> score(RiskScoringRequest request) {
+            scoreCount++;
+            lastRequest = request;
+            return Mono.just(response);
         }
     }
 }

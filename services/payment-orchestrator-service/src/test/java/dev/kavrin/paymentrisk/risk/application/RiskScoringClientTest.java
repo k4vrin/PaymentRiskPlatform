@@ -3,6 +3,7 @@ package dev.kavrin.paymentrisk.risk.application;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringOutcome;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
+import dev.kavrin.paymentrisk.risk.application.dto.RiskRuleHitSummary;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -132,16 +133,40 @@ class RiskScoringClientTest {
     void responseDefensivelyCopiesReasonCodes() {
         List<String> reasonCodes = new java.util.ArrayList<>();
         reasonCodes.add("LOW_RISK");
+        List<RiskRuleHitSummary> ruleHits = new java.util.ArrayList<>();
+        ruleHits.add(new RiskRuleHitSummary(
+                "LOW_RISK_RULE",
+                "LOW_RISK",
+                -5,
+                "Low risk payment"
+        ));
 
-        RiskScoringResponse response = RiskScoringResponse.approved(
+        RiskScoringResponse response = new RiskScoringResponse(
+                RiskScoringOutcome.APPROVED,
                 12,
                 reasonCodes,
+                ruleHits,
                 "test-rules-v1"
         );
         reasonCodes.add("MUTATED");
+        ruleHits.add(new RiskRuleHitSummary(
+                "MUTATED_RULE",
+                "MUTATED",
+                1,
+                "Mutated"
+        ));
 
         assertThat(response.reasonCodes()).containsExactly("LOW_RISK");
         assertThatThrownBy(() -> response.reasonCodes().add("OTHER"))
+                .isInstanceOf(UnsupportedOperationException.class);
+        assertThat(response.ruleHits()).extracting(RiskRuleHitSummary::ruleId)
+                .containsExactly("LOW_RISK_RULE");
+        assertThatThrownBy(() -> response.ruleHits().add(new RiskRuleHitSummary(
+                "OTHER_RULE",
+                "OTHER",
+                1,
+                "Other"
+        )))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
