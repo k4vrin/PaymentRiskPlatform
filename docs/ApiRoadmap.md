@@ -154,9 +154,19 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   └── risk/package-info.java
     │       │   │   │   └── package-info.java
     │       │   │   ├── risk
-    │       │   │   │   ├── application/package-info.java
+    │       │   │   │   ├── application
+    │       │   │   │   │   ├── RiskScoringClient.java
+    │       │   │   │   │   ├── dto
+    │       │   │   │   │   │   ├── RiskScoringOutcome.java
+    │       │   │   │   │   │   ├── RiskScoringRequest.java
+    │       │   │   │   │   │   └── RiskScoringResponse.java
+    │       │   │   │   │   └── package-info.java
     │       │   │   │   ├── infrastructure
-    │       │   │   │   │   ├── grpc/package-info.java
+    │       │   │   │   │   ├── grpc
+    │       │   │   │   │   │   ├── GrpcRiskScoringClient.java
+    │       │   │   │   │   │   ├── RiskGrpcConfiguration.java
+    │       │   │   │   │   │   ├── RiskGrpcProperties.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   └── package-info.java
     │       │   │   ├── security/package-info.java
@@ -208,6 +218,9 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │       ├── DurablePaymentStatePersistenceAdapterTest.java
     │           │       ├── PaymentPersistenceMapperTest.java
     │           │       └── SensitivePaymentDataHasherTest.java
+    │           ├── risk
+    │           │   ├── application/RiskScoringClientTest.java
+    │           │   └── infrastructure/grpc/GrpcRiskScoringClientTest.java
     │           └── shared
     │               ├── api
     │               │   ├── contract
@@ -765,60 +778,60 @@ transaction boundary still need to be wired together.
 - [x] Verify one request saves one payment aggregate through the persistence port.
 - [x] Verify the durable adapter writes payment, authorization, and risk decision entities for the current contract-only authorized outcome.
 
-11. [ ] Add risk client port:
+11. [x] Add risk client port:
 
-- Create risk scoring interface in `risk/application`.
-- Define internal risk request record.
-- Define internal risk response record.
-- Represent approved, declined, review-required, timeout, and unavailable outcomes.
-- Add unit tests with a fake risk client.
+- [x] Create risk scoring interface in `risk/application`.
+- [x] Define internal risk request record.
+- [x] Define internal risk response record.
+- [x] Represent approved, declined, review-required, timeout, and unavailable outcomes.
+- [x] Add unit tests with a fake risk client.
 
-12. [ ] Add Java gRPC risk adapter:
+12. [x] Add Java gRPC risk adapter:
 
-- Create gRPC adapter in `risk/infrastructure/grpc`.
-- Configure risk service host.
-- Configure risk service port.
-- Configure risk call timeout.
-- Map `AuthorizePaymentCommand` or internal request to `ScorePaymentRequest`.
-- Include correlation ID in `ScorePaymentRequest`.
-- Map `ScorePaymentResponse` to internal risk response.
-- Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
-- Map unavailable status to `DOWNSTREAM_UNAVAILABLE`.
+- [x] Create gRPC adapter in `risk/infrastructure/grpc`.
+- [x] Configure risk service host.
+- [x] Configure risk service port.
+- [x] Configure risk call timeout.
+- [x] Map `AuthorizePaymentCommand` or internal request to `ScorePaymentRequest`.
+- [x] Include correlation ID in `ScorePaymentRequest`.
+- [x] Map `ScorePaymentResponse` to internal risk response.
+- [x] Map gRPC deadline exceeded to `RISK_SERVICE_TIMEOUT`.
+- [x] Map unavailable status to `DOWNSTREAM_UNAVAILABLE`.
 
 13. [ ] Add risk decision mapping policy:
 
-- Map approved risk result to `PaymentRiskDecision`.
-- Map declined risk result to `PaymentRiskDecision`.
-- Define review-required Phase 2 behavior.
-- Define timeout Phase 2 behavior.
-- Preserve risk score, reason codes, rule hit summary, and rule version.
-- Add unit tests for each outcome.
+- [ ] Map approved risk result to `PaymentRiskDecision`.
+- [ ] Map declined risk result to `PaymentRiskDecision`.
+- [ ] Define review-required Phase 2 behavior.
+- [ ] Define timeout Phase 2 behavior.
+- [ ] Preserve risk score, reason codes, rule hit summary, and rule version.
+- [ ] Add unit tests for each outcome.
 
 14. [ ] Wire risk client into authorization:
 
-- Replace contract-only approval with risk client result.
-- Mark payment `AUTHORIZED` for approved result.
-- Mark payment `DECLINED` for declined result.
-- Return stable downstream error or selected fallback for timeout.
-- Return stable downstream error or selected fallback for unavailable.
+- [ ] Replace contract-only approval with risk client result.
+- [ ] Mark payment `AUTHORIZED` for approved result.
+- [ ] Mark payment `DECLINED` for declined result.
+- [ ] Return stable downstream error or selected fallback for timeout.
+- [ ] Return stable downstream error or selected fallback for unavailable.
 
 15. [ ] Add outbox payload records:
 
-- Add `PaymentAuthorizationRequested` payload.
-- Add `PaymentAuthorized` payload.
-- Add `PaymentDeclined` payload.
-- Include schema version constants.
-- Add payload serialization tests.
+- [ ] Add `PaymentAuthorizationRequested` payload.
+- [ ] Add `PaymentAuthorized` payload.
+- [ ] Add `PaymentDeclined` payload.
+- [ ] Include schema version constants.
+- [ ] Add payload serialization tests.
 
 16. [ ] Add outbox mapper:
 
-- Map payment aggregate to event envelope fields.
-- Include `eventId`.
-- Include `correlationId`.
-- Include aggregate type.
-- Include aggregate ID.
-- Include occurred-at timestamp.
-- Add mapper unit tests.
+- [ ] Map payment aggregate to event envelope fields.
+- [ ] Include `eventId`.
+- [ ] Include `correlationId`.
+- [ ] Include aggregate type.
+- [ ] Include aggregate ID.
+- [ ] Include occurred-at timestamp.
+- [ ] Add mapper unit tests.
 
 17. [ ] Persist outbox events:
 
