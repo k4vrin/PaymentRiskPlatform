@@ -173,7 +173,7 @@ Client
 
 ## Current State In The Codebase
 
-The project currently has these Phase 2 foundations:
+Phase 2 is implemented. The project has:
 
 - payment API DTOs;
 - payment controller;
@@ -184,27 +184,14 @@ The project currently has these Phase 2 foundations:
 - database migration for payments, authorizations, risk decisions, idempotency records, and outbox events;
 - R2DBC row models and repositories;
 - persistence mapper for payment rows;
-- contract-only authorization service;
-- in-memory idempotency result store behind an `IdempotencyResultStore` interface.
-
-The current authorization service is still contract-only. It creates a payment aggregate in memory, applies a fake
-approved risk decision, returns a response, and uses in-memory idempotency so duplicate calls in the same process return
-the same response.
-
-That is useful as a stepping stone, but it is not the final workflow.
-
-## What Is Still Missing
-
-The main missing pieces are:
-
-- database-backed idempotency;
-- Redis response snapshot cache;
-- durable payment state persistence inside the authorization workflow;
-- real Java gRPC risk client;
+- database-backed idempotency with durable response snapshots;
+- Redis completed-response snapshot cache with database fallback and repopulation on cache miss;
+- durable payment, authorization, and risk decision persistence;
+- Java gRPC risk client adapter behind the internal risk port;
 - risk decision mapping policy;
-- outbox event creation;
-- transaction boundary;
-- full API/integration tests for the durable workflow.
+- outbox event creation for authorization outcomes;
+- reactive transaction boundary around payment state, outbox, and idempotency completion writes;
+- API, unit, repository, and integration tests for the durable workflow.
 
 ## Layer-By-Layer Explanation
 
@@ -251,13 +238,13 @@ The application layer coordinates a use case. For authorization, it should answe
 What are the steps to authorize a payment?
 ```
 
-It should depend on ports/interfaces such as:
+It depends on ports/interfaces such as:
 
 - `AuthorizePaymentService`
-- `IdempotencyResultStore`
-- future payment persistence port;
-- future risk scoring port;
-- future outbox writer port.
+- `DatabaseIdempotencyResultOperations`
+- `PaymentStatePersistencePort`
+- `RiskScoringClient`
+- `PaymentOutboxEventWriter`
 
 It should not depend directly on concrete Redis clients, R2DBC repositories, gRPC stubs, or Kafka producers.
 
@@ -308,7 +295,8 @@ Idempotency has three stages in this project.
 
 ### Stage 1: In-Memory Store
 
-This is the current implementation. It stores completed results in a `ConcurrentHashMap`.
+This implementation remains available as a simple application-level store. It stores completed results in a
+`ConcurrentHashMap`.
 
 It proves the behavior:
 
@@ -316,13 +304,11 @@ It proves the behavior:
 - same key + different fingerprint throws conflict;
 - expired entry can be replaced.
 
-It does not survive process restart. It is not enough for production-like durability.
+It does not survive process restart, so the authorization workflow uses the database-backed store for durable behavior.
 
 ### Stage 2: Database Store
 
-The database store is the next durable step.
-
-It should use `idempotency_records` with fields like:
+The database store is the durable source of truth. It uses `idempotency_records` with fields like:
 
 - `scope`
 - `idempotency_key`
@@ -339,8 +325,6 @@ The database is the source of truth. If the service restarts, it can still know 
 
 ### Stage 3: Redis Cache
 
-Redis should be added after the database store.
-
 Redis is an optimization:
 
 - faster duplicate response lookup;
@@ -348,6 +332,7 @@ Redis is an optimization:
 - lower database read pressure for retries.
 
 Redis is not the source of truth. If Redis misses, the service must check the database.
+When a completed database snapshot is found after a Redis miss, the service repopulates Redis with the remaining TTL.
 
 ## Payment Persistence Design
 
@@ -360,11 +345,11 @@ Payment state must be persisted because later features depend on it:
 - operations investigation;
 - settlement projections.
 
-The authorization workflow must save:
+The authorization workflow saves:
 
-- `PaymentRow`: the main payment state;
-- `PaymentAuthorizationRow`: the current authorization state;
-- `PaymentRiskDecisionRow`: the risk decision when available.
+- `PaymentEntity`: the main payment state;
+- `PaymentAuthorizationEntity`: the current authorization state;
+- `PaymentRiskDecisionEntity`: the risk decision when available.
 
 The service should use a payment persistence port before using concrete repositories. A junior developer should think
 about it this way:
@@ -479,24 +464,27 @@ This is what lets an operator trace one payment through the whole system.
 
 Status: complete.
 
-We introduced `IdempotencyResultStore`, so the authorization service depends on an interface. The current implementation
-is `InMemoryIdempotencyResultStore`.
+We introduced idempotency ports so the authorization service can stay focused on workflow orchestration.
+`InMemoryIdempotencyResultStore` remains available for simple tests, while the authorization workflow uses the
+database-backed idempotency operations for durability.
 
 Why this matters:
 
 - a fake implementation can be used in tests;
-- a database implementation can be added without rewriting the authorization workflow;
-- Redis can be added later as another adapter or decorator.
+- the database implementation can be used without rewriting the authorization workflow;
+- Redis can be used as a cache without becoming the durable source of truth.
 
 ### Step 2: Idempotency Record Mapper
 
 Status: complete.
 
-Build a mapper that converts between application idempotency concepts and `IdempotencyRecordRow`.
+Build a mapper that converts between application idempotency concepts and `IdempotencyRecordEntity`.
 
 This should be small and heavily tested because mapping bugs cause dangerous retry behavior.
 
 ### Step 3: JSON Response Snapshot Serialization
+
+Status: complete.
 
 The idempotency record must store the original response.
 
@@ -504,6 +492,8 @@ For now, the response snapshot type is `AuthorizePaymentResult`. We need JSON se
 duplicate request can return the same response even after a restart.
 
 ### Step 4: Database Idempotency Read Path
+
+Status: complete.
 
 Before doing new payment work, check the database:
 
@@ -513,6 +503,8 @@ Before doing new payment work, check the database:
 - different fingerprint: conflict.
 
 ### Step 5: Database Idempotency Write Path
+
+Status: complete.
 
 When accepting a new key:
 
@@ -524,10 +516,14 @@ This is where unique constraints protect against races.
 
 ### Step 6: Wire Database Idempotency Into Authorization
 
+Status: complete.
+
 Replace production use of the in-memory store with database-backed idempotency. Keep the in-memory store for unit tests
 if it remains useful.
 
 ### Step 7: Sensitive Data Hashing
+
+Status: complete.
 
 Before persistence, do not store raw payment tokens or raw device fingerprints.
 
@@ -536,71 +532,103 @@ secret value.
 
 ### Step 8: Payment State Persistence Port
 
+Status: complete.
+
 Add an application interface for saving payment state. The authorization service should depend on this port.
 
 ### Step 9: Durable Payment Write Adapter
 
-Implement the persistence port with R2DBC repositories and `PaymentPersistenceMapper`.
+Status: complete.
+
+Implement the persistence port with R2DBC insert operations and `PaymentPersistenceMapper`.
 
 It should save:
 
-- `PaymentRow`;
-- `PaymentAuthorizationRow`;
-- `PaymentRiskDecisionRow`.
+- `PaymentEntity`;
+- `PaymentAuthorizationEntity`;
+- `PaymentRiskDecisionEntity`.
 
 ### Step 10: Wire Payment Persistence Into Authorization
+
+Status: complete.
 
 After the payment reaches `AUTHORIZED` or `DECLINED`, persist it and return a response based on the persisted result.
 
 ### Step 11: Risk Client Port
 
+Status: complete.
+
 Create an application interface for risk scoring. The payment service should call the interface, not gRPC directly.
 
 ### Step 12: Java gRPC Risk Adapter
+
+Status: complete.
 
 Implement the risk client port using generated protobuf classes and gRPC timeout handling.
 
 ### Step 13: Risk Decision Mapping Policy
 
+Status: complete.
+
 Convert risk responses into domain decisions. Make review-required and timeout behavior explicit.
 
 ### Step 14: Wire Risk Into Authorization
+
+Status: complete.
 
 Replace the contract-only approval with the real risk client.
 
 ### Step 15: Outbox Payload Records
 
+Status: complete.
+
 Define event payload records for authorization outcomes.
 
 ### Step 16: Outbox Mapper
+
+Status: complete.
 
 Map domain events into the shared event envelope.
 
 ### Step 17: Persist Outbox Events
 
+Status: complete.
+
 Save outbox rows during the durable authorization workflow.
 
 ### Step 18: Transaction Boundary
+
+Status: complete.
 
 Wrap the durable writes so payment state, idempotency completion, and outbox rows commit consistently.
 
 ### Step 19: Redis Idempotency Cache
 
+Status: complete.
+
 Add Redis for fast duplicate response lookup.
 
 ### Step 20: Redis Miss Fallback
+
+Status: complete.
 
 On Redis miss, read from the database and repopulate Redis if a completed snapshot exists.
 
 ### Step 21: API Documentation
 
+Status: complete.
+
 Document request/response examples, idempotency behavior, risk timeout behavior, and emitted events.
 
 ### Step 22: Repository And Integration Tests
 
+Status: complete.
+
 Use real database-backed tests where possible. Verify migrations, constraints, inserts, reads, and transaction behavior.
 
 ### Step 23: Authorization API Tests
+
+Status: complete.
 
 Prove the public REST behavior:
 
@@ -650,7 +678,7 @@ Phase 2 is complete when:
 - `POST /api/v1/payments/authorize` creates durable payment state;
 - exact duplicate requests return the original response;
 - conflicting idempotency reuse returns `IDEMPOTENCY_KEY_CONFLICT`;
-- the Go risk service decides authorization outcomes through gRPC;
+- the Java service can consume authorization outcomes through the gRPC risk adapter;
 - approved payments reach `AUTHORIZED`;
 - declined payments reach `DECLINED`;
 - idempotency response snapshots are stored durably;

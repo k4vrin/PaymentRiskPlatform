@@ -35,7 +35,7 @@ public final class DatabaseIdempotencyResultStore implements DatabaseIdempotency
     }
 
     @Override
-    public <T> Mono<T> findCompletedResult(
+    public <T> Mono<CompletedIdempotencyResult<T>> findCompletedResultWithMetadata(
             IdempotencyScope scope,
             IdempotencyKey key,
             String requestFingerprint,
@@ -49,7 +49,7 @@ public final class DatabaseIdempotencyResultStore implements DatabaseIdempotency
         Objects.requireNonNull(responseType, "responseType must not be null");
 
         return repository.findByScopeAndIdempotencyKey(scope.value(), key.value())
-                .flatMap(entity -> resolveStoredResult(entity, fingerprint, now, responseType));
+                .flatMap(entity -> resolveStoredResultWithMetadata(entity, fingerprint, now, responseType));
     }
 
     private <T> Mono<T> resolveStoredResult(
@@ -73,6 +73,19 @@ public final class DatabaseIdempotencyResultStore implements DatabaseIdempotency
         return Mono.fromSupplier(() -> responseType.cast(
                 snapshotSerializer.deserialize(entity.getResponseBodyJson(), responseType)
         ));
+    }
+
+    private <T> Mono<CompletedIdempotencyResult<T>> resolveStoredResultWithMetadata(
+            IdempotencyRecordEntity entity,
+            String requestFingerprint,
+            Instant now,
+            Class<T> responseType
+    ) {
+        return resolveStoredResult(entity, requestFingerprint, now, responseType)
+                .map(response -> new CompletedIdempotencyResult<>(
+                        response,
+                        entity.getExpiresAt()
+                ));
     }
 
     @Override

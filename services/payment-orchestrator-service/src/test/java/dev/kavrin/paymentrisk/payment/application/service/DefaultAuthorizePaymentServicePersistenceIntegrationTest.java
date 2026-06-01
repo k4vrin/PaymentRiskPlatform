@@ -87,6 +87,34 @@ class DefaultAuthorizePaymentServicePersistenceIntegrationTest {
         assertThat(riskDecisionRepository.count().block()).isOne();
         assertThat(outboxRepository.count().block()).isEqualTo(2);
 
+        var payment = paymentRepository.findById(result.paymentId()).block();
+        assertThat(payment).isNotNull();
+        assertThat(payment.getMerchantId()).isEqualTo(validCommand().merchantId());
+        assertThat(payment.getCustomerId()).isEqualTo(validCommand().customerId());
+        assertThat(payment.getAmountMinor()).isEqualTo(validCommand().amountMinor());
+        assertThat(payment.getCurrency()).isEqualTo(validCommand().currency());
+        assertThat(payment.getStatus()).isEqualTo("AUTHORIZED");
+        assertThat(payment.getPaymentMethodTokenHash()).isNotEqualTo(validCommand().paymentMethodToken());
+        assertThat(payment.getDeviceFingerprintHash()).isNotEqualTo(validCommand().deviceFingerprint());
+
+        var authorization = authorizationRepository.findByPaymentId(result.paymentId()).block();
+        assertThat(authorization).isNotNull();
+        assertThat(authorization.getStatus()).isEqualTo("AUTHORIZED");
+        assertThat(authorization.getAuthorizationCode()).isEqualTo(result.authorizationCode());
+        assertThat(authorization.getAuthorizedAt()).isEqualTo(NOW);
+
+        var riskDecision = riskDecisionRepository.findByPaymentId(result.paymentId()).block();
+        assertThat(riskDecision).isNotNull();
+        assertThat(riskDecision.getDecision()).isEqualTo("APPROVED");
+        assertThat(riskDecision.getScore()).isEqualTo(7);
+        assertThat(riskDecision.getReasonCodesJson()).isEqualTo("[\"LOW_RISK\"]");
+
+        var outboxEvents = outboxRepository.findAll().collectList().block();
+        assertThat(outboxEvents)
+                .isNotNull()
+                .extracting(event -> event.getEventType())
+                .containsExactlyInAnyOrder("PaymentAuthorizationRequested", "PaymentAuthorized");
+
         var idempotencyRecords = idempotencyRepository.findAll()
                 .collectList()
                 .block();
@@ -98,6 +126,19 @@ class DefaultAuthorizePaymentServicePersistenceIntegrationTest {
         assertThat(idempotencyRecords.getFirst().getResponseBodyJson())
                 .contains("\"paymentId\":\"" + result.paymentId() + "\"")
                 .contains("\"status\":\"AUTHORIZED\"");
+    }
+
+    @Test
+    void duplicateAuthorizationRequestReturnsStoredResponseWithoutCreatingSecondPayment() {
+        var firstResult = service.authorize(validCommand()).block();
+        var secondResult = service.authorize(validCommand()).block();
+
+        assertThat(secondResult).isEqualTo(firstResult);
+        assertThat(paymentRepository.count().block()).isOne();
+        assertThat(authorizationRepository.count().block()).isOne();
+        assertThat(riskDecisionRepository.count().block()).isOne();
+        assertThat(outboxRepository.count().block()).isEqualTo(2);
+        assertThat(idempotencyRepository.count().block()).isOne();
     }
 
     private static AuthorizePaymentCommand validCommand() {

@@ -136,8 +136,7 @@ make risk-run
 
 ## Current Implementation Status
 
-The project has completed the foundation and API contract baseline work and is currently in Phase 2: Payment
-Authorization API.
+The project has completed the foundation, API contract baseline, and Phase 2 Payment Authorization API work.
 
 Completed foundations include:
 
@@ -161,8 +160,9 @@ Completed foundations include:
 - Java gRPC risk client adapter with configurable host, port, timeout, response mapping, and timeout/unavailable
   fallback outcomes.
 - Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
-- Tests for API contracts, correlation IDs, error handling, domain value objects, persistence mappers, and the current
-  authorization behavior.
+- Redis repopulation from durable database snapshots after cache misses.
+- Tests for API contracts, correlation IDs, error handling, domain value objects, persistence mappers, Redis cache
+  behavior, transaction rollback, duplicate idempotency replay, and the durable authorization workflow.
 
 The current authorization endpoint validates the request, creates a payment aggregate, calls the risk scoring client,
 maps the risk result to an authorization or decline, persists the payment state and outbox events transactionally,
@@ -172,7 +172,6 @@ store as the durable source of truth.
 Main work not implemented yet:
 
 - Real Go risk scoring server implementation.
-- Redis repopulation from durable database snapshots after cache misses.
 - Payment lookup and reversal APIs.
 - Kafka outbox relay, audit consumer, settlement projection consumer, and RabbitMQ callback worker.
 - Operations APIs, security roles/authentication, observability dashboards, CI, and release-readiness work.

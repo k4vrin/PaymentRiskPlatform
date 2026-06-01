@@ -48,14 +48,12 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
         Instant expiresAt = now.plus(Duration.ofHours(24));
 
         return findCompletedCachedResult(scope, idempotencyKey, fingerprint)
-                .switchIfEmpty(Mono.defer(() -> idempotencyStore
-                        .findCompletedResult(
-                                scope,
-                                idempotencyKey,
-                                fingerprint,
-                                now,
-                                AuthorizePaymentResult.class
-                        )))
+                .switchIfEmpty(Mono.defer(() -> findCompletedDatabaseResultAndRefreshCache(
+                        scope,
+                        idempotencyKey,
+                        fingerprint,
+                        now
+                )))
                 .switchIfEmpty(Mono.defer(() ->
                         idempotencyStore.insertStarted(
                                         scope,
@@ -165,6 +163,30 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                         })
                         .onErrorResume(ignored -> Mono.empty()))
                 .orElseGet(Mono::empty);
+    }
+
+    private Mono<AuthorizePaymentResult> findCompletedDatabaseResultAndRefreshCache(
+            IdempotencyScope scope,
+            IdempotencyKey idempotencyKey,
+            String fingerprint,
+            Instant now
+    ) {
+        return idempotencyStore
+                .findCompletedResultWithMetadata(
+                        scope,
+                        idempotencyKey,
+                        fingerprint,
+                        now,
+                        AuthorizePaymentResult.class
+                )
+                .flatMap(storedResult -> cacheCompletedResult(
+                                scope,
+                                idempotencyKey,
+                                fingerprint,
+                                storedResult.response(),
+                                storedResult.expiresAt()
+                        )
+                        .thenReturn(storedResult.response()));
     }
 
     private Mono<Void> cacheCompletedResult(

@@ -3,6 +3,7 @@ package dev.kavrin.paymentrisk.payment.application.service;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKeyConflictException;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
+import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.CompletedIdempotencyResult;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIdempotencyResultOperations;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.redis.CachedIdempotencySnapshot;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.redis.RedisIdempotencySnapshotCache;
@@ -196,6 +197,7 @@ class DefaultAuthorizePaymentServiceTest {
     void authorizeReturnsStoredDatabaseResultForDuplicateIdempotencyKeyAndSameRequest() {
         AuthorizePaymentResult storedResult = storedResult();
         idempotencyStore.storedResult = storedResult;
+        idempotencyStore.storedResultExpiresAt = NOW.plus(Duration.ofHours(2));
 
         AuthorizePaymentResult result = service.authorize(validCommand()).block();
 
@@ -206,6 +208,13 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(riskScoringClient.scoreCount).isZero();
         assertThat(paymentStatePersistence.saveCount).isZero();
         assertThat(paymentOutboxEventWriter.writeCount).isZero();
+        assertThat(idempotencySnapshotCache.putCount).isEqualTo(1);
+        assertThat(idempotencySnapshotCache.lastPutFingerprint).isEqualTo(idempotencyStore.lastRequestFingerprint);
+        assertThat(snapshotSerializer.deserialize(
+                idempotencySnapshotCache.lastPutResponseBodyJson,
+                AuthorizePaymentResult.class
+        )).isEqualTo(storedResult);
+        assertThat(idempotencySnapshotCache.lastPutTtl).isEqualTo(Duration.ofHours(2));
     }
 
     @Test
@@ -246,6 +255,12 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencySnapshotCache.getCount).isEqualTo(1);
         assertThat(idempotencyStore.findCount).isEqualTo(1);
         assertThat(idempotencyStore.insertStartedCount).isZero();
+        assertThat(idempotencySnapshotCache.putCount).isEqualTo(1);
+        assertThat(idempotencySnapshotCache.lastPutFingerprint).isEqualTo(idempotencyStore.lastRequestFingerprint);
+        assertThat(snapshotSerializer.deserialize(
+                idempotencySnapshotCache.lastPutResponseBodyJson,
+                AuthorizePaymentResult.class
+        )).isEqualTo(storedResult);
     }
 
     @Test
@@ -402,6 +417,7 @@ class DefaultAuthorizePaymentServiceTest {
             implements DatabaseIdempotencyResultOperations {
 
         private AuthorizePaymentResult storedResult;
+        private Instant storedResultExpiresAt;
         private RuntimeException findError;
         private RuntimeException markCompletedError;
         private int findCount;
@@ -418,6 +434,7 @@ class DefaultAuthorizePaymentServiceTest {
 
         void reset() {
             storedResult = null;
+            storedResultExpiresAt = NOW.plus(Duration.ofHours(24));
             findError = null;
             markCompletedError = null;
             findCount = 0;
@@ -434,7 +451,7 @@ class DefaultAuthorizePaymentServiceTest {
         }
 
         @Override
-        public <T> Mono<T> findCompletedResult(
+        public <T> Mono<CompletedIdempotencyResult<T>> findCompletedResultWithMetadata(
                 IdempotencyScope scope,
                 IdempotencyKey key,
                 String requestFingerprint,
@@ -455,7 +472,10 @@ class DefaultAuthorizePaymentServiceTest {
                 return Mono.empty();
             }
 
-            return Mono.just(responseType.cast(storedResult));
+            return Mono.just(new CompletedIdempotencyResult<>(
+                    responseType.cast(storedResult),
+                    storedResultExpiresAt
+            ));
         }
 
         @Override

@@ -8,7 +8,23 @@ import java.time.Instant;
 
 public interface DatabaseIdempotencyResultOperations {
 
-    <T> Mono<T> findCompletedResult(
+    default <T> Mono<T> findCompletedResult(
+            IdempotencyScope scope,
+            IdempotencyKey key,
+            String requestFingerprint,
+            Instant now,
+            Class<T> responseType
+    ) {
+        return findCompletedResultWithMetadata(
+                scope,
+                key,
+                requestFingerprint,
+                now,
+                responseType
+        ).map(CompletedIdempotencyResult::response);
+    }
+
+    <T> Mono<CompletedIdempotencyResult<T>> findCompletedResultWithMetadata(
             IdempotencyScope scope,
             IdempotencyKey key,
             String requestFingerprint,

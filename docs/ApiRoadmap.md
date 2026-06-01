@@ -72,6 +72,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   ├── infrastructure
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── persistence
+    │       │   │   │   │   │   ├── CompletedIdempotencyResult.java
     │       │   │   │   │   │   ├── DatabaseIdempotencyResultStore.java
     │       │   │   │   │   │   ├── DatabaseIdempotencyResultOperations.java
     │       │   │   │   │   │   ├── IdempotencyRecordMapper.java
@@ -539,10 +540,9 @@ that prove the main authorization paths.
 
 ### Chronicle And Next Steps
 
-Phase 2 is intentionally incremental. The project currently has the public API shell, domain model, persistence schema,
-entity models, repositories, and a contract-only authorization service. It does **not** yet have the complete durable
-authorization workflow because payment persistence, Redis replay cache, risk gRPC calls, outbox creation, and the final
-transaction boundary still need to be wired together.
+Phase 2 is complete. The project now has the public API, domain model, persistence schema, entity models,
+repositories, durable authorization workflow, Redis replay cache, risk gRPC adapter, outbox creation, and transaction
+boundary wired together with focused unit, API, repository, and integration tests.
 
 #### Completed Foundations
 
@@ -686,7 +686,7 @@ transaction boundary still need to be wired together.
 
 #### Current Partial Workflow
 
-- [ ] Complete authorization application service:
+- [x] Complete authorization application service:
     - Purpose: orchestrate validation, idempotency, persistence, risk scoring, state transition, outbox creation, and
       response mapping.
     - [x] Create `AuthorizePaymentService`.
@@ -772,7 +772,7 @@ transaction boundary still need to be wired together.
 - [x] Update to `COMPLETED` with response snapshot after successful authorization.
 - [x] Update to `FAILED` or expire when authorization fails before a durable result exists.
 - [x] Preserve unique `(scope, idempotency_key)` behavior.
-- [ ] Add duplicate insert race test where practical.
+- [x] Add duplicate insert uniqueness/race test where practical.
 
 6. [x] Wire database idempotency into authorization:
 
@@ -894,55 +894,55 @@ transaction boundary still need to be wired together.
 - [x] Add adapter tests.
 - [x] Add Redis Testcontainer coverage for store, lookup, and expiry.
 
-20. [ ] Add Redis miss database fallback:
+20. [x] Add Redis miss database fallback:
 
 - [x] On Redis miss, read `idempotency_records`.
-- [ ] Repopulate Redis from durable database snapshot.
+- [x] Repopulate Redis from durable database snapshot.
 - [x] Return database snapshot when fingerprint matches.
 - [x] Return conflict when fingerprint differs.
-- [ ] Add tests for hit, miss, expired, and conflict paths.
+- [x] Add tests for hit, miss, expired, and conflict paths.
 
-21. [ ] Update authorization API documentation:
+21. [x] Update authorization API documentation:
 
-- [ ] Document `POST /api/v1/payments/authorize`.
-- [ ] Document idempotency key requirements.
-- [ ] Document duplicate replay behavior.
-- [ ] Document conflict behavior.
-- [ ] Document risk timeout/unavailable behavior.
-- [ ] Document emitted outbox events.
+- [x] Document `POST /api/v1/payments/authorize`.
+- [x] Document idempotency key requirements.
+- [x] Document duplicate replay behavior.
+- [x] Document conflict behavior.
+- [x] Document risk timeout/unavailable behavior.
+- [x] Document emitted outbox events.
 
-22. [ ] Add repository/integration tests:
+22. [x] Add repository/integration tests:
 
-- [ ] Verify Flyway migration applies.
-- [ ] Verify payment insert/read.
-- [ ] Verify authorization insert/read.
-- [ ] Verify risk decision insert/read.
-- [ ] Verify idempotency uniqueness.
-- [ ] Verify outbox insert with payment transaction.
+- [x] Verify Flyway migration applies.
+- [x] Verify payment insert/read.
+- [x] Verify authorization insert/read.
+- [x] Verify risk decision insert/read.
+- [x] Verify idempotency uniqueness.
+- [x] Verify outbox insert with payment transaction.
 
-23. [ ] Add authorization API tests:
+23. [x] Add authorization API tests:
 
-- [ ] Valid request returns selected success status.
-- [ ] Response includes `paymentId`.
-- [ ] Response includes final payment status.
-- [ ] Response includes risk decision.
-- [ ] Response includes correlation ID.
-- [ ] Missing idempotency key returns validation error.
-- [ ] Invalid request returns `ApiErrorResponse`.
-- [ ] Duplicate idempotency key returns stored response.
-- [ ] Idempotency key conflict returns structured conflict error.
-- [ ] Risk timeout returns stable downstream timeout error or selected fallback response.
+- [x] Valid request returns selected success status.
+- [x] Response includes `paymentId`.
+- [x] Response includes final payment status.
+- [x] Response includes risk decision.
+- [x] Response includes correlation ID.
+- [x] Missing idempotency key returns validation error.
+- [x] Invalid request returns `ApiErrorResponse`.
+- [x] Duplicate idempotency key returns stored response.
+- [x] Idempotency key conflict returns structured conflict error.
+- [x] Risk timeout returns stable downstream timeout error or selected fallback response.
 
 ### Acceptance Criteria
 
-- [ ] `POST /api/v1/payments/authorize` creates a payment authorization.
-- [ ] Duplicate idempotency keys return the original response without creating a second payment.
-- [ ] Risk-approved payments can reach `AUTHORIZED`.
-- [ ] Risk-declined payments reach `DECLINED`.
-- [ ] Risk timeout returns a stable downstream timeout error or fallback decision, depending on policy.
-- [ ] Authorization creates an outbox event in the same transaction as payment persistence.
-- [ ] Unit tests cover validation, idempotency, state transitions, and risk mapping.
-- [ ] API tests cover success, validation failure, duplicate idempotency, and risk timeout paths.
+- [x] `POST /api/v1/payments/authorize` creates a payment authorization.
+- [x] Duplicate idempotency keys return the original response without creating a second payment.
+- [x] Risk-approved payments can reach `AUTHORIZED`.
+- [x] Risk-declined payments reach `DECLINED`.
+- [x] Risk timeout returns a stable downstream timeout error or fallback decision, depending on policy.
+- [x] Authorization creates an outbox event in the same transaction as payment persistence.
+- [x] Unit tests cover validation, idempotency, state transitions, and risk mapping.
+- [x] API tests cover success, validation failure, duplicate idempotency, and risk timeout paths.
 
 ## Phase 3: Payment Lookup And Reversal APIs
 

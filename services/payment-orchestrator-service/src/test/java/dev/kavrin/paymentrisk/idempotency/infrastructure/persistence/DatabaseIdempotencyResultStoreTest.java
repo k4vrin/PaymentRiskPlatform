@@ -136,6 +136,29 @@ class DatabaseIdempotencyResultStoreTest {
     }
 
     @Test
+    void duplicateInsertStartedThrowsIdempotencyKeyConflict() {
+        store.insertStarted(
+                IdempotencyScope.PAYMENT_AUTHORIZATION,
+                IDEMPOTENCY_KEY,
+                FINGERPRINT,
+                NOW,
+                NOW.plusSeconds(3600)
+        ).block();
+
+        assertThatThrownBy(() -> store.insertStarted(
+                IdempotencyScope.PAYMENT_AUTHORIZATION,
+                IDEMPOTENCY_KEY,
+                FINGERPRINT,
+                NOW.plusSeconds(1),
+                NOW.plusSeconds(3601)
+        ).block())
+                .isInstanceOf(IdempotencyKeyConflictException.class)
+                .hasMessage("Idempotency key was already used for a different request");
+
+        assertThat(repository.count().block()).isOne();
+    }
+
+    @Test
     void markCompletedStoresResponseSnapshot() {
         store.insertStarted(
                 IdempotencyScope.PAYMENT_AUTHORIZATION,
