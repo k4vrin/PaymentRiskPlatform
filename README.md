@@ -177,3 +177,4 @@ Main work not implemented yet:
 - Operations APIs, security roles/authentication, observability dashboards, CI, and release-readiness work.
 
 See `docs/ApiRoadmap.md` and `docs/phase-2-payment-authorization.md` for the detailed tracker.
+Phase 3 planning is documented in `docs/phase-3-payment-lookup-and-reversal.md`.
