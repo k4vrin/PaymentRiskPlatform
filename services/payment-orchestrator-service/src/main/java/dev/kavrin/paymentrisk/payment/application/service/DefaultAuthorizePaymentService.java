@@ -6,7 +6,7 @@ import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIde
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -20,6 +20,7 @@ import java.util.HexFormat;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
 
     private static final String CONTRACT_ONLY_RULE_VERSION = "contract-only-v1";
@@ -27,24 +28,6 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     private final Clock clock;
     private final DatabaseIdempotencyResultOperations idempotencyStore;
     private final PaymentStatePersistencePort paymentStatePersistence;
-
-    @Autowired
-    public DefaultAuthorizePaymentService(
-            DatabaseIdempotencyResultOperations idempotencyStore,
-            PaymentStatePersistencePort paymentStatePersistence
-    ) {
-        this(Clock.systemUTC(), idempotencyStore, paymentStatePersistence);
-    }
-
-    DefaultAuthorizePaymentService(
-            Clock clock,
-            DatabaseIdempotencyResultOperations idempotencyStore,
-            PaymentStatePersistencePort paymentStatePersistence
-    ) {
-        this.clock = clock;
-        this.idempotencyStore = idempotencyStore;
-        this.paymentStatePersistence = paymentStatePersistence;
-    }
 
     @Override
     public Mono<AuthorizePaymentResult> authorize(AuthorizePaymentCommand command) {

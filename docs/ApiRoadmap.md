@@ -110,6 +110,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │       ├── AuthorizePaymentService.java
     │       │   │   │   │       ├── DefaultAuthorizePaymentService.java
     │       │   │   │   │       ├── PaymentStatePersistencePort.java
+    │       │   │   │   │       ├── RiskDecisionMappingPolicy.java
     │       │   │   │   │       └── package-info.java
     │       │   │   │   ├── domain
     │       │   │   │   │   ├── model
@@ -191,6 +192,9 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │       │   └── version
     │       │   │       │       ├── ApiPaths.java
     │       │   │       │       └── package-info.java
+    │       │   │       ├── config
+    │       │   │       │   ├── SystemClockConfiguration.java
+    │       │   │       │   └── package-info.java
     │       │   │       ├── id/PlatformIdGeneratorFactory.java
     │       │   │       └── package-info.java
     │       │   └── resources
@@ -212,7 +216,8 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   ├── application/service
     │           │   │   ├── AuthorizePaymentResultSnapshotSerializerTest.java
     │           │   │   ├── DefaultAuthorizePaymentServiceTest.java
-    │           │   │   └── PaymentStatePersistencePortTest.java
+    │           │   │   ├── PaymentStatePersistencePortTest.java
+    │           │   │   └── RiskDecisionMappingPolicyTest.java
     │           │   ├── domain/PaymentDomainValueObjectsTest.java
     │           │   └── infrastructure/persistence
     │           │       ├── DurablePaymentStatePersistenceAdapterTest.java
