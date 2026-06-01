@@ -6,13 +6,12 @@ import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentAuthorizationEntityRepository;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentEntityRepository;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentRiskDecisionEntityRepository;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.r2dbc.core.ReactiveInsertOperation;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -30,17 +29,12 @@ class DurablePaymentStatePersistenceAdapterTest {
 
     private static final Instant NOW = Instant.parse("2026-05-25T10:15:30Z");
 
-    private final PaymentEntityRepository paymentRepository =
-            mock(PaymentEntityRepository.class);
-    private final PaymentAuthorizationEntityRepository authorizationRepository =
-            mock(PaymentAuthorizationEntityRepository.class);
-    private final PaymentRiskDecisionEntityRepository riskDecisionRepository =
-            mock(PaymentRiskDecisionEntityRepository.class);
+    private final R2dbcEntityTemplate entityTemplate = mock(R2dbcEntityTemplate.class);
+    private final ReactiveInsertOperation.ReactiveInsert<Object> insertSpec =
+            mock(ReactiveInsertOperation.ReactiveInsert.class);
     private final DurablePaymentStatePersistenceAdapter adapter =
             new DurablePaymentStatePersistenceAdapter(
-                    paymentRepository,
-                    authorizationRepository,
-                    riskDecisionRepository,
+                    entityTemplate,
                     new PaymentPersistenceMapper(
                             new ObjectMapper(),
                             new PlatformIdGeneratorFactory(),
@@ -51,12 +45,10 @@ class DurablePaymentStatePersistenceAdapterTest {
 
     @BeforeEach
     void configureRepositoryMocks() {
-        reset(paymentRepository, authorizationRepository, riskDecisionRepository);
-        when(paymentRepository.save(any(PaymentEntity.class)))
-                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(authorizationRepository.save(any(PaymentAuthorizationEntity.class)))
-                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
-        when(riskDecisionRepository.save(any(PaymentRiskDecisionEntity.class)))
+        reset(entityTemplate, insertSpec);
+        when(entityTemplate.insert(any(Class.class)))
+                .thenReturn(insertSpec);
+        when(insertSpec.using(any()))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
     }
 
@@ -75,9 +67,12 @@ class DurablePaymentStatePersistenceAdapterTest {
         ArgumentCaptor<PaymentRiskDecisionEntity> riskDecisionEntityCaptor =
                 ArgumentCaptor.forClass(PaymentRiskDecisionEntity.class);
 
-        verify(paymentRepository).save(paymentEntityCaptor.capture());
-        verify(authorizationRepository).save(authorizationEntityCaptor.capture());
-        verify(riskDecisionRepository).save(riskDecisionEntityCaptor.capture());
+        verify(entityTemplate).insert(PaymentEntity.class);
+        verify(entityTemplate).insert(PaymentAuthorizationEntity.class);
+        verify(entityTemplate).insert(PaymentRiskDecisionEntity.class);
+        verify(insertSpec).using(paymentEntityCaptor.capture());
+        verify(insertSpec).using(authorizationEntityCaptor.capture());
+        verify(insertSpec).using(riskDecisionEntityCaptor.capture());
 
         PaymentEntity paymentEntity = paymentEntityCaptor.getValue();
         assertThat(paymentEntity.getPaymentId()).isEqualTo("pay_test");
@@ -111,9 +106,9 @@ class DurablePaymentStatePersistenceAdapterTest {
                 .expectNext(payment)
                 .verifyComplete();
 
-        verify(paymentRepository).save(any(PaymentEntity.class));
-        verify(authorizationRepository).save(any(PaymentAuthorizationEntity.class));
-        verifyNoInteractions(riskDecisionRepository);
+        verify(entityTemplate).insert(PaymentEntity.class);
+        verify(entityTemplate).insert(PaymentAuthorizationEntity.class);
+        verify(entityTemplate, never()).insert(PaymentRiskDecisionEntity.class);
     }
 
     private static Payment requestedPayment() {

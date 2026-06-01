@@ -4,8 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
 import dev.kavrin.paymentrisk.payment.domain.model.Payment;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.OutboxEventEntityRepository;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.OutboxEventEntity;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -17,7 +18,7 @@ import java.util.List;
 public class DatabasePaymentOutboxEventWriter implements PaymentOutboxEventWriter {
 
     private final PaymentOutboxEventMapper mapper;
-    private final OutboxEventEntityRepository repository;
+    private final R2dbcEntityTemplate entityTemplate;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -48,7 +49,8 @@ public class DatabasePaymentOutboxEventWriter implements PaymentOutboxEventWrite
                     );
                 })
                 .flatMapMany(Flux::fromIterable)
-                .concatMap(repository::save)
+                .concatMap(event -> entityTemplate.insert(OutboxEventEntity.class)
+                        .using(event))
                 .then();
     }
 

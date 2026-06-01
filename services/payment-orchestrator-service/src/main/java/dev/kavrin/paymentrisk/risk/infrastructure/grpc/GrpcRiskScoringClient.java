@@ -16,6 +16,7 @@ import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -27,6 +28,7 @@ public class GrpcRiskScoringClient implements RiskScoringClient {
     private final RiskGrpcProperties properties;
     private final RiskScoringServiceGrpc.RiskScoringServiceStub stub;
 
+    @Autowired
     public GrpcRiskScoringClient(
             RiskGrpcProperties properties,
             ManagedChannel channel

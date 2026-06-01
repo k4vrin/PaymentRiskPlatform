@@ -5,11 +5,12 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.OutboxEventEntity;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.OutboxEventEntityRepository;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.r2dbc.core.ReactiveInsertOperation;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -22,15 +23,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("unchecked")
 class DatabasePaymentOutboxEventWriterTest {
 
     private static final Instant NOW = Instant.parse("2026-05-25T10:15:30Z");
 
     private final PlatformIdGeneratorFactory idGenerator = mock(PlatformIdGeneratorFactory.class);
-    private final OutboxEventEntityRepository repository = mock(OutboxEventEntityRepository.class);
+    private final R2dbcEntityTemplate entityTemplate = mock(R2dbcEntityTemplate.class);
+    private final ReactiveInsertOperation.ReactiveInsert<OutboxEventEntity> insertSpec =
+            mock(ReactiveInsertOperation.ReactiveInsert.class);
     private final DatabasePaymentOutboxEventWriter writer = new DatabasePaymentOutboxEventWriter(
             new PaymentOutboxEventMapper(Clock.fixed(NOW, ZoneOffset.UTC), idGenerator),
-            repository,
+            entityTemplate,
             JsonMapper.builder()
                     .addModule(new JavaTimeModule())
                     .build()
@@ -38,10 +42,12 @@ class DatabasePaymentOutboxEventWriterTest {
 
     @BeforeEach
     void configureMocks() {
-        reset(idGenerator, repository);
+        reset(idGenerator, entityTemplate, insertSpec);
         when(idGenerator.outboxEventId())
                 .thenReturn("evt_requested", "evt_completed");
-        when(repository.save(any(OutboxEventEntity.class)))
+        when(entityTemplate.insert(OutboxEventEntity.class))
+                .thenReturn(insertSpec);
+        when(insertSpec.using(any(OutboxEventEntity.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
     }
 
@@ -52,7 +58,7 @@ class DatabasePaymentOutboxEventWriterTest {
 
         ArgumentCaptor<OutboxEventEntity> eventCaptor =
                 ArgumentCaptor.forClass(OutboxEventEntity.class);
-        verify(repository, times(2)).save(eventCaptor.capture());
+        verify(insertSpec, times(2)).using(eventCaptor.capture());
 
         assertThat(eventCaptor.getAllValues())
                 .extracting(OutboxEventEntity::getEventType)
@@ -75,7 +81,7 @@ class DatabasePaymentOutboxEventWriterTest {
 
         ArgumentCaptor<OutboxEventEntity> eventCaptor =
                 ArgumentCaptor.forClass(OutboxEventEntity.class);
-        verify(repository, times(2)).save(eventCaptor.capture());
+        verify(insertSpec, times(2)).using(eventCaptor.capture());
 
         assertThat(eventCaptor.getAllValues())
                 .extracting(OutboxEventEntity::getEventType)
@@ -87,7 +93,7 @@ class DatabasePaymentOutboxEventWriterTest {
 
     @Test
     void writeAuthorizationEventsPropagatesRepositoryFailure() {
-        when(repository.save(any(OutboxEventEntity.class)))
+        when(insertSpec.using(any(OutboxEventEntity.class)))
                 .thenReturn(Mono.error(new IllegalStateException("outbox insert failed")));
 
         StepVerifier.create(writer.writeAuthorizationEvents(authorizedPayment(), "corr-authorization-service"))

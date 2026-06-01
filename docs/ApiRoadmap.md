@@ -77,7 +77,13 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   ├── IdempotencyRecordMapper.java
     │       │   │   │   │   │   ├── IdempotencyRecordEntity.java
     │       │   │   │   │   │   └── IdempotencyRecordEntityRepository.java
-    │       │   │   │   │   └── redis/package-info.java
+    │       │   │   │   │   └── redis
+    │       │   │   │   │       ├── CachedIdempotencySnapshot.java
+    │       │   │   │   │       ├── RedisIdempotencyKeyFormatter.java
+    │       │   │   │   │       ├── RedisIdempotencySnapshotCache.java
+    │       │   │   │   │       ├── RedisIdempotencySnapshotSerializer.java
+    │       │   │   │   │       ├── SpringRedisIdempotencySnapshotCache.java
+    │       │   │   │   │       └── package-info.java
     │       │   │   │   └── package-info.java
     │       │   │   ├── merchant/package-info.java
     │       │   │   ├── ops/package-info.java
@@ -203,6 +209,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │       │       ├── ApiPaths.java
     │       │   │       │       └── package-info.java
     │       │   │       ├── config
+    │       │   │       │   ├── JacksonObjectMapperConfiguration.java
     │       │   │       │   ├── SystemClockConfiguration.java
     │       │   │       │   └── package-info.java
     │       │   │       ├── id/PlatformIdGeneratorFactory.java
@@ -216,16 +223,23 @@ Update this section after each implementation step that adds, removes, renames, 
     │       └── test/java/dev/kavrin/paymentrisk
     │           ├── PaymentOrchestratorServiceApplicationTests.java
     │           ├── TestPostgresConfiguration.java
+    │           ├── TestRedisConfiguration.java
     │           ├── TestPaymentOrchestratorServiceApplication.java
     │           ├── TestcontainersConfiguration.java
-    │           ├── idempotency/infrastructure/persistence
-    │           │   ├── DatabaseIdempotencyResultStoreTest.java
-    │           │   └── IdempotencyRecordMapperTest.java
+    │           ├── idempotency/infrastructure
+    │           │   ├── persistence
+    │           │   │   ├── DatabaseIdempotencyResultStoreTest.java
+    │           │   │   └── IdempotencyRecordMapperTest.java
+    │           │   └── redis
+    │           │       ├── RedisIdempotencyKeyFormatterTest.java
+    │           │       └── SpringRedisIdempotencySnapshotCacheTest.java
     │           ├── payment
     │           │   ├── api/contract/PaymentAuthorizationControllerTest.java
     │           │   ├── application/service
     │           │   │   ├── AuthorizePaymentResultSnapshotSerializerTest.java
+    │           │   │   ├── DefaultAuthorizePaymentServicePersistenceIntegrationTest.java
     │           │   │   ├── DefaultAuthorizePaymentServiceTest.java
+    │           │   │   ├── DefaultAuthorizePaymentServiceTransactionTest.java
     │           │   │   ├── PaymentStatePersistencePortTest.java
     │           │   │   └── RiskDecisionMappingPolicyTest.java
     │           │   ├── domain/PaymentDomainValueObjectsTest.java
@@ -689,8 +703,8 @@ transaction boundary still need to be wired together.
     - [x] Persist payment state.
     - [x] Call risk scoring client.
     - [x] Persist risk decision.
-    - [ ] Create outbox event record.
-- [ ] Complete idempotency behavior:
+    - [x] Create outbox event record.
+- [x] Complete idempotency behavior:
     - Purpose: make retries safe by returning the original result for duplicate requests and rejecting conflicting reuse
       of a key.
     - [x] Define idempotency scope for payment authorization.
@@ -710,9 +724,9 @@ transaction boundary still need to be wired together.
     - [x] Persist response snapshot in `idempotency_records`.
     - [x] Persist idempotency status in `idempotency_records`.
     - [x] Persist expiry time in `idempotency_records`.
-    - [ ] Add Redis cache for response snapshot.
-    - [ ] Add TTL for Redis snapshot.
-    - [ ] Fall back to database idempotency record if Redis misses.
+    - [x] Add Redis cache for response snapshot.
+    - [x] Add TTL for Redis snapshot.
+    - [x] Fall back to database idempotency record if Redis misses.
 
 #### Atomic Remaining Work
 
@@ -787,7 +801,7 @@ transaction boundary still need to be wired together.
 - [x] Save `PaymentAuthorizationEntity`.
 - [x] Save `PaymentRiskDecisionEntity` when a risk decision exists.
 - [x] Use `PaymentPersistenceMapper`.
-- [x] Add adapter tests with mocked repositories.
+- [x] Add adapter tests with mocked database inserts.
 
 10. [x] Wire payment state persistence into authorization:
 
@@ -861,27 +875,31 @@ transaction boundary still need to be wired together.
 - [x] Mark new events as pending.
 - [x] Add repository tests.
 
-18. [ ] Add reactive transaction boundary:
+18. [x] Add reactive transaction boundary:
 
-- [ ] Verify `ReactiveTransactionManager` configuration.
-- [ ] Wrap payment entities, idempotency completion update, and outbox insert in one transaction.
-- [ ] Avoid holding a transaction open during the remote risk call where practical.
-- [ ] Add rollback test for failed outbox insert.
+- [x] Verify `ReactiveTransactionManager` configuration.
+- [x] Wrap payment entities, idempotency completion update, and outbox insert in one transaction.
+- [x] Avoid holding a transaction open during the remote risk call where practical.
+- [x] Add rollback test for failed outbox insert.
+- [x] Add success-path integration test verifying payment, authorization, risk decision, outbox, and completed
+      idempotency rows are persisted.
+- [x] Use explicit `R2dbcEntityTemplate` inserts for new application-assigned ID rows.
 
-19. [ ] Add Redis idempotency cache adapter:
+19. [x] Add Redis idempotency cache adapter:
 
-- [ ] Define Redis key format from scope and idempotency key.
-- [ ] Read completed response snapshot from Redis before database lookup.
-- [ ] Store completed response snapshot in Redis with TTL.
-- [ ] Keep database as source of truth.
-- [ ] Add adapter tests.
+- [x] Define Redis key format from scope and idempotency key.
+- [x] Read completed response snapshot from Redis before database lookup.
+- [x] Store completed response snapshot in Redis with TTL.
+- [x] Keep database as source of truth.
+- [x] Add adapter tests.
+- [x] Add Redis Testcontainer coverage for store, lookup, and expiry.
 
 20. [ ] Add Redis miss database fallback:
 
-- [ ] On Redis miss, read `idempotency_records`.
+- [x] On Redis miss, read `idempotency_records`.
 - [ ] Repopulate Redis from durable database snapshot.
-- [ ] Return database snapshot when fingerprint matches.
-- [ ] Return conflict when fingerprint differs.
+- [x] Return database snapshot when fingerprint matches.
+- [x] Return conflict when fingerprint differs.
 - [ ] Add tests for hit, miss, expired, and conflict paths.
 
 21. [ ] Update authorization API documentation:

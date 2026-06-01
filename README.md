@@ -153,9 +153,11 @@ Completed foundations include:
 - Reactive entity models, repositories, and persistence mappers.
 - Database idempotency read/write path for replaying completed stored authorization responses.
 - Authorization workflow wiring for database idempotency records and response snapshots.
+- Redis completed-response snapshot cache for authorization idempotency replay, with database fallback.
 - Sensitive payment data hashing helpers for payment method tokens and device fingerprints.
 - Durable payment, authorization, and risk decision writes during authorization.
 - Kafka-ready outbox payload records, event-envelope mapping, and pending outbox writes for authorization outcomes.
+- Reactive transaction boundary across payment state persistence, outbox insertion, and idempotency completion.
 - Java gRPC risk client adapter with configurable host, port, timeout, response mapping, and timeout/unavailable
   fallback outcomes.
 - Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
@@ -163,14 +165,14 @@ Completed foundations include:
   authorization behavior.
 
 The current authorization endpoint validates the request, creates a payment aggregate, calls the risk scoring client,
-maps the risk result to an authorization or decline, persists the payment state, returns the authorization response,
-writes pending outbox events, and supports duplicate request replay through the database idempotency store.
+maps the risk result to an authorization or decline, persists the payment state and outbox events transactionally,
+returns the authorization response, and supports duplicate request replay through Redis with the database idempotency
+store as the durable source of truth.
 
 Main work not implemented yet:
 
-- Redis response snapshot cache with database fallback.
 - Real Go risk scoring server implementation.
-- Reactive transaction boundary across payment persistence, idempotency completion, and outbox insertion.
+- Redis repopulation from durable database snapshots after cache misses.
 - Payment lookup and reversal APIs.
 - Kafka outbox relay, audit consumer, settlement projection consumer, and RabbitMQ callback worker.
 - Operations APIs, security roles/authentication, observability dashboards, CI, and release-readiness work.

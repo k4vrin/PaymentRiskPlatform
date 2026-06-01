@@ -3,6 +3,7 @@ package dev.kavrin.paymentrisk.payment.application.service;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIdempotencyResultOperations;
+import dev.kavrin.paymentrisk.idempotency.infrastructure.redis.RedisIdempotencySnapshotCache;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
 import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
@@ -11,6 +12,7 @@ import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
@@ -20,6 +22,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +34,9 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     private final RiskScoringClient riskScoringClient;
     private final RiskDecisionMappingPolicy riskDecisionMappingPolicy;
     private final PaymentOutboxEventWriter paymentOutboxEventWriter;
+    private final TransactionalOperator transactionalOperator;
+    private final Optional<RedisIdempotencySnapshotCache> idempotencySnapshotCache;
+    private final AuthorizePaymentResultSnapshotSerializer snapshotSerializer;
 
     @Override
     public Mono<AuthorizePaymentResult> authorize(AuthorizePaymentCommand command) {
@@ -41,14 +47,15 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
         Instant now = clock.instant();
         Instant expiresAt = now.plus(Duration.ofHours(24));
 
-        return idempotencyStore
-                .findCompletedResult(
-                        scope,
-                        idempotencyKey,
-                        fingerprint,
-                        now,
-                        AuthorizePaymentResult.class
-                )
+        return findCompletedCachedResult(scope, idempotencyKey, fingerprint)
+                .switchIfEmpty(Mono.defer(() -> idempotencyStore
+                        .findCompletedResult(
+                                scope,
+                                idempotencyKey,
+                                fingerprint,
+                                now,
+                                AuthorizePaymentResult.class
+                        )))
                 .switchIfEmpty(Mono.defer(() ->
                         idempotencyStore.insertStarted(
                                         scope,
@@ -57,7 +64,13 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                                         now,
                                         expiresAt
                                 )
-                                .then(createAndCompleteAuthorization(command, scope, idempotencyKey, fingerprint))
+                                .then(createAndCompleteAuthorization(
+                                        command,
+                                        scope,
+                                        idempotencyKey,
+                                        fingerprint,
+                                        expiresAt
+                                ))
                 ));
     }
 
@@ -65,7 +78,8 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
             AuthorizePaymentCommand command,
             IdempotencyScope scope,
             IdempotencyKey idempotencyKey,
-            String fingerprint
+            String fingerprint,
+            Instant expiresAt
     ) {
         return Mono.fromSupplier(() -> createPayment(command, idempotencyKey))
                 .flatMap(payment ->
@@ -73,15 +87,51 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                                 .map(riskDecisionMappingPolicy::map)
                                 .map(riskDecision -> applyRiskDecision(payment, riskDecision))
                 )
-                .flatMap(paymentStatePersistence::save)
                 .flatMap(payment ->
+                        persistAuthorizationTransactionally(
+                                payment,
+                                command,
+                                scope,
+                                idempotencyKey,
+                                fingerprint
+                        )
+                )
+                .flatMap(result -> cacheCompletedResult(
+                                scope,
+                                idempotencyKey,
+                                fingerprint,
+                                result,
+                                expiresAt
+                        )
+                        .thenReturn(result)
+                )
+                .onErrorResume(error ->
+                        idempotencyStore.markFailedAndExpire(
+                                        scope,
+                                        idempotencyKey,
+                                        fingerprint,
+                                        clock.instant()
+                                )
+                                .then(Mono.error(error))
+                );
+    }
+
+    private Mono<AuthorizePaymentResult> persistAuthorizationTransactionally(
+            Payment payment,
+            AuthorizePaymentCommand command,
+            IdempotencyScope scope,
+            IdempotencyKey idempotencyKey,
+            String fingerprint
+    ) {
+        return paymentStatePersistence.save(payment)
+                .flatMap(savedPayment ->
                         paymentOutboxEventWriter.writeAuthorizationEvents(
-                                        payment,
+                                        savedPayment,
                                         command.correlationId()
                                 )
-                                .thenReturn(payment)
+                                .thenReturn(savedPayment)
                 )
-                .map(payment -> toResult(payment, command.correlationId()))
+                .map(savedPayment -> toResult(savedPayment, command.correlationId()))
                 .flatMap(result ->
                         idempotencyStore.markCompleted(
                                         scope,
@@ -93,15 +143,53 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                                 )
                                 .thenReturn(result)
                 )
-                .onErrorResume(error ->
-                        idempotencyStore.markFailedAndExpire(
-                                        scope,
-                                        idempotencyKey,
-                                        fingerprint,
-                                        clock.instant()
-                                )
-                                .then(Mono.error(error))
-                );
+                .as(transactionalOperator::transactional);
+    }
+
+    private Mono<AuthorizePaymentResult> findCompletedCachedResult(
+            IdempotencyScope scope,
+            IdempotencyKey idempotencyKey,
+            String fingerprint
+    ) {
+        return idempotencySnapshotCache
+                .map(cache -> cache.getCompletedSnapshot(scope, idempotencyKey)
+                        .flatMap(snapshot -> {
+                            if (!fingerprint.equals(snapshot.requestFingerprint())) {
+                                return Mono.empty();
+                            }
+
+                            return Mono.just(snapshotSerializer.deserialize(
+                                    snapshot.responseBodyJson(),
+                                    AuthorizePaymentResult.class
+                            ));
+                        })
+                        .onErrorResume(ignored -> Mono.empty()))
+                .orElseGet(Mono::empty);
+    }
+
+    private Mono<Void> cacheCompletedResult(
+            IdempotencyScope scope,
+            IdempotencyKey idempotencyKey,
+            String fingerprint,
+            AuthorizePaymentResult result,
+            Instant expiresAt
+    ) {
+        Duration ttl = Duration.between(clock.instant(), expiresAt);
+
+        if (ttl.isZero() || ttl.isNegative()) {
+            return Mono.empty();
+        }
+
+        return idempotencySnapshotCache
+                .map(cache -> cache.putCompletedSnapshot(
+                                scope,
+                                idempotencyKey,
+                                fingerprint,
+                                snapshotSerializer.serialize(result),
+                                ttl
+                        )
+                        .onErrorResume(ignored -> Mono.empty()))
+                .orElseGet(Mono::empty);
     }
 
     private Payment applyRiskDecision(

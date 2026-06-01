@@ -5,10 +5,8 @@ import dev.kavrin.paymentrisk.payment.domain.model.Payment;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentAuthorizationEntityRepository;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentEntityRepository;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentRiskDecisionEntityRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -16,9 +14,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class DurablePaymentStatePersistenceAdapter implements PaymentStatePersistencePort {
 
-    private final PaymentEntityRepository paymentRepository;
-    private final PaymentAuthorizationEntityRepository authorizationRepository;
-    private final PaymentRiskDecisionEntityRepository riskDecisionRepository;
+    private final R2dbcEntityTemplate entityTemplate;
     private final PaymentPersistenceMapper mapper;
     private final SensitivePaymentDataHasher sensitivePaymentDataHasher;
 
@@ -34,12 +30,13 @@ public class DurablePaymentStatePersistenceAdapter implements PaymentStatePersis
         Mono<PaymentRiskDecisionEntity> riskDecisionSave =
                 payment.getRiskDecision() == null
                         ? Mono.empty()
-                        : riskDecisionRepository.save(
-                        mapper.toRiskDecisionEntity(payment)
-                );
+                        : entityTemplate.insert(PaymentRiskDecisionEntity.class).using(
+                                mapper.toRiskDecisionEntity(payment)
+                        );
 
-        return paymentRepository.save(paymentEntity)
-                .then(authorizationRepository.save(authorizationEntity))
+        return entityTemplate.insert(PaymentEntity.class).using(paymentEntity)
+                .then(entityTemplate.insert(PaymentAuthorizationEntity.class)
+                        .using(authorizationEntity))
                 .then(riskDecisionSave)
                 .thenReturn(payment);
     }

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
@@ -31,6 +32,9 @@ class OutboxEventEntityRepositoryTest {
     @Autowired
     private OutboxEventEntityRepository repository;
 
+    @Autowired
+    private R2dbcEntityTemplate entityTemplate;
+
     @BeforeEach
     void deleteExistingRecords() {
         repository.deleteAll().block();
@@ -38,7 +42,8 @@ class OutboxEventEntityRepositoryTest {
 
     @Test
     void savesPendingOutboxEvent() {
-        OutboxEventEntity saved = repository.save(pendingEvent(
+        OutboxEventEntity saved = entityTemplate.insert(OutboxEventEntity.class)
+                .using(pendingEvent(
                 "evt_01",
                 "PaymentAuthorized",
                 NOW
@@ -65,9 +70,9 @@ class OutboxEventEntityRepositoryTest {
 
     @Test
     void findsPendingEventsReadyForPublish() {
-        repository.save(pendingEvent("evt_ready", "PaymentAuthorized", NOW.minusSeconds(1))).block();
-        repository.save(pendingEvent("evt_future", "PaymentDeclined", NOW.plusSeconds(60))).block();
-        repository.save(publishedEvent("evt_published", "PaymentAuthorized", NOW.minusSeconds(1))).block();
+        insert(pendingEvent("evt_ready", "PaymentAuthorized", NOW.minusSeconds(1)));
+        insert(pendingEvent("evt_future", "PaymentDeclined", NOW.plusSeconds(60)));
+        insert(publishedEvent("evt_published", "PaymentAuthorized", NOW.minusSeconds(1)));
 
         var readyEvents = repository
                 .findByStatusAndNextRetryAtLessThanEqual("PENDING", NOW)
@@ -86,6 +91,12 @@ class OutboxEventEntityRepositoryTest {
             Instant nextRetryAt
     ) {
         return event(eventId, eventType, "PENDING", nextRetryAt, null);
+    }
+
+    private void insert(OutboxEventEntity event) {
+        entityTemplate.insert(OutboxEventEntity.class)
+                .using(event)
+                .block();
     }
 
     private static OutboxEventEntity publishedEvent(
