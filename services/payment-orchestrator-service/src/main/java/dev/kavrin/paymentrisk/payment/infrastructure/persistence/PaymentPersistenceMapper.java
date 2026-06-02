@@ -7,6 +7,7 @@ import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentReversalEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import lombok.RequiredArgsConstructor;
@@ -151,7 +152,8 @@ public class PaymentPersistenceMapper {
     public Payment toDomain(
             PaymentEntity paymentEntity,
             PaymentAuthorizationEntity authorizationEntity,
-            PaymentRiskDecisionEntity riskDecisionEntity
+            PaymentRiskDecisionEntity riskDecisionEntity,
+            PaymentReversal reversal
     ) {
 
         PaymentAuthorization authorization =
@@ -179,8 +181,53 @@ public class PaymentPersistenceMapper {
                 PaymentStatus.valueOf(paymentEntity.getStatus()),
                 authorization,
                 riskDecision,
+                reversal,
                 paymentEntity.getCreatedAt(),
                 paymentEntity.getUpdatedAt()
+        );
+    }
+
+    public PaymentReversalEntity toReversalEntity(Payment payment) {
+        return toReversalEntity(payment, payment.getIdempotencyKey());
+    }
+
+    public PaymentReversalEntity toReversalEntity(
+            Payment payment,
+            IdempotencyKey reversalIdempotencyKey
+    ) {
+        var reversal = payment.reversal()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Payment has no reversal state"
+                ));
+        Objects.requireNonNull(reversalIdempotencyKey, "reversalIdempotencyKey must not be null");
+
+        return PaymentReversalEntity.builder()
+                .paymentReversalId(reversal.reversalId().value())
+                .paymentId(payment.getId().value())
+                .merchantId(payment.getMerchantId().value())
+                .customerId(payment.getCustomerId().value())
+                .reason(reversal.reason().value())
+                .status(reversal.status().name())
+                .idempotencyKey(reversalIdempotencyKey.value())
+                .requestedAt(reversal.requestedAt())
+                .reversedAt(reversal.reversedAt())
+                .createdAt(reversal.requestedAt())
+                .updatedAt(reversal.reversedAt())
+                .build();
+    }
+
+    public PaymentReversal toDomainReversal(PaymentReversalEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        return new PaymentReversal(
+                ReversalId.of(entity.getPaymentReversalId()),
+                PaymentId.of(entity.getPaymentId()),
+                ReversalReason.of(entity.getReason()),
+                ReversalStatus.valueOf(entity.getStatus()),
+                entity.getRequestedAt(),
+                entity.getReversedAt()
         );
     }
 

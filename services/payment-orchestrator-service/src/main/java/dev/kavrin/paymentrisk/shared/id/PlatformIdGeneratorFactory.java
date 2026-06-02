@@ -11,6 +11,10 @@ public class PlatformIdGeneratorFactory {
         return prefixedUuid("pay");
     }
 
+    public String reversalId() {
+        return prefixedUuid("rev");
+    }
+
     public String paymentAuthorizationId() {
         return prefixedCompactUuid("pauth");
     }

@@ -1,9 +1,9 @@
 package dev.kavrin.paymentrisk.payment.domain.model;
 
-final class RequiredText {
+import lombok.NoArgsConstructor;
 
-    private RequiredText() {
-    }
+@NoArgsConstructor
+final class RequiredText {
 
     static String require(String value, String fieldName, int maxLength) {
         if (value == null || value.isBlank()) {

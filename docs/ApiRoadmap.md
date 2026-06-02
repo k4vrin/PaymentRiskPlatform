@@ -124,6 +124,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   └── PaymentOutboxSchemaVersions.java
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── query
+    │       │   │   │   │   │   ├── DefaultPaymentLookupService.java
     │       │   │   │   │   │   ├── PaymentDetailsLookupPort.java
     │       │   │   │   │   │   ├── PaymentDetailsResult.java
     │       │   │   │   │   │   ├── PaymentLookupService.java
@@ -164,6 +165,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── persistence
+    │       │   │   │   │   │   ├── DatabasePaymentDetailsLookupAdapter.java
     │       │   │   │   │   │   ├── DurablePaymentStatePersistenceAdapter.java
     │       │   │   │   │   │   ├── PaymentPersistenceMapper.java
     │       │   │   │   │   │   ├── SensitivePaymentDataHasher.java
@@ -265,6 +267,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │       │   ├── DatabasePaymentOutboxEventWriterTest.java
     │           │       │   └── PaymentOutboxEventMapperTest.java
     │           │       └── persistence
+    │           │           ├── DatabasePaymentDetailsLookupAdapterTest.java
     │           │           ├── DurablePaymentStatePersistenceAdapterTest.java
     │           │           ├── PaymentPersistenceMapperTest.java
     │           │           ├── repository
@@ -989,57 +992,57 @@ events written in the same transaction as the state change.
 
 - [x] Add Flyway migration for `payment_reversals`.
 - [x] Include reversal ID, payment ID, merchant/customer IDs where useful, reversal reason, idempotency key, status,
-  requested-at, reversed-at, created-at, and updated-at.
+      requested-at, reversed-at, created-at, and updated-at.
 - [x] Add primary key and payment foreign key.
 - [x] Add unique index for reversal idempotency scope/key or payment/key as selected.
 - [x] Add lookup index for `payment_id`.
 - [x] Add repository/entity tests proving the migration applies.
 
-3. [ ] Add reversal domain model and policy:
+3. [x] Add reversal domain model and policy:
 
-- [ ] Add `PaymentReversal` domain concept or equivalent value object.
-- [ ] Add `ReversalId`.
-- [ ] Add `ReversalReason`.
-- [ ] Define allowed reversal states.
-- [ ] Define that `AUTHORIZED` payments can be reversed.
-- [ ] Define that `DECLINED`, `FAILED`, and `RECEIVED` payments cannot be reversed.
-- [ ] Define behavior for already `REVERSED` payments.
-- [ ] Add domain tests for reversible, non-reversible, and already-reversed cases.
+- [x] Add `PaymentReversal` domain concept or equivalent value object.
+- [x] Add `ReversalId`.
+- [x] Add `ReversalReason`.
+- [x] Define allowed reversal states.
+- [x] Define that `AUTHORIZED` payments can be reversed.
+- [x] Define that `DECLINED`, `FAILED`, and `RECEIVED` payments cannot be reversed.
+- [x] Define behavior for already `REVERSED` payments.
+- [x] Add domain tests for reversible, non-reversible, and already-reversed cases.
 
-4. [ ] Extend payment aggregate for reversal:
+4. [x] Extend payment aggregate for reversal:
 
-- [ ] Add method to mark an authorized payment reversed.
-- [ ] Preserve original authorization details after reversal.
-- [ ] Record reversal timestamp and reason.
-- [ ] Reject invalid state transitions with `PaymentStateTransitionException`.
-- [ ] Add aggregate state-transition tests.
+- [x] Add method to mark an authorized payment reversed.
+- [x] Preserve original authorization details after reversal.
+- [x] Record reversal timestamp and reason.
+- [x] Reject invalid state transitions with `PaymentStateTransitionException`.
+- [x] Add aggregate state-transition tests.
 
-5. [ ] Add reversal persistence model and mapper:
+5. [x] Add reversal persistence model and mapper:
 
-- [ ] Add `PaymentReversalEntity`.
-- [ ] Add `PaymentReversalEntityRepository`.
-- [ ] Map reversal domain/application model to entity.
-- [ ] Add persistence mapper tests.
-- [ ] Add repository tests for insert/read by payment ID.
+- [x] Add `PaymentReversalEntity`.
+- [x] Add `PaymentReversalEntityRepository`.
+- [x] Map reversal domain/application model to entity.
+- [x] Add persistence mapper tests.
+- [x] Add repository tests for insert/read by payment ID.
 
-6. [ ] Add payment lookup read model:
+6. [x] Add payment lookup read model:
 
-- [ ] Define `PaymentDetailsResult`.
-- [ ] Include payment ID, merchant ID, customer ID, amount, currency, status, external reference, created-at,
-  updated-at.
-- [ ] Include authorization status/code/timestamps.
-- [ ] Include risk decision, score, reason codes, rule version, decided-at.
-- [ ] Include reversal summary when present.
-- [ ] Exclude raw payment token and raw device fingerprint.
+- [x] Define `PaymentDetailsResult`.
+- [x] Include payment ID, merchant ID, customer ID, amount, currency, status, external reference, created-at,
+      updated-at.
+- [x] Include authorization status/code/timestamps.
+- [x] Include risk decision, score, reason codes, rule version, decided-at.
+- [x] Include reversal summary when present.
+- [x] Exclude raw payment token and raw device fingerprint.
 
-7. [ ] Implement payment lookup read adapter:
+7. [x] Implement payment lookup read adapter:
 
-- [ ] Query `payments` by payment ID.
-- [ ] Query authorization by payment ID.
-- [ ] Query risk decision by payment ID when present.
-- [ ] Query reversal by payment ID when present.
-- [ ] Return `ResourceNotFoundException` or equivalent for missing payment.
-- [ ] Add adapter tests for full, partial, and missing records.
+- [x] Query `payments` by payment ID.
+- [x] Query authorization by payment ID.
+- [x] Query risk decision by payment ID when present.
+- [x] Query reversal by payment ID when present.
+- [x] Return `ResourceNotFoundException` or equivalent for missing payment.
+- [x] Add adapter tests for full, partial, and missing records.
 
 8. [ ] Add payment lookup API:
 

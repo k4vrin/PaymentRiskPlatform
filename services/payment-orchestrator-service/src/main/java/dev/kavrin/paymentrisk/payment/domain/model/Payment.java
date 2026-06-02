@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
@@ -25,6 +26,7 @@ public class Payment {
     private PaymentStatus status;
     private PaymentAuthorization authorization;
     private PaymentRiskDecision riskDecision;
+    private PaymentReversal reversal;
     private Instant updatedAt;
 
     public static Payment newAuthorizationAttempt(
@@ -58,6 +60,10 @@ public class Payment {
         return payment;
     }
 
+    public Optional<PaymentReversal> reversal() {
+        return Optional.ofNullable(reversal);
+    }
+
     public static Payment restore(
             PaymentId id,
             MerchantId merchantId,
@@ -70,10 +76,11 @@ public class Payment {
             PaymentStatus status,
             PaymentAuthorization authorization,
             PaymentRiskDecision riskDecision,
+            PaymentReversal reversal,
             Instant createdAt,
             Instant updatedAt
     ) {
-        Payment payment = new Payment(
+        var payment = new Payment(
                 Objects.requireNonNull(id),
                 Objects.requireNonNull(merchantId),
                 Objects.requireNonNull(customerId),
@@ -89,6 +96,7 @@ public class Payment {
         payment.authorization = Objects.requireNonNull(authorization);
         payment.riskDecision = riskDecision;
         payment.updatedAt = Objects.requireNonNull(updatedAt);
+        payment.reversal = reversal;
         return payment;
     }
 
@@ -172,6 +180,33 @@ public class Payment {
                 reason,
                 now
         );
+        this.updatedAt = now;
+    }
+
+    public void markReversed(
+            ReversalReason reason,
+            Instant reversedAt
+    ) {
+        markReversed(ReversalId.newId(), reason, reversedAt);
+    }
+
+    public void markReversed(
+            ReversalId reversalId,
+            ReversalReason reason,
+            Instant reversedAt
+    ) {
+        requireStatus(PaymentStatus.AUTHORIZED);
+
+        Instant now = Objects.requireNonNull(reversedAt);
+
+        this.reversal = PaymentReversal.reversed(
+                Objects.requireNonNull(reversalId),
+                id,
+                Objects.requireNonNull(reason),
+                now,
+                now
+        );
+        this.status = PaymentStatus.REVERSED;
         this.updatedAt = now;
     }
 
