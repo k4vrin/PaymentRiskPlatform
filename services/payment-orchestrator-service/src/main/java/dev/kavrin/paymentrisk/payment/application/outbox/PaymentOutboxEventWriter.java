@@ -9,4 +9,9 @@ public interface PaymentOutboxEventWriter {
             Payment payment,
             String correlationId
     );
+
+    Mono<Void> writePaymentReversedEvents(
+            Payment payment,
+            String correlationId
+    );
 }

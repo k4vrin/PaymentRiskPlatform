@@ -1,9 +1,6 @@
 package dev.kavrin.paymentrisk.payment.infrastructure.outbox;
 
-import dev.kavrin.paymentrisk.payment.application.outbox.PaymentAuthorizationRequestedPayload;
-import dev.kavrin.paymentrisk.payment.application.outbox.PaymentAuthorizedPayload;
-import dev.kavrin.paymentrisk.payment.application.outbox.PaymentDeclinedPayload;
-import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxSchemaVersions;
+import dev.kavrin.paymentrisk.payment.application.outbox.*;
 import dev.kavrin.paymentrisk.payment.domain.model.Payment;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentAuthorization;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentRiskDecision;
@@ -25,6 +22,7 @@ public class PaymentOutboxEventMapper {
     static final String PAYMENT_AUTHORIZATION_REQUESTED = "PaymentAuthorizationRequested";
     static final String PAYMENT_AUTHORIZED = "PaymentAuthorized";
     static final String PAYMENT_DECLINED = "PaymentDeclined";
+    static final String PAYMENT_REVERSED = "PaymentReversed";
 
     private final Clock clock;
     private final PlatformIdGeneratorFactory idGenerator;
@@ -153,6 +151,40 @@ public class PaymentOutboxEventMapper {
                 .occurredAt(occurredAt)
                 .createdAt(createdAt)
                 .build();
+    }
+
+    public OutboxEventEntity toPaymentReversedEvent(
+            Payment payment,
+            String correlationId,
+            String payloadJson
+    ) {
+        var reversal = payment.reversal()
+                .orElseThrow(() -> new IllegalStateException("Payment is missing reversal state"));
+
+        return toEventEntity(
+                payment,
+                correlationId,
+                payloadJson,
+                PAYMENT_REVERSED,
+                PaymentOutboxSchemaVersions.PAYMENT_REVERSED_V1,
+                reversal.reversedAt()
+        );
+    }
+
+    public Object toPaymentReversedPayload(Payment payment) {
+        var reversal = payment.reversal()
+                .orElseThrow(() -> new IllegalStateException("Payment is missing reversal state"));
+
+        return new PaymentReversedPayload(
+                payment.getId().value(),
+                reversal.reversalId().value(),
+                payment.getMerchantId().value(),
+                payment.getCustomerId().value(),
+                payment.getAmount().amountMinor(),
+                payment.getAmount().currencyCode(),
+                reversal.reason().value(),
+                reversal.reversedAt()
+        );
     }
 
     private static PaymentRiskDecision requireRiskDecision(Payment payment) {

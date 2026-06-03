@@ -256,13 +256,27 @@ idempotency completion, and outbox insert must be transactionally consistent.
 
 Phase 3 should create durable outbox events for reversal outcomes.
 
-Recommended events:
+Phase 3 emits only the final outcome event:
 
-- `PaymentReversalRequested`
 - `PaymentReversed`
 
-If Phase 3 chooses to emit only `PaymentReversed`, that decision should be documented in the roadmap before
-implementation. Events should follow the same envelope conventions used by authorization events.
+`PaymentReversalRequested` is intentionally deferred. The reversal service writes `PaymentReversed` only after the domain
+transition succeeds, and it persists the payment update, reversal row, idempotency completion, and outbox event in one
+transaction. Events follow the same envelope conventions used by authorization events and are created with `PENDING`
+status.
+
+## Audit Placeholder Behavior
+
+Phase 3 does not write separate audit rows. Lookup and reversal audit visibility is represented as documented event
+shapes for later consumers:
+
+- lookup audit shape: `PaymentLookupObserved`, with payment ID, merchant/customer context when available, correlation ID,
+  request time, and lookup result status;
+- reversal audit shape: `PaymentReversed`, with payment ID, reversal ID, merchant/customer context, reason, correlation
+  ID, and reversed-at timestamp.
+
+The implemented durable signal is the `PaymentReversed` outbox event. A later audit consumer can project that event into
+audit storage without coupling the synchronous reversal path to an audit table.
 
 ## Error Behavior
 
@@ -353,8 +367,8 @@ Expose `POST /api/v1/payments/{paymentId}/reverse` with validation, correlation 
 
 ### Step 14: Audit Event Placeholders
 
-Define how lookup and reversal activity will be visible to later audit consumers. If Phase 3 only writes outbox events,
-document that explicitly.
+Define how lookup and reversal activity will be visible to later audit consumers. Phase 3 writes no audit rows directly;
+it documents lookup audit shape and emits `PaymentReversed` outbox events for reversal audit projection.
 
 ### Step 15: Documentation And Tests
 
@@ -368,6 +382,21 @@ Use unit tests for:
 - payment aggregate transition rules;
 - query/command mappers;
 - response DTO mappers;
+- reversal idempotency replay and conflict behavior;
+- reversal outbox payload/envelope mapping;
+- idempotency snapshot serialization for authorization and reversal responses.
+
+Use API tests for:
+
+- lookup success and not-found;
+- reversal success, validation failure, duplicate replay, idempotency conflict, not-found, and invalid state conflict.
+
+Use integration tests for:
+
+- lookup after successful authorization;
+- reversal durable commit after successful authorization;
+- duplicate reversal without a second reversal row or outbox event;
+- rollback when reversal outbox insertion fails.
 - idempotency fingerprint behavior;
 - outbox payload mapping.
 

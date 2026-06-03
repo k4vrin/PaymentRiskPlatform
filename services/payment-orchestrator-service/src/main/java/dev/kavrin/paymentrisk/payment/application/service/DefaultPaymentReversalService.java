@@ -6,6 +6,7 @@ import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIde
 import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentRequestFingerprint;
 import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentResult;
+import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
 import dev.kavrin.paymentrisk.payment.domain.model.Payment;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentId;
 import dev.kavrin.paymentrisk.payment.domain.model.ReversalId;
@@ -28,6 +29,7 @@ public class DefaultPaymentReversalService implements PaymentReversalService {
     private final DatabaseIdempotencyResultOperations idempotencyStore;
     private final PaymentStatePersistencePort paymentStatePersistence;
     private final TransactionalOperator transactionalOperator;
+    private final PaymentOutboxEventWriter outboxEventWriter;
 
     @Override
     public Mono<ReversePaymentResult> reverse(ReversePaymentCommand command) {
@@ -108,6 +110,10 @@ public class DefaultPaymentReversalService implements PaymentReversalService {
             String fingerprint
     ) {
         return paymentStatePersistence.saveReversal(payment, idempotencyKey)
+                .flatMap(savedPayment ->
+                        outboxEventWriter.writePaymentReversedEvents(savedPayment, command.correlationId())
+                                .thenReturn(savedPayment)
+                )
                 .map(savedPayment -> toResult(savedPayment, command.correlationId()))
                 .flatMap(result ->
                         idempotencyStore.markCompleted(

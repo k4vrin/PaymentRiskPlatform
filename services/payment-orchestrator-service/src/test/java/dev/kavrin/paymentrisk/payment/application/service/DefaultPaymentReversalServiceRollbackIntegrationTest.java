@@ -1,15 +1,14 @@
 package dev.kavrin.paymentrisk.payment.application.service;
 
 import dev.kavrin.paymentrisk.TestPostgresConfiguration;
+import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
+import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyStatus;
 import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.IdempotencyRecordEntityRepository;
-import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
+import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
-import dev.kavrin.paymentrisk.payment.domain.model.Payment;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.OutboxEventEntityRepository;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentAuthorizationEntityRepository;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentEntityRepository;
-import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentRiskDecisionEntityRepository;
+import dev.kavrin.paymentrisk.payment.domain.model.*;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.*;
 import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,8 +20,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.ReactiveTransactionManager;
-import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 
 import java.time.Clock;
@@ -45,14 +42,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 @Import({
         TestPostgresConfiguration.class,
-        DefaultAuthorizePaymentServiceTransactionTest.TransactionTestConfiguration.class
+        DefaultPaymentReversalServiceRollbackIntegrationTest.RollbackTestConfiguration.class
 })
-class DefaultAuthorizePaymentServiceTransactionTest {
+class DefaultPaymentReversalServiceRollbackIntegrationTest {
 
-    private static final Instant NOW = Instant.parse("2026-05-25T10:15:30Z");
+    private static final Instant NOW = Instant.parse("2026-06-01T10:05:00Z");
 
     @Autowired
-    private AuthorizePaymentService service;
+    private PaymentReversalService paymentReversalService;
+
+    @Autowired
+    private PaymentStatePersistencePort paymentStatePersistence;
 
     @Autowired
     private PaymentEntityRepository paymentRepository;
@@ -64,20 +64,18 @@ class DefaultAuthorizePaymentServiceTransactionTest {
     private PaymentRiskDecisionEntityRepository riskDecisionRepository;
 
     @Autowired
+    private PaymentReversalEntityRepository reversalRepository;
+
+    @Autowired
     private OutboxEventEntityRepository outboxRepository;
 
     @Autowired
     private IdempotencyRecordEntityRepository idempotencyRepository;
 
-    @Autowired
-    private ReactiveTransactionManager reactiveTransactionManager;
-
-    @Autowired
-    private TransactionalOperator transactionalOperator;
-
     @BeforeEach
     void deleteExistingRecords() {
         outboxRepository.deleteAll().block();
+        reversalRepository.deleteAll().block();
         riskDecisionRepository.deleteAll().block();
         authorizationRepository.deleteAll().block();
         idempotencyRepository.deleteAll().block();
@@ -85,49 +83,69 @@ class DefaultAuthorizePaymentServiceTransactionTest {
     }
 
     @Test
-    void contextProvidesReactiveTransactionBeans() {
-        assertThat(reactiveTransactionManager).isNotNull();
-        assertThat(transactionalOperator).isNotNull();
-    }
+    void rollsBackPaymentAndReversalRowsWhenReversalOutboxInsertFails() {
+        paymentStatePersistence.save(authorizedPayment()).block();
 
-    @Test
-    void outboxFailureRollsBackPaymentWritesAndLeavesFailedIdempotencyRecord() {
-        assertThatThrownBy(() -> service.authorize(validCommand()).block())
+        assertThatThrownBy(() -> paymentReversalService.reverse(validReversalCommand()).block())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("outbox insert failed");
 
-        assertThat(paymentRepository.count().block()).isZero();
-        assertThat(authorizationRepository.count().block()).isZero();
-        assertThat(riskDecisionRepository.count().block()).isZero();
+        var payment = paymentRepository.findById("pay_rollback").block();
+        assertThat(payment).isNotNull();
+        assertThat(payment.getStatus()).isEqualTo("AUTHORIZED");
+        assertThat(reversalRepository.count().block()).isZero();
         assertThat(outboxRepository.count().block()).isZero();
 
-        var idempotencyRecords = idempotencyRepository.findAll()
-                .collectList()
+        var reversalIdempotency = idempotencyRepository
+                .findByScopeAndIdempotencyKey(
+                        IdempotencyScope.PAYMENT_REVERSAL.value(),
+                        "idem_reversal_rollback"
+                )
                 .block();
-
-        assertThat(idempotencyRecords).hasSize(1);
-        assertThat(idempotencyRecords.getFirst().getStatus())
-                .isEqualTo(IdempotencyStatus.FAILED.name());
-        assertThat(idempotencyRecords.getFirst().getResponseBodyJson()).isNull();
-        assertThat(idempotencyRecords.getFirst().getResponseStatus()).isNull();
+        assertThat(reversalIdempotency).isNotNull();
+        assertThat(reversalIdempotency.getStatus()).isEqualTo(IdempotencyStatus.FAILED.name());
+        assertThat(reversalIdempotency.getExpiresAt()).isEqualTo(NOW);
+        assertThat(reversalIdempotency.getResponseBodyJson()).isNull();
     }
 
-    private static AuthorizePaymentCommand validCommand() {
-        return new AuthorizePaymentCommand(
-                "mer_01HX7Q9K2V6M8P4A3B9C1D2E3F",
-                "cus_01HX7QAF4CQ8YFZ3M9N2W1P0VK",
-                1299,
-                "USD",
-                "pmt_tok_4f7b8d9c2a1e",
-                "dfp_6d9f1a2b3c4e5f678901",
-                "order_2026_000123",
-                "idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A",
-                "corr-authorization-service"
+    private static ReversePaymentCommand validReversalCommand() {
+        return new ReversePaymentCommand(
+                "pay_rollback",
+                "idem_reversal_rollback",
+                "merchant_requested",
+                "corr-reversal-rollback"
         );
     }
 
+    private static Payment authorizedPayment() {
+        Payment payment = Payment.newAuthorizationAttempt(
+                PaymentId.of("pay_rollback"),
+                MerchantId.of("mer_01HX7Q9K2V6M8P4A3B9C1D2E3F"),
+                CustomerId.of("cus_01HX7QAF4CQ8YFZ3M9N2W1P0VK"),
+                Money.of(1299, "USD"),
+                PaymentMethodToken.of("pmt_tok_4f7b8d9c2a1e"),
+                DeviceFingerprint.of("dfp_6d9f1a2b3c4e5f678901"),
+                ExternalReference.of("order_2026_000123"),
+                IdempotencyKey.of("idem_authorization_rollback"),
+                NOW
+        );
+        payment.markRiskPending(NOW);
+        payment.markAuthorized(
+                new PaymentRiskDecision(
+                        RiskDecision.APPROVED,
+                        7,
+                        List.of("LOW_RISK"),
+                        "risk-rules-v1",
+                        NOW
+                ),
+                AuthorizationCode.of("AUTH-ABCDEFG123"),
+                NOW
+        );
+        return payment;
+    }
+
     @TestConfiguration
-    static class TransactionTestConfiguration {
+    static class RollbackTestConfiguration {
 
         @Bean
         @Primary
@@ -147,14 +165,14 @@ class DefaultAuthorizePaymentServiceTransactionTest {
 
         @Bean
         @Primary
-        PaymentOutboxEventWriter failingOutboxEventWriter() {
+        PaymentOutboxEventWriter failingPaymentOutboxEventWriter() {
             return new PaymentOutboxEventWriter() {
                 @Override
                 public Mono<Void> writeAuthorizationEvents(
                         Payment payment,
                         String correlationId
                 ) {
-                    return Mono.error(new IllegalStateException("outbox insert failed"));
+                    return Mono.empty();
                 }
 
                 @Override
@@ -162,9 +180,7 @@ class DefaultAuthorizePaymentServiceTransactionTest {
                         Payment payment,
                         String correlationId
                 ) {
-                    return Mono.error(new UnsupportedOperationException(
-                            "reversal outbox is not used by authorization"
-                    ));
+                    return Mono.error(new IllegalStateException("outbox insert failed"));
                 }
             };
         }

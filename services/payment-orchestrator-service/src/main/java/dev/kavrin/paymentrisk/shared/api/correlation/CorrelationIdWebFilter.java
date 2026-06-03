@@ -9,6 +9,22 @@ import reactor.core.publisher.Mono;
 
 import java.util.Objects;
 
+/**
+ * WebFlux filter that establishes a correlation ID for every request.
+ * <p>
+ * Spring automatically registers this filter because it implements
+ * {@link org.springframework.web.server.WebFilter} and is discovered as
+ * a Spring bean through {@code @Component} scanning.
+ * <p>
+ * The filter:
+ * - Preserves an inbound X-Correlation-Id when provided.
+ * - Generates a new correlation ID when missing.
+ * - Stores the correlation ID in exchange attributes for downstream access.
+ * - Adds the correlation ID to response headers.
+ * <p>
+ * Controllers and services should read the correlation ID from the
+ * exchange attributes instead of re-reading request headers.
+ */
 @Component
 public class CorrelationIdWebFilter implements WebFilter {
 

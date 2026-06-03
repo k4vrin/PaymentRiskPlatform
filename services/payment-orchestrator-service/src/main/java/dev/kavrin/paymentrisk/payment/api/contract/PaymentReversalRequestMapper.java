@@ -6,7 +6,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-final class ReversePaymentRequestMapper {
+final class PaymentReversalRequestMapper {
 
     static ReversePaymentCommand toCommand(
             String paymentId,

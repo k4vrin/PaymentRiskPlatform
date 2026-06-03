@@ -3,6 +3,7 @@ package dev.kavrin.paymentrisk.payment.infrastructure.outbox;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.payment.application.outbox.PaymentAuthorizedPayload;
 import dev.kavrin.paymentrisk.payment.application.outbox.PaymentDeclinedPayload;
+import dev.kavrin.paymentrisk.payment.application.outbox.PaymentReversedPayload;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.OutboxEventEntity;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
@@ -106,6 +107,42 @@ class PaymentOutboxEventMapperTest {
         assertThat(event.getEventType()).isEqualTo("PaymentDeclined");
         assertThat(event.getSchemaVersion()).isEqualTo("v1");
         assertThat(event.getOccurredAt()).isEqualTo(COMPLETED_AT);
+    }
+
+    @Test
+    void mapsPaymentReversedEventEnvelopeAndPayload() {
+        when(idGenerator.outboxEventId()).thenReturn("evt_reversed");
+        Payment payment = authorizedPayment();
+        payment.markReversed(
+                ReversalId.of("rev_test"),
+                ReversalReason.of("merchant_requested"),
+                COMPLETED_AT.plusSeconds(10)
+        );
+
+        Object payload = mapper.toPaymentReversedPayload(payment);
+        OutboxEventEntity event = mapper.toPaymentReversedEvent(
+                payment,
+                "corr-reversal-service",
+                "{\"paymentId\":\"pay_test\"}"
+        );
+
+        assertThat(payload).isInstanceOf(PaymentReversedPayload.class);
+        assertThat((PaymentReversedPayload) payload)
+                .extracting("paymentId", "reversalId", "merchantId", "customerId",
+                        "amountMinor", "currency", "reason", "reversedAt")
+                .containsExactly("pay_test", "rev_test", "mer_test", "cus_test",
+                        1299L, "USD", "merchant_requested", COMPLETED_AT.plusSeconds(10));
+        assertThat(event.getEventId()).isEqualTo("evt_reversed");
+        assertThat(event.getEventType()).isEqualTo("PaymentReversed");
+        assertThat(event.getSchemaVersion()).isEqualTo("v1");
+        assertThat(event.getAggregateType()).isEqualTo("PAYMENT");
+        assertThat(event.getAggregateId()).isEqualTo("pay_test");
+        assertThat(event.getProducer()).isEqualTo("payment-orchestrator-service");
+        assertThat(event.getCorrelationId()).isEqualTo("corr-reversal-service");
+        assertThat(event.getStatus()).isEqualTo("PENDING");
+        assertThat(event.getRetryCount()).isZero();
+        assertThat(event.getOccurredAt()).isEqualTo(COMPLETED_AT.plusSeconds(10));
+        assertThat(event.getCreatedAt()).isEqualTo(CREATED_AT);
     }
 
     private static Payment requestedPayment() {

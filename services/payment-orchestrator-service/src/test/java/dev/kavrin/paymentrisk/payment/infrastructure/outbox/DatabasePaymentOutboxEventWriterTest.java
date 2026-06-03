@@ -101,6 +101,51 @@ class DatabasePaymentOutboxEventWriterTest {
                 .verify();
     }
 
+    @Test
+    void writePaymentReversedEventsPersistsReversedEvent() {
+        when(idGenerator.outboxEventId()).thenReturn("evt_reversed");
+        Payment payment = authorizedPayment();
+        payment.markReversed(
+                ReversalId.of("rev_test"),
+                ReversalReason.of("merchant_requested"),
+                NOW.plusSeconds(10)
+        );
+
+        StepVerifier.create(writer.writePaymentReversedEvents(payment, "corr-reversal-service"))
+                .verifyComplete();
+
+        ArgumentCaptor<OutboxEventEntity> eventCaptor =
+                ArgumentCaptor.forClass(OutboxEventEntity.class);
+        verify(insertSpec).using(eventCaptor.capture());
+
+        OutboxEventEntity event = eventCaptor.getValue();
+        assertThat(event.getEventId()).isEqualTo("evt_reversed");
+        assertThat(event.getEventType()).isEqualTo("PaymentReversed");
+        assertThat(event.getStatus()).isEqualTo("PENDING");
+        assertThat(event.getCorrelationId()).isEqualTo("corr-reversal-service");
+        assertThat(event.getPayloadJson())
+                .contains("\"paymentId\":\"pay_test\"")
+                .contains("\"reversalId\":\"rev_test\"")
+                .contains("\"reason\":\"merchant_requested\"");
+    }
+
+    @Test
+    void writePaymentReversedEventsPropagatesRepositoryFailure() {
+        when(idGenerator.outboxEventId()).thenReturn("evt_reversed");
+        when(insertSpec.using(any(OutboxEventEntity.class)))
+                .thenReturn(Mono.error(new IllegalStateException("outbox insert failed")));
+        Payment payment = authorizedPayment();
+        payment.markReversed(
+                ReversalId.of("rev_test"),
+                ReversalReason.of("merchant_requested"),
+                NOW.plusSeconds(10)
+        );
+
+        StepVerifier.create(writer.writePaymentReversedEvents(payment, "corr-reversal-service"))
+                .expectErrorMessage("outbox insert failed")
+                .verify();
+    }
+
     private static Payment requestedPayment() {
         return Payment.newAuthorizationAttempt(
                 PaymentId.of("pay_test"),

@@ -652,6 +652,14 @@ class DefaultAuthorizePaymentServiceTest {
 
             return Mono.empty();
         }
+
+        @Override
+        public Mono<Void> writePaymentReversedEvents(
+                Payment payment,
+                String correlationId
+        ) {
+            return Mono.error(new UnsupportedOperationException("reversal outbox is not used by authorization"));
+        }
     }
 
     private static final class FakeRiskScoringClient implements RiskScoringClient {

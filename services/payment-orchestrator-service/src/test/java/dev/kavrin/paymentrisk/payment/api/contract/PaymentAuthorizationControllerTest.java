@@ -3,10 +3,14 @@ package dev.kavrin.paymentrisk.payment.api.contract;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKeyConflictException;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
+import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentCommand;
+import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentResult;
 import dev.kavrin.paymentrisk.payment.application.query.PaymentDetailsResult;
 import dev.kavrin.paymentrisk.payment.application.query.PaymentLookupService;
 import dev.kavrin.paymentrisk.payment.application.service.AuthorizePaymentService;
+import dev.kavrin.paymentrisk.payment.application.service.PaymentReversalService;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentId;
+import dev.kavrin.paymentrisk.payment.domain.model.PaymentStateTransitionException;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIdWebFilter;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIds;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamTimeoutException;
@@ -54,9 +58,13 @@ class PaymentAuthorizationControllerTest {
     @Autowired
     private PaymentLookupService paymentLookupService;
 
+    @Autowired
+    private CapturingPaymentReversalService paymentReversalService;
+
     @BeforeEach
     void resetService() {
         authorizePaymentService.reset();
+        paymentReversalService.reset();
         reset(paymentLookupService);
     }
 
@@ -241,6 +249,11 @@ class PaymentAuthorizationControllerTest {
         PaymentLookupService paymentLookupService() {
             return mock(PaymentLookupService.class);
         }
+
+        @Bean
+        CapturingPaymentReversalService paymentReversalService() {
+            return new CapturingPaymentReversalService();
+        }
     }
 
     static class CapturingAuthorizePaymentService implements AuthorizePaymentService {
@@ -277,6 +290,41 @@ class PaymentAuthorizationControllerTest {
                     0,
                     "contract-only-v1",
                     Instant.parse("2026-05-25T10:15:30Z")
+            ));
+        }
+    }
+
+    static class CapturingPaymentReversalService implements PaymentReversalService {
+
+        private final AtomicReference<ReversePaymentCommand> lastCommand = new AtomicReference<>();
+        private ReversePaymentResult nextResult;
+        private RuntimeException nextError;
+
+        void reset() {
+            lastCommand.set(null);
+            nextResult = null;
+            nextError = null;
+        }
+
+        @Override
+        public Mono<ReversePaymentResult> reverse(ReversePaymentCommand command) {
+            lastCommand.set(command);
+
+            if (nextError != null) {
+                return Mono.error(nextError);
+            }
+
+            if (nextResult != null) {
+                return Mono.just(nextResult);
+            }
+
+            return Mono.just(new ReversePaymentResult(
+                    command.paymentId(),
+                    "rev_test",
+                    "REVERSED",
+                    command.reason(),
+                    command.correlationId(),
+                    Instant.parse("2026-06-01T10:05:00Z")
             ));
         }
     }
@@ -367,6 +415,136 @@ class PaymentAuthorizationControllerTest {
                 .jsonPath("$.message")
                 .isEqualTo("paymentId must start with pay_ and contain only letters, numbers, underscore, and hyphen.")
                 .jsonPath("$.correlationId").isEqualTo("corr-lookup-invalid");
+    }
+
+    @Test
+    void reversePaymentDelegatesMappedCommandAndReturnsResponse() {
+        webTestClient.post()
+                .uri("/api/v1/payments/pay_123/reverse")
+                .header(CorrelationIds.HEADER_NAME, "corr-reversal")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(validReversalRequestJson())
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(CorrelationIds.HEADER_NAME, "corr-reversal")
+                .expectBody()
+                .jsonPath("$.paymentId").isEqualTo("pay_123")
+                .jsonPath("$.reversalId").isEqualTo("rev_test")
+                .jsonPath("$.status").isEqualTo("REVERSED")
+                .jsonPath("$.reason").isEqualTo("merchant_requested")
+                .jsonPath("$.correlationId").isEqualTo("corr-reversal")
+                .jsonPath("$.reversedAt").isEqualTo("2026-06-01T10:05:00Z");
+
+        ReversePaymentCommand command = paymentReversalService.lastCommand.get();
+        assertThat(command.paymentId()).isEqualTo("pay_123");
+        assertThat(command.idempotencyKey()).isEqualTo("idem_reversal_123");
+        assertThat(command.reason()).isEqualTo("merchant_requested");
+        assertThat(command.correlationId()).isEqualTo("corr-reversal");
+    }
+
+    @Test
+    void reversePaymentReturnsValidationErrorWhenIdempotencyKeyIsMissing() {
+        webTestClient.post()
+                .uri("/api/v1/payments/pay_123/reverse")
+                .header(CorrelationIds.HEADER_NAME, "corr-reversal-validation")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""
+                        {
+                          "reason": "merchant_requested"
+                        }
+                        """)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueEquals(CorrelationIds.HEADER_NAME, "corr-reversal-validation")
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("VALIDATION_FAILED")
+                .jsonPath("$.fieldErrors[0].field").isEqualTo("idempotencyKey");
+    }
+
+    @Test
+    void reversePaymentReturnsStoredResponseForDuplicateReplay() {
+        paymentReversalService.nextResult = new ReversePaymentResult(
+                "pay_123",
+                "rev_stored",
+                "REVERSED",
+                "merchant_requested",
+                "corr-reversal-duplicate",
+                Instant.parse("2026-06-01T10:04:00Z")
+        );
+
+        webTestClient.post()
+                .uri("/api/v1/payments/pay_123/reverse")
+                .header(CorrelationIds.HEADER_NAME, "corr-reversal-duplicate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(validReversalRequestJson())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.paymentId").isEqualTo("pay_123")
+                .jsonPath("$.reversalId").isEqualTo("rev_stored")
+                .jsonPath("$.status").isEqualTo("REVERSED")
+                .jsonPath("$.correlationId").isEqualTo("corr-reversal-duplicate");
+    }
+
+    @Test
+    void reversePaymentReturnsConflictForIdempotencyKeyReuseWithDifferentRequest() {
+        paymentReversalService.nextError = new IdempotencyKeyConflictException();
+
+        webTestClient.post()
+                .uri("/api/v1/payments/pay_123/reverse")
+                .header(CorrelationIds.HEADER_NAME, "corr-reversal-conflict")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(validReversalRequestJson())
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("IDEMPOTENCY_KEY_CONFLICT")
+                .jsonPath("$.correlationId").isEqualTo("corr-reversal-conflict");
+    }
+
+    @Test
+    void reversePaymentReturnsStructuredNotFoundWhenPaymentIsMissing() {
+        paymentReversalService.nextError =
+                new ResourceNotFoundException("Payment not found: pay_missing");
+
+        webTestClient.post()
+                .uri("/api/v1/payments/pay_missing/reverse")
+                .header(CorrelationIds.HEADER_NAME, "corr-reversal-missing")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(validReversalRequestJson())
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("RESOURCE_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Payment not found: pay_missing")
+                .jsonPath("$.correlationId").isEqualTo("corr-reversal-missing");
+    }
+
+    @Test
+    void reversePaymentReturnsStructuredConflictWhenPaymentStateIsInvalid() {
+        paymentReversalService.nextError =
+                new PaymentStateTransitionException("Payment with status DECLINED cannot be reversed");
+
+        webTestClient.post()
+                .uri("/api/v1/payments/pay_123/reverse")
+                .header(CorrelationIds.HEADER_NAME, "corr-reversal-invalid-state")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(validReversalRequestJson())
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("PAYMENT_STATE_CONFLICT")
+                .jsonPath("$.message").isEqualTo("Payment with status DECLINED cannot be reversed")
+                .jsonPath("$.correlationId").isEqualTo("corr-reversal-invalid-state");
+    }
+
+    private static String validReversalRequestJson() {
+        return """
+                {
+                  "idempotencyKey": "idem_reversal_123",
+                  "reason": "merchant_requested"
+                }
+                """;
     }
 
 }

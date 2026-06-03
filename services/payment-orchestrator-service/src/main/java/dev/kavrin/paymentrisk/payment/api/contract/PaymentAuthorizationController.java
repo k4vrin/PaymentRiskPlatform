@@ -1,15 +1,15 @@
 package dev.kavrin.paymentrisk.payment.api.contract;
 
-import dev.kavrin.paymentrisk.payment.api.dto.AuthorizationRequest;
-import dev.kavrin.paymentrisk.payment.api.dto.AuthorizationResponse;
-import dev.kavrin.paymentrisk.payment.api.dto.PaymentDetailsResponse;
+import dev.kavrin.paymentrisk.payment.api.dto.*;
 import dev.kavrin.paymentrisk.payment.application.query.PaymentLookupService;
 import dev.kavrin.paymentrisk.payment.application.service.AuthorizePaymentService;
+import dev.kavrin.paymentrisk.payment.application.service.PaymentReversalService;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentId;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIds;
 import dev.kavrin.paymentrisk.shared.api.version.ApiPaths;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -21,6 +21,7 @@ public class PaymentAuthorizationController {
 
     private final AuthorizePaymentService authorizePaymentService;
     private final PaymentLookupService paymentLookupService;
+    private final PaymentReversalService paymentReversalService;
 
     @PostMapping("/authorize")
     public Mono<AuthorizationResponse> authorize(
@@ -42,5 +43,27 @@ public class PaymentAuthorizationController {
 
         return paymentLookupService.getPaymentDetails(domainPaymentId)
                 .map(PaymentDetailsResponseMapper::toResponse);
+    }
+
+    @PostMapping("/{paymentId}/reverse")
+    @ResponseStatus(HttpStatus.OK)
+    public Mono<PaymentReversalResponse> reversePayment(
+            @PathVariable String paymentId,
+            @Valid @RequestBody ReversePaymentRequest request,
+            ServerWebExchange exchange
+    ) {
+        var correlationId = exchange.getAttributeOrDefault(
+                CorrelationIds.ATTRIBUTE_NAME,
+                ""
+        );
+
+        var command = PaymentReversalRequestMapper.toCommand(
+                paymentId,
+                request,
+                correlationId
+        );
+
+        return paymentReversalService.reverse(command)
+                .map(PaymentReversalResponseMapper::toResponse);
     }
 }

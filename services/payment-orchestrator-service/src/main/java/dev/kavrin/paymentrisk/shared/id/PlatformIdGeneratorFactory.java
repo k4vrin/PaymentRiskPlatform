@@ -1,7 +1,10 @@
 package dev.kavrin.paymentrisk.shared.id;
 
+import org.springframework.stereotype.Component;
+
 import java.util.UUID;
 
+@Component
 public class PlatformIdGeneratorFactory {
 
     public String paymentId() {

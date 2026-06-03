@@ -18,9 +18,25 @@ import java.util.List;
 public class DatabasePaymentOutboxEventWriter implements PaymentOutboxEventWriter {
 
     private final PaymentOutboxEventMapper mapper;
+    /**
+     * repositories are convenient when the framework owns identity detection. But when your app generates IDs before persistence,
+     * explicit insert(...) avoids accidental update behavior and makes transaction tests more deterministic.
+     */
     private final R2dbcEntityTemplate entityTemplate;
     private final ObjectMapper objectMapper;
 
+
+    /**
+     * Payload mapping and JSON serialization are synchronous operations.
+     * <p>
+     * We use Mono.fromCallable(...) so serialization happens lazily when the
+     * reactive pipeline is subscribed to, and any serialization failure is
+     * propagated as Mono.error(...) instead of being thrown immediately during
+     * pipeline construction.
+     * <p>
+     * This keeps serialization inside the reactive transaction flow and allows
+     * Reactor to handle errors consistently.
+     */
     @Override
     public Mono<Void> writeAuthorizationEvents(
             Payment payment,
@@ -50,6 +66,24 @@ public class DatabasePaymentOutboxEventWriter implements PaymentOutboxEventWrite
                 })
                 .flatMapMany(Flux::fromIterable)
                 .concatMap(event -> entityTemplate.insert(OutboxEventEntity.class)
+                        .using(event))
+                .then();
+    }
+
+    @Override
+    public Mono<Void> writePaymentReversedEvents(Payment payment, String correlationId) {
+        return Mono.fromCallable(() -> {
+                    String payloadJson = serialize(
+                            mapper.toPaymentReversedPayload(payment)
+                    );
+
+                    return mapper.toPaymentReversedEvent(
+                            payment,
+                            correlationId,
+                            payloadJson
+                    );
+                })
+                .flatMap(event -> entityTemplate.insert(OutboxEventEntity.class)
                         .using(event))
                 .then();
     }

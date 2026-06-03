@@ -8,6 +8,7 @@ import dev.kavrin.paymentrisk.idempotency.infrastructure.persistence.DatabaseIde
 import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentRequestFingerprint;
 import dev.kavrin.paymentrisk.payment.application.command.ReversePaymentResult;
+import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.shared.api.error.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,13 +37,16 @@ class DefaultPaymentReversalServiceTest {
             new FakeDatabaseIdempotencyResultOperations();
     private final FakePaymentStatePersistencePort paymentStatePersistence =
             new FakePaymentStatePersistencePort();
+    private final FakePaymentOutboxEventWriter outboxEventWriter =
+            new FakePaymentOutboxEventWriter();
     private final TransactionalOperator transactionalOperator =
             mock(TransactionalOperator.class);
     private final DefaultPaymentReversalService service = new DefaultPaymentReversalService(
             clock,
             idempotencyStore,
             paymentStatePersistence,
-            transactionalOperator
+            transactionalOperator,
+            outboxEventWriter
     );
 
     @BeforeEach
@@ -52,6 +56,7 @@ class DefaultPaymentReversalServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         idempotencyStore.reset();
         paymentStatePersistence.reset();
+        outboxEventWriter.reset();
     }
 
     @Test
@@ -87,6 +92,9 @@ class DefaultPaymentReversalServiceTest {
                 .isEqualTo(IdempotencyKey.of(validCommand().idempotencyKey()));
         assertThat(paymentStatePersistence.lastSavedPayment.getStatus()).isEqualTo(PaymentStatus.REVERSED);
         assertThat(paymentStatePersistence.lastSavedPayment.reversal()).isPresent();
+        assertThat(outboxEventWriter.writeReversedCount).isEqualTo(1);
+        assertThat(outboxEventWriter.lastReversedPayment).isEqualTo(paymentStatePersistence.lastSavedPayment);
+        assertThat(outboxEventWriter.lastCorrelationId).isEqualTo("corr-reversal");
         verify(transactionalOperator).transactional(any(Mono.class));
     }
 
@@ -118,6 +126,7 @@ class DefaultPaymentReversalServiceTest {
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(paymentStatePersistence.findCount).isZero();
         assertThat(paymentStatePersistence.saveReversalCount).isZero();
+        assertThat(outboxEventWriter.writeReversedCount).isZero();
     }
 
     @Test
@@ -131,6 +140,7 @@ class DefaultPaymentReversalServiceTest {
         assertThat(idempotencyStore.findCount).isEqualTo(1);
         assertThat(idempotencyStore.insertStartedCount).isZero();
         assertThat(paymentStatePersistence.findCount).isZero();
+        assertThat(outboxEventWriter.writeReversedCount).isZero();
     }
 
     @Test
@@ -146,6 +156,7 @@ class DefaultPaymentReversalServiceTest {
         assertThat(paymentStatePersistence.saveReversalCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+        assertThat(outboxEventWriter.writeReversedCount).isZero();
     }
 
     @Test
@@ -162,6 +173,7 @@ class DefaultPaymentReversalServiceTest {
         assertThat(paymentStatePersistence.saveReversalCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+        assertThat(outboxEventWriter.writeReversedCount).isZero();
     }
 
     @Test
@@ -177,6 +189,25 @@ class DefaultPaymentReversalServiceTest {
         assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
         assertThat(paymentStatePersistence.findCount).isEqualTo(1);
         assertThat(paymentStatePersistence.saveReversalCount).isEqualTo(1);
+        assertThat(idempotencyStore.markCompletedCount).isZero();
+        assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+        assertThat(outboxEventWriter.writeReversedCount).isZero();
+    }
+
+    @Test
+    void reverseExpiresStartedRecordWhenOutboxWriteFails() {
+        paymentStatePersistence.payment = authorizedPayment();
+        outboxEventWriter.writeReversedError =
+                new IllegalStateException("outbox insert failed");
+
+        assertThatThrownBy(() -> service.reverse(validCommand()).block())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("outbox insert failed");
+
+        assertThat(idempotencyStore.insertStartedCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.findCount).isEqualTo(1);
+        assertThat(paymentStatePersistence.saveReversalCount).isEqualTo(1);
+        assertThat(outboxEventWriter.writeReversedCount).isEqualTo(1);
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
     }
@@ -419,6 +450,45 @@ class DefaultPaymentReversalServiceTest {
             }
 
             return Mono.just(payment);
+        }
+    }
+
+    private static final class FakePaymentOutboxEventWriter implements PaymentOutboxEventWriter {
+
+        private RuntimeException writeReversedError;
+        private int writeReversedCount;
+        private Payment lastReversedPayment;
+        private String lastCorrelationId;
+
+        void reset() {
+            writeReversedError = null;
+            writeReversedCount = 0;
+            lastReversedPayment = null;
+            lastCorrelationId = null;
+        }
+
+        @Override
+        public Mono<Void> writeAuthorizationEvents(
+                Payment payment,
+                String correlationId
+        ) {
+            return Mono.error(new UnsupportedOperationException("authorization outbox is not used by reversal"));
+        }
+
+        @Override
+        public Mono<Void> writePaymentReversedEvents(
+                Payment payment,
+                String correlationId
+        ) {
+            writeReversedCount++;
+            lastReversedPayment = payment;
+            lastCorrelationId = correlationId;
+
+            if (writeReversedError != null) {
+                return Mono.error(writeReversedError);
+            }
+
+            return Mono.empty();
         }
     }
 }

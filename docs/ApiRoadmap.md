@@ -101,9 +101,10 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   ├── AuthorizationRequestMapper.java
     │       │   │   │   │   │   ├── AuthorizationResponseMapper.java
     │       │   │   │   │   │   ├── PaymentDetailsResponseMapper.java
+    │       │   │   │   │   │   ├── PaymentAuthorizationController.java
+    │       │   │   │   │   │   ├── PaymentReversalRequestMapper.java
     │       │   │   │   │   │   ├── PaymentReversalResponseMapper.java
-    │       │   │   │   │   │   ├── ReversePaymentRequestMapper.java
-    │       │   │   │   │   │   └── PaymentAuthorizationController.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── dto
     │       │   │   │   │   │   ├── AuthorizationRequest.java
     │       │   │   │   │   │   ├── AuthorizationResponse.java
@@ -125,7 +126,9 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   ├── PaymentAuthorizedPayload.java
     │       │   │   │   │   │   ├── PaymentDeclinedPayload.java
     │       │   │   │   │   │   ├── PaymentOutboxEventWriter.java
-    │       │   │   │   │   │   └── PaymentOutboxSchemaVersions.java
+    │       │   │   │   │   │   ├── PaymentOutboxSchemaVersions.java
+    │       │   │   │   │   │   ├── PaymentReversedPayload.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── package-info.java
     │       │   │   │   │   ├── query
     │       │   │   │   │   │   ├── DefaultPaymentLookupService.java
@@ -263,6 +266,8 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   │   ├── DefaultAuthorizePaymentServicePersistenceIntegrationTest.java
     │           │   │   ├── DefaultAuthorizePaymentServiceTest.java
     │           │   │   ├── DefaultAuthorizePaymentServiceTransactionTest.java
+    │           │   │   ├── DefaultPaymentReversalServicePersistenceIntegrationTest.java
+    │           │   │   ├── DefaultPaymentReversalServiceRollbackIntegrationTest.java
     │           │   │   ├── DefaultPaymentReversalServiceTest.java
     │           │   │   ├── PaymentStatePersistencePortTest.java
     │           │   │   └── RiskDecisionMappingPolicyTest.java
@@ -1087,75 +1092,75 @@ events written in the same transaction as the state change.
 - [x] Mark/expire idempotency record on failure before durable completion.
 - [x] Add service tests for success, duplicate replay, conflict, missing payment, and invalid state.
 
-12. [ ] Add reversal transaction boundary:
+12. [x] Add reversal transaction boundary:
 
-- [ ] Avoid opening a transaction before idempotency read/miss checks where practical.
-- [ ] Wrap payment update, reversal insert, idempotency completion, and outbox insert in one transaction.
-- [ ] Add rollback test for failed outbox insertion.
-- [ ] Add success-path integration test proving all durable rows commit together.
+- [x] Avoid opening a transaction before idempotency read/miss checks where practical.
+- [x] Wrap payment update, reversal insert, idempotency completion, and outbox insert in one transaction.
+- [x] Add rollback test for failed outbox insertion.
+- [x] Add success-path integration test proving all durable rows commit together.
 
-13. [ ] Add reversal outbox payload and mapper:
+13. [x] Add reversal outbox payload and mapper:
 
-- [ ] Add `PaymentReversalRequested` payload if selected for Phase 3.
-- [ ] Add `PaymentReversed` payload.
-- [ ] Include schema version constants.
-- [ ] Include correlation ID and aggregate envelope fields.
-- [ ] Add serialization and mapper tests.
+- [x] Do not add `PaymentReversalRequested` in Phase 3; emit only `PaymentReversed`.
+- [x] Add `PaymentReversed` payload.
+- [x] Include schema version constants.
+- [x] Include correlation ID and aggregate envelope fields.
+- [x] Add serialization and mapper tests.
 
-14. [ ] Persist reversal outbox events:
+14. [x] Persist reversal outbox events:
 
-- [ ] Save reversal requested event if selected.
-- [ ] Save reversed event when reversal succeeds.
-- [ ] Mark new events as `PENDING`.
-- [ ] Add outbox repository/service tests.
+- [x] Do not save reversal requested event in Phase 3; save only the final reversed event.
+- [x] Save reversed event when reversal succeeds.
+- [x] Mark new events as `PENDING`.
+- [x] Add outbox repository/service tests.
 
-15. [ ] Add reversal API endpoint:
+15. [x] Add reversal API endpoint:
 
-- [ ] Add `POST /api/v1/payments/{paymentId}/reverse`.
-- [ ] Read correlation ID from WebFlux exchange attributes.
-- [ ] Map request DTO to reversal command.
-- [ ] Delegate to reversal service.
-- [ ] Map service result to response DTO.
-- [ ] Add API tests for success, validation failure, duplicate replay, conflict, not-found, and invalid state.
+- [x] Add `POST /api/v1/payments/{paymentId}/reverse`.
+- [x] Read correlation ID from WebFlux exchange attributes.
+- [x] Map request DTO to reversal command.
+- [x] Delegate to reversal service.
+- [x] Map service result to response DTO.
+- [x] Add API tests for success, validation failure, duplicate replay, conflict, not-found, and invalid state.
 
-16. [ ] Add audit event placeholders:
+16. [x] Add audit event placeholders:
 
-- [ ] Define lookup audit event shape.
-- [ ] Define reversal audit event shape.
-- [ ] Decide whether Phase 3 writes audit rows/events directly or only emits outbox events for later audit consumers.
-- [ ] Document selected Phase 3 behavior.
-- [ ] Add tests for selected behavior.
+- [x] Define lookup audit event shape.
+- [x] Define reversal audit event shape.
+- [x] Decide whether Phase 3 writes audit rows/events directly or only emits outbox events for later audit consumers.
+- [x] Document selected Phase 3 behavior.
+- [x] Add tests for selected behavior.
 
-17. [ ] Update API documentation:
+17. [x] Update API documentation:
 
-- [ ] Document `GET /api/v1/payments/{paymentId}`.
-- [ ] Document `POST /api/v1/payments/{paymentId}/reverse`.
-- [ ] Document reversal idempotency requirements.
-- [ ] Document duplicate reversal replay behavior.
-- [ ] Document non-reversible payment conflict behavior.
-- [ ] Document reversal outbox events.
+- [x] Document `GET /api/v1/payments/{paymentId}`.
+- [x] Document `POST /api/v1/payments/{paymentId}/reverse`.
+- [x] Document reversal idempotency requirements.
+- [x] Document duplicate reversal replay behavior.
+- [x] Document non-reversible payment conflict behavior.
+- [x] Document reversal outbox events.
 
-18. [ ] Add Phase 3 integration tests:
+18. [x] Add Phase 3 integration tests:
 
-- [ ] Verify payment lookup after successful authorization.
-- [ ] Verify reversal after successful authorization.
-- [ ] Verify duplicate reversal returns original response without second reversal row.
-- [ ] Verify declined payment reversal returns structured conflict.
-- [ ] Verify missing payment lookup and reversal return structured 404.
-- [ ] Verify reversal creates outbox event in the same transaction as payment/reversal persistence.
+- [x] Verify payment lookup after successful authorization.
+- [x] Verify reversal after successful authorization.
+- [x] Verify duplicate reversal returns original response without second reversal row.
+- [x] Verify declined payment reversal returns structured conflict.
+- [x] Verify missing payment lookup and reversal return structured 404.
+- [x] Verify reversal creates outbox event in the same transaction as payment/reversal persistence.
 
 ### Acceptance Criteria
 
-- [ ] `GET /api/v1/payments/{paymentId}` returns payment details.
-- [ ] Missing payments return structured not-found errors.
-- [ ] `POST /api/v1/payments/{paymentId}/reverse` reverses an authorized payment.
-- [ ] Duplicate reversal requests are idempotent.
-- [ ] Invalid reversal state returns a structured conflict error.
-- [ ] Reversal creates outbox and audit records.
-- [ ] Reversal does not expose raw payment method tokens or raw device fingerprints.
-- [ ] Unit tests cover lookup mapping, reversal policy, idempotency, and state transitions.
-- [ ] API tests cover lookup success/not-found and reversal success/validation/conflict paths.
-- [ ] Integration tests cover transaction rollback and durable commit behavior.
+- [x] `GET /api/v1/payments/{paymentId}` returns payment details.
+- [x] Missing payments return structured not-found errors.
+- [x] `POST /api/v1/payments/{paymentId}/reverse` reverses an authorized payment.
+- [x] Duplicate reversal requests are idempotent.
+- [x] Invalid reversal state returns a structured conflict error.
+- [x] Reversal creates outbox events for later audit consumers.
+- [x] Reversal does not expose raw payment method tokens or raw device fingerprints.
+- [x] Unit tests cover lookup mapping, reversal policy, idempotency, and state transitions.
+- [x] API tests cover lookup success/not-found and reversal success/validation/conflict paths.
+- [x] Integration tests cover transaction rollback and durable commit behavior.
 
 ## Phase 4: Go Risk Scoring gRPC Service
 
