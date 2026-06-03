@@ -29,7 +29,8 @@ Update this section after each implementation step that adds, removes, renames, 
 │   │   └── event-envelope.md
 │   ├── phase-1-api-contract-baseline.md
 │   ├── phase-2-payment-authorization.md
-│   └── phase-3-payment-lookup-and-reversal.md
+│   ├── phase-3-payment-lookup-and-reversal.md
+│   └── phase-4-go-risk-scoring-grpc-service.md
 ├── platform
 │   ├── compose.local.yaml
 │   └── prometheus
@@ -304,7 +305,10 @@ Update this section after each implementation step that adds, removes, renames, 
         ├── go.mod
         ├── go.sum
         └── internal
-            ├── config/doc.go
+            ├── config
+            │   ├── config.go
+            │   ├── config_test.go
+            │   └── doc.go
             ├── grpc
             │   ├── doc.go
             │   └── risk_contract_test.go
@@ -1166,28 +1170,205 @@ events written in the same transaction as the state change.
 
 Goal: Implement the internal Go risk service with deterministic scoring, rule hits, reason codes, health checks, and graceful shutdown.
 
-### Steps
+Detailed implementation guide: `docs/phase-4-go-risk-scoring-grpc-service.md`.
 
-- [ ] Implement `cmd/risk-scoring-service/main.go`.
-- [ ] Load typed configuration from environment variables.
-- [ ] Start a gRPC server.
+In this phase, we turn the skeletal Go service into the internal risk scoring backend used by the Java payment
+orchestrator. The service should expose the generated protobuf `RiskScoringService`, score requests with deterministic
+local rules, return explainable rule hits, expose health status, and shut down cleanly.
+
+### Atomic Remaining Work
+
+1. [x] Add Phase 4 Go package and boundary structure:
+
+- [x] Keep `cmd/risk-scoring-service` as the composition root.
+- [x] Use `internal/config` for environment parsing and validation.
+- [x] Use `internal/risk` for scoring models, rules, thresholds, and scorer behavior.
+- [x] Use `internal/grpc` for generated protobuf server adapters only.
+- [x] Use `internal/health` for gRPC health behavior.
+- [x] Avoid putting scoring logic in `main.go` or protobuf handlers.
+
+2. [x] Implement typed service configuration:
+
+- [x] Parse `RISK_SERVICE_ENV`.
+- [x] Parse `RISK_SERVICE_HOST`.
+- [x] Parse `RISK_SERVICE_GRPC_PORT`.
+- [x] Parse `RISK_RULE_VERSION`.
+- [x] Parse `RISK_APPROVE_MAX_SCORE`.
+- [x] Parse `RISK_REVIEW_MAX_SCORE`.
+- [x] Parse `LOG_LEVEL`.
+- [x] Parse `SHUTDOWN_TIMEOUT_SECONDS`.
+- [x] Validate required values and numeric ranges.
+- [x] Add config tests for defaults, overrides, and invalid values.
+
+3. [ ] Configure structured logging:
+
+- [ ] Initialize `log/slog` once in `main.go`.
+- [ ] Support configured log level.
+- [ ] Include service name and environment in log attributes.
+- [ ] Log startup, listen address, shutdown start, shutdown completion, and server errors.
+- [ ] Do not log raw device fingerprint values.
+
+4. [ ] Implement risk scoring domain models:
+
+- [ ] Add internal request model that mirrors the protobuf fields needed by rules.
+- [ ] Add internal result model with score, decision, reason codes, rule hits, and rule version.
+- [ ] Add internal rule hit model with rule ID, reason code, score delta, and message.
+- [ ] Keep protobuf types out of the core scoring rules.
+- [ ] Add model tests for decision and rule hit construction where useful.
+
+5. [ ] Implement scoring thresholds and decision policy:
+
+- [ ] Use `approveMaxScore` to produce `APPROVED`.
+- [ ] Use `reviewMaxScore` to produce `REVIEW_REQUIRED`.
+- [ ] Produce `DECLINED` above the review threshold.
+- [ ] Reject invalid threshold configuration at startup.
+- [ ] Add policy tests for boundary scores.
+
+6. [ ] Implement high amount rule:
+
+- [ ] Add a deterministic amount threshold.
+- [ ] Add a positive score delta when the threshold is exceeded.
+- [ ] Add `RISK_REASON_CODE_HIGH_AMOUNT`.
+- [ ] Add a `HIGH_AMOUNT_RULE` rule hit.
+- [ ] Add unit tests for below-threshold, at-threshold, and above-threshold amounts.
+
+7. [ ] Implement suspicious currency rule:
+
+- [ ] Add a configured or fixed suspicious currency set for Phase 4.
+- [ ] Normalize currency casing.
+- [ ] Add a positive score delta for suspicious currencies.
+- [ ] Add `RISK_REASON_CODE_SUSPICIOUS_CURRENCY`.
+- [ ] Add a `SUSPICIOUS_CURRENCY_RULE` rule hit.
+- [ ] Add unit tests for normal, suspicious, and lowercase currency inputs.
+
+8. [ ] Implement repeated device placeholder rule:
+
+- [ ] Add deterministic placeholder behavior without external storage.
+- [ ] Use a clearly documented local heuristic, such as a known test prefix or configured sample list.
+- [ ] Add `RISK_REASON_CODE_REPEATED_DEVICE`.
+- [ ] Add a `REPEATED_DEVICE_RULE` rule hit when the placeholder matches.
+- [ ] Add tests proving the rule is deterministic and does not require database/Redis state.
+
+9. [ ] Implement merchant risk threshold rule:
+
+- [ ] Add deterministic merchant-risk placeholder behavior without external merchant storage.
+- [ ] Use a documented fixed list, prefix, or configured sample list.
+- [ ] Add `RISK_REASON_CODE_MERCHANT_RISK_THRESHOLD_EXCEEDED`.
+- [ ] Add a `MERCHANT_RISK_THRESHOLD_RULE` rule hit.
+- [ ] Add tests for low-risk and high-risk merchant inputs.
+
+10. [ ] Implement low-risk fallback behavior:
+
+- [ ] Return a low-risk reason code when no positive-risk rules match.
+- [ ] Add `RISK_REASON_CODE_LOW_RISK_PAYMENT`.
+- [ ] Add a `LOW_RISK_RULE` rule hit or documented fallback explanation.
+- [ ] Ensure the fallback does not hide positive rule hits.
+- [ ] Add tests for a clean low-risk request.
+
+11. [ ] Implement score aggregation:
+
+- [ ] Apply rules in deterministic order.
+- [ ] Sum all rule score deltas into the final score.
+- [ ] Deduplicate response reason codes while preserving stable order.
+- [ ] Include all matching rule hits in response order.
+- [ ] Include configured rule version in every response.
+- [ ] Add tests for multiple-rule requests.
+
+12. [ ] Implement protobuf mapping:
+
+- [ ] Map `ScorePaymentRequest` to internal scoring request.
+- [ ] Map internal decision to protobuf `RiskDecision`.
+- [ ] Map internal reason codes to protobuf `RiskReasonCode`.
+- [ ] Map internal rule hits to protobuf `RiskRuleHit`.
+- [ ] Map internal result to `ScorePaymentResponse`.
+- [ ] Add mapper tests for all decisions and reason codes.
+
+13. [ ] Implement gRPC risk scoring server:
+
+- [ ] Add a server type under `internal/grpc`.
+- [ ] Embed or implement the generated unimplemented server requirement.
 - [ ] Register generated `RiskScoringService`.
-- [ ] Implement deterministic risk rules:
-    - [ ] High amount rule
-    - [ ] Suspicious currency rule
-    - [ ] Repeated device rule placeholder
-    - [ ] Merchant risk threshold rule
-- [ ] Return:
-    - [ ] Numeric score
-    - [ ] Decision
-    - [ ] Reason codes
-    - [ ] Rule hits
-    - [ ] Rule version
-- [ ] Add structured logging with `log/slog`.
-- [ ] Add health check endpoint or gRPC health service.
-- [ ] Add graceful shutdown for interrupt signals.
-- [ ] Add Go unit tests for scoring rules.
-- [ ] Add contract-level tests for generated protobuf messages.
+- [ ] Implement unary `ScorePayment`.
+- [ ] Return protobuf responses from the internal scorer.
+- [ ] Add gRPC handler tests using an in-memory listener or direct server invocation.
+
+14. [ ] Add request validation and gRPC error handling:
+
+- [ ] Reject missing `payment_id`.
+- [ ] Reject non-positive `amount_minor`.
+- [ ] Reject missing or malformed `currency`.
+- [ ] Reject missing `merchant_id`.
+- [ ] Reject missing `customer_id`.
+- [ ] Return appropriate gRPC status codes for invalid requests.
+- [ ] Ensure scoring failures do not return partial successful responses.
+- [ ] Add tests for invalid request errors.
+
+15. [ ] Add correlation ID handling:
+
+- [ ] Accept correlation ID from the request message.
+- [ ] Prefer request message correlation ID until metadata propagation is implemented.
+- [ ] Include correlation ID in request-scoped logs.
+- [ ] Do not require correlation ID for scoring correctness.
+- [ ] Add tests or handler assertions for missing and present correlation IDs.
+
+16. [ ] Start the gRPC server from `main.go`:
+
+- [ ] Build config, logger, scorer, gRPC service, and health service in `main.go`.
+- [ ] Listen on configured host and port.
+- [ ] Register `RiskScoringService`.
+- [ ] Register gRPC health service.
+- [ ] Start serving without blocking signal handling setup.
+- [ ] Return startup errors clearly.
+
+17. [ ] Implement gRPC health service:
+
+- [ ] Register standard gRPC health checks.
+- [ ] Report `SERVING` after startup.
+- [ ] Report `NOT_SERVING` during shutdown.
+- [ ] Add health service tests where practical.
+
+18. [ ] Implement graceful shutdown:
+
+- [ ] Handle `SIGINT` and `SIGTERM`.
+- [ ] Stop accepting new requests on shutdown.
+- [ ] Use configured shutdown timeout.
+- [ ] Prefer graceful stop before force stop.
+- [ ] Log shutdown reason and outcome.
+- [ ] Add unit tests for shutdown helper behavior where practical.
+
+19. [ ] Add Go service integration tests:
+
+- [ ] Start the gRPC server on an ephemeral port.
+- [ ] Call `ScorePayment` with a low-risk request.
+- [ ] Call `ScorePayment` with a multi-rule high-risk request.
+- [ ] Verify health reports `SERVING`.
+- [ ] Verify invalid requests return gRPC validation errors.
+- [ ] Keep tests deterministic and free of external infrastructure dependencies.
+
+20. [ ] Add Java-to-Go integration verification:
+
+- [ ] Add or update local configuration so the Java orchestrator can target the Go service address.
+- [ ] Add a focused test or documented manual command proving `GrpcRiskScoringClient` can call the running Go service.
+- [ ] Verify Java mapping still handles approved, review, and declined responses.
+- [ ] Verify deadline/unavailable behavior remains covered by Java adapter tests.
+- [ ] Avoid making the normal Java unit test suite require a manually started Go process.
+
+21. [ ] Update local runtime and developer docs:
+
+- [ ] Update root `README.md` with Go risk service startup commands.
+- [ ] Update `.env.example` if new configuration values are added.
+- [ ] Update `platform/compose.local.yaml` if the service is added to local compose.
+- [ ] Document the rule set and scoring examples.
+- [ ] Document how to run Go tests.
+
+22. [ ] Final Phase 4 verification:
+
+- [ ] Run `go test ./...` in `services/risk-scoring-service`.
+- [ ] Run protobuf contract tests.
+- [ ] Run focused Java risk gRPC adapter tests.
+- [ ] Verify the Go service starts locally.
+- [ ] Verify the service shuts down gracefully.
+- [ ] Update this roadmap and project structure with any added files.
 
 ### Acceptance Criteria
 
