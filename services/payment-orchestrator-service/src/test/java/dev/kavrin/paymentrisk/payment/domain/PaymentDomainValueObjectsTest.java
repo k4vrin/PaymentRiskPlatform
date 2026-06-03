@@ -17,6 +17,20 @@ class PaymentDomainValueObjectsTest {
     }
 
     @Test
+    void paymentIdRequiresPaymentPrefixAndSafeCharacters() {
+        assertThat(PaymentId.of("pay_123_ABC-def").value())
+                .isEqualTo("pay_123_ABC-def");
+
+        assertThatThrownBy(() -> PaymentId.of("not-a-payment-id"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("paymentId must start with pay_ and contain only letters, numbers, underscore, and hyphen.");
+
+        assertThatThrownBy(() -> PaymentId.of("pay_123/unsafe"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("paymentId must start with pay_ and contain only letters, numbers, underscore, and hyphen.");
+    }
+
+    @Test
     void requiredIdentifiersRejectBlankValues() {
         assertThatThrownBy(() -> MerchantId.of(" "))
                 .isInstanceOf(IllegalArgumentException.class)

@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.shared.api.error;
 
+import dev.kavrin.paymentrisk.payment.domain.model.PaymentStateTransitionException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +26,11 @@ class TestErrorController {
                 ApiErrorCode.Business.PAYMENT_STATE_CONFLICT,
                 "Payment state does not allow this operation."
         );
+    }
+
+    @GetMapping("/test/payment-state-transition")
+    void paymentStateTransition() {
+        throw new PaymentStateTransitionException("Payment with status DECLINED cannot be reversed");
     }
 
     @GetMapping("/test/timeout")

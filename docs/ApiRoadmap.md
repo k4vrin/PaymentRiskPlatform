@@ -100,6 +100,9 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   ├── contract
     │       │   │   │   │   │   ├── AuthorizationRequestMapper.java
     │       │   │   │   │   │   ├── AuthorizationResponseMapper.java
+    │       │   │   │   │   │   ├── PaymentDetailsResponseMapper.java
+    │       │   │   │   │   │   ├── PaymentReversalResponseMapper.java
+    │       │   │   │   │   │   ├── ReversePaymentRequestMapper.java
     │       │   │   │   │   │   └── PaymentAuthorizationController.java
     │       │   │   │   │   ├── dto
     │       │   │   │   │   │   ├── AuthorizationRequest.java
@@ -114,6 +117,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   ├── AuthorizePaymentCommand.java
     │       │   │   │   │   │   ├── AuthorizePaymentResult.java
     │       │   │   │   │   │   ├── ReversePaymentCommand.java
+    │       │   │   │   │   │   ├── ReversePaymentRequestFingerprint.java
     │       │   │   │   │   │   ├── ReversePaymentResult.java
     │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── outbox
@@ -133,7 +137,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │       ├── AuthorizePaymentResultSnapshotSerializer.java
     │       │   │   │   │       ├── AuthorizePaymentService.java
     │       │   │   │   │       ├── DefaultAuthorizePaymentService.java
-    │       │   │   │   │       ├── PaymentReversalPersistencePort.java
+    │       │   │   │   │       ├── DefaultPaymentReversalService.java
     │       │   │   │   │       ├── PaymentReversalService.java
     │       │   │   │   │       ├── PaymentStatePersistencePort.java
     │       │   │   │   │       ├── RiskDecisionMappingPolicy.java
@@ -259,6 +263,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   │   ├── DefaultAuthorizePaymentServicePersistenceIntegrationTest.java
     │           │   │   ├── DefaultAuthorizePaymentServiceTest.java
     │           │   │   ├── DefaultAuthorizePaymentServiceTransactionTest.java
+    │           │   │   ├── DefaultPaymentReversalServiceTest.java
     │           │   │   ├── PaymentStatePersistencePortTest.java
     │           │   │   └── RiskDecisionMappingPolicyTest.java
     │           │   ├── domain/PaymentDomainValueObjectsTest.java
@@ -1044,43 +1049,43 @@ events written in the same transaction as the state change.
 - [x] Return `ResourceNotFoundException` or equivalent for missing payment.
 - [x] Add adapter tests for full, partial, and missing records.
 
-8. [ ] Add payment lookup API:
+8. [x] Add payment lookup API:
 
-- [ ] Add `GET /api/v1/payments/{paymentId}`.
-- [ ] Validate payment ID format through domain value object or request validation.
-- [ ] Map lookup result to response DTO.
-- [ ] Return structured 404 for missing payment.
-- [ ] Add API tests for success and missing payment.
+- [x] Add `GET /api/v1/payments/{paymentId}`.
+- [x] Validate payment ID format through domain value object or request validation.
+- [x] Map lookup result to response DTO.
+- [x] Return structured 404 for missing payment.
+- [x] Add API tests for success and missing payment.
 
-9. [ ] Add reversal request/response API contract:
+9. [x] Add reversal request/response API contract:
 
-- [ ] Add `ReversePaymentRequest`.
-- [ ] Require `idempotencyKey`.
-- [ ] Include optional `reason`.
-- [ ] Add Bean Validation annotations.
-- [ ] Add `PaymentReversalResponse`.
-- [ ] Include payment ID, reversal ID, status, reason, correlation ID, and reversed-at.
-- [ ] Add OpenAPI metadata where useful.
+- [x] Add `ReversePaymentRequest`.
+- [x] Require `idempotencyKey`.
+- [x] Include optional `reason`.
+- [x] Add Bean Validation annotations.
+- [x] Add `PaymentReversalResponse`.
+- [x] Include payment ID, reversal ID, status, reason, correlation ID, and reversed-at.
+- [x] Add OpenAPI metadata where useful.
 
-10. [ ] Add reversal idempotency scope and fingerprint:
+10. [x] Add reversal idempotency scope and fingerprint:
 
-- [ ] Add `IdempotencyScope.PAYMENT_REVERSAL`.
-- [ ] Define reversal request fingerprint fields.
-- [ ] Use payment ID, reason, and any selected command fields in the fingerprint.
-- [ ] Return stored reversal response for duplicate same-fingerprint requests.
-- [ ] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
-- [ ] Add unit tests for duplicate and conflicting reversal requests.
+- [x] Add `IdempotencyScope.PAYMENT_REVERSAL`.
+- [x] Define reversal request fingerprint fields.
+- [x] Use payment ID, reason, and any selected command fields in the fingerprint.
+- [x] Return stored reversal response for duplicate same-fingerprint requests.
+- [x] Return `IDEMPOTENCY_KEY_CONFLICT` for same key with different fingerprint.
+- [x] Add unit tests for duplicate and conflicting reversal requests.
 
-11. [ ] Add reversal application service:
+11. [x] Add reversal application service:
 
-- [ ] Insert `STARTED` idempotency record before new reversal work.
-- [ ] Load current payment state.
-- [ ] Validate payment is reversible.
-- [ ] Create reversal state.
-- [ ] Persist payment status update and reversal row.
-- [ ] Complete idempotency record with response snapshot.
-- [ ] Mark/expire idempotency record on failure before durable completion.
-- [ ] Add service tests for success, duplicate replay, conflict, missing payment, and invalid state.
+- [x] Insert `STARTED` idempotency record before new reversal work.
+- [x] Load current payment state.
+- [x] Validate payment is reversible.
+- [x] Create reversal state.
+- [x] Persist payment status update and reversal row.
+- [x] Complete idempotency record with response snapshot.
+- [x] Mark/expire idempotency record on failure before durable completion.
+- [x] Add service tests for success, duplicate replay, conflict, missing payment, and invalid state.
 
 12. [ ] Add reversal transaction boundary:
 

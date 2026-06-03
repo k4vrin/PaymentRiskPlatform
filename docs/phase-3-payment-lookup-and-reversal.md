@@ -173,7 +173,7 @@ Expected boundaries:
 - `PaymentLookupPort` or a query adapter interface
 - `ReversePaymentCommand`
 - `PaymentReversalService`
-- `PaymentReversalPersistencePort`
+- `PaymentStatePersistencePort` for durable payment state and reversal persistence
 - existing `DatabaseIdempotencyResultOperations`
 - existing `PaymentOutboxEventWriter` or a broadened outbox writer abstraction
 

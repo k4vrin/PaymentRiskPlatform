@@ -51,6 +51,24 @@ class PaymentStatePersistencePortTest {
             return Mono.just(payment);
         }
 
+        @Override
+        public Mono<Payment> findByPaymentId(PaymentId paymentId) {
+            return savedPayments.stream()
+                    .filter(payment -> payment.getId().equals(paymentId))
+                    .findFirst()
+                    .map(Mono::just)
+                    .orElseGet(Mono::empty);
+        }
+
+        @Override
+        public Mono<Payment> saveReversal(
+                Payment payment,
+                IdempotencyKey reversalIdempotencyKey
+        ) {
+            Objects.requireNonNull(reversalIdempotencyKey, "reversalIdempotencyKey must not be null");
+            return save(payment);
+        }
+
         List<Payment> savedPayments() {
             return List.copyOf(savedPayments);
         }

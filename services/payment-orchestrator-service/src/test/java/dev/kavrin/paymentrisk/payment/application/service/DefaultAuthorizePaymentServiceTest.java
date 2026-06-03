@@ -11,6 +11,7 @@ import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentComman
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
 import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWriter;
 import dev.kavrin.paymentrisk.payment.domain.model.Payment;
+import dev.kavrin.paymentrisk.payment.domain.model.PaymentId;
 import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
@@ -22,19 +23,16 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 class DefaultAuthorizePaymentServiceTest {
@@ -609,6 +607,19 @@ class DefaultAuthorizePaymentServiceTest {
             }
 
             return Mono.just(payment);
+        }
+
+        @Override
+        public Mono<Payment> findByPaymentId(PaymentId paymentId) {
+            return Mono.error(new UnsupportedOperationException("findByPaymentId is not used by authorization"));
+        }
+
+        @Override
+        public Mono<Payment> saveReversal(
+                Payment payment,
+                IdempotencyKey reversalIdempotencyKey
+        ) {
+            return Mono.error(new UnsupportedOperationException("saveReversal is not used by authorization"));
         }
     }
 

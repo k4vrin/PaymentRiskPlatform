@@ -1,6 +1,7 @@
 package dev.kavrin.paymentrisk.shared.api.error;
 
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKeyConflictException;
+import dev.kavrin.paymentrisk.payment.domain.model.PaymentStateTransitionException;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIds;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -159,6 +160,19 @@ public class GlobalApiExceptionHandler {
         return error(
                 HttpStatus.CONFLICT,
                 ApiErrorCode.Business.IDEMPOTENCY_KEY_CONFLICT,
+                exception.getMessage(),
+                exchange
+        );
+    }
+
+    @ExceptionHandler(PaymentStateTransitionException.class)
+    ResponseEntity<ApiErrorResponse> handlePaymentStateTransitionException(
+            PaymentStateTransitionException exception,
+            ServerWebExchange exchange
+    ) {
+        return error(
+                HttpStatus.CONFLICT,
+                ApiErrorCode.Business.PAYMENT_STATE_CONFLICT,
                 exception.getMessage(),
                 exchange
         );

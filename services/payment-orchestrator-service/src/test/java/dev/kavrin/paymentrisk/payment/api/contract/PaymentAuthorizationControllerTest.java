@@ -3,11 +3,15 @@ package dev.kavrin.paymentrisk.payment.api.contract;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKeyConflictException;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentResult;
+import dev.kavrin.paymentrisk.payment.application.query.PaymentDetailsResult;
+import dev.kavrin.paymentrisk.payment.application.query.PaymentLookupService;
 import dev.kavrin.paymentrisk.payment.application.service.AuthorizePaymentService;
+import dev.kavrin.paymentrisk.payment.domain.model.PaymentId;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIdWebFilter;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIds;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamTimeoutException;
 import dev.kavrin.paymentrisk.shared.api.error.GlobalApiExceptionHandler;
+import dev.kavrin.paymentrisk.shared.api.error.ResourceNotFoundException;
 import dev.kavrin.paymentrisk.shared.api.version.ApiPaths;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +30,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 @WebFluxTest(
         controllers = PaymentAuthorizationController.class,
@@ -46,9 +51,13 @@ class PaymentAuthorizationControllerTest {
     @Autowired
     private CapturingAuthorizePaymentService authorizePaymentService;
 
+    @Autowired
+    private PaymentLookupService paymentLookupService;
+
     @BeforeEach
     void resetService() {
         authorizePaymentService.reset();
+        reset(paymentLookupService);
     }
 
     @Test
@@ -227,6 +236,11 @@ class PaymentAuthorizationControllerTest {
         CapturingAuthorizePaymentService authorizePaymentService() {
             return new CapturingAuthorizePaymentService();
         }
+
+        @Bean
+        PaymentLookupService paymentLookupService() {
+            return mock(PaymentLookupService.class);
+        }
     }
 
     static class CapturingAuthorizePaymentService implements AuthorizePaymentService {
@@ -266,4 +280,93 @@ class PaymentAuthorizationControllerTest {
             ));
         }
     }
+
+    @Test
+    void getPaymentReturnsPaymentDetails() {
+        var result = new PaymentDetailsResult(
+                "pay_123",
+                "merchant_123",
+                "customer_123",
+                10_000,
+                "USD",
+                "AUTHORIZED",
+                "order_123",
+                new PaymentDetailsResult.AuthorizationDetails(
+                        "AUTHORIZED",
+                        "auth_123",
+                        Instant.parse("2026-06-01T10:00:00Z"),
+                        Instant.parse("2026-06-01T10:00:01Z"),
+                        Instant.parse("2026-06-01T10:00:02Z"),
+                        null,
+                        null
+                ),
+                new PaymentDetailsResult.RiskDetails(
+                        "APPROVED",
+                        10,
+                        List.of("LOW_RISK"),
+                        "rules-v1",
+                        Instant.parse("2026-06-01T10:00:02Z")
+                ),
+                new PaymentDetailsResult.ReversalDetails(
+                        "rev_123",
+                        "REVERSED",
+                        "merchant_requested",
+                        Instant.parse("2026-06-01T10:02:00Z"),
+                        Instant.parse("2026-06-01T10:02:01Z")
+                ),
+                Instant.parse("2026-06-01T10:00:00Z"),
+                Instant.parse("2026-06-01T10:01:00Z")
+        );
+
+        when(paymentLookupService.getPaymentDetails(PaymentId.of("pay_123")))
+                .thenReturn(Mono.just(result));
+
+        webTestClient.get()
+                .uri("/api/v1/payments/pay_123")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.paymentId").isEqualTo("pay_123")
+                .jsonPath("$.status").isEqualTo("AUTHORIZED")
+                .jsonPath("$.authorization.authorizationCode").isEqualTo("auth_123")
+                .jsonPath("$.risk.decision").isEqualTo("APPROVED")
+                .jsonPath("$.risk.reasonCodes[0]").isEqualTo("LOW_RISK")
+                .jsonPath("$.reversal.reversalId").isEqualTo("rev_123")
+                .jsonPath("$.reversal.status").isEqualTo("REVERSED")
+                .jsonPath("$.paymentMethodToken").doesNotExist()
+                .jsonPath("$.deviceFingerprint").doesNotExist();
+    }
+
+    @Test
+    void getPaymentReturnsStructuredNotFoundWhenPaymentIsMissing() {
+        when(paymentLookupService.getPaymentDetails(PaymentId.of("pay_missing")))
+                .thenReturn(Mono.error(new ResourceNotFoundException("Payment not found: pay_missing")));
+
+        webTestClient.get()
+                .uri("/api/v1/payments/pay_missing")
+                .header(CorrelationIds.HEADER_NAME, "corr-lookup-missing")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectHeader().valueEquals(CorrelationIds.HEADER_NAME, "corr-lookup-missing")
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("RESOURCE_NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("Payment not found: pay_missing")
+                .jsonPath("$.correlationId").isEqualTo("corr-lookup-missing");
+    }
+
+    @Test
+    void getPaymentReturnsValidationErrorForMalformedPaymentId() {
+        webTestClient.get()
+                .uri("/api/v1/payments/not-a-payment-id")
+                .header(CorrelationIds.HEADER_NAME, "corr-lookup-invalid")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueEquals(CorrelationIds.HEADER_NAME, "corr-lookup-invalid")
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("INVALID_REQUEST")
+                .jsonPath("$.message")
+                .isEqualTo("paymentId must start with pay_ and contain only letters, numbers, underscore, and hyphen.")
+                .jsonPath("$.correlationId").isEqualTo("corr-lookup-invalid");
+    }
+
 }

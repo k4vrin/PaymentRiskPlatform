@@ -4,14 +4,15 @@ import dev.kavrin.paymentrisk.idempotency.application.StoredIdempotencyResult;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyStatus;
-import org.springframework.stereotype.Component;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.util.Objects;
 
-@Component
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class IdempotencyRecordMapper {
 
-    public IdempotencyRecordEntity toEntity(
+    public static IdempotencyRecordEntity toEntity(
             String idempotencyRecordId,
             IdempotencyScope scope,
             IdempotencyKey key,
@@ -38,7 +39,7 @@ public final class IdempotencyRecordMapper {
                 .build();
     }
 
-    public StoredIdempotencyResult toStoredResult(
+    public static StoredIdempotencyResult toStoredResult(
             IdempotencyRecordEntity entity,
             Object responseSnapshot
     ) {
@@ -55,12 +56,12 @@ public final class IdempotencyRecordMapper {
         );
     }
 
-    public IdempotencyScope toScope(IdempotencyRecordEntity entity) {
+    public static IdempotencyScope toScope(IdempotencyRecordEntity entity) {
         Objects.requireNonNull(entity, "entity must not be null");
         return IdempotencyScope.fromValue(entity.getScope());
     }
 
-    public IdempotencyKey toKey(IdempotencyRecordEntity entity) {
+    public static IdempotencyKey toKey(IdempotencyRecordEntity entity) {
         Objects.requireNonNull(entity, "entity must not be null");
         return IdempotencyKey.of(entity.getIdempotencyKey());
     }

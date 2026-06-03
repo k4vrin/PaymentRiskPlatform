@@ -17,8 +17,6 @@ class IdempotencyRecordMapperTest {
     private static final Instant UPDATED_AT = Instant.parse("2026-05-26T09:01:00Z");
     private static final Instant EXPIRES_AT = Instant.parse("2026-05-27T09:00:00Z");
 
-    private final IdempotencyRecordMapper mapper = new IdempotencyRecordMapper();
-
     @Test
     void toEntityMapsScopeKeyFingerprintStatusResponseAndExpiryFields() {
         StoredIdempotencyResult result = new StoredIdempotencyResult(
@@ -31,7 +29,7 @@ class IdempotencyRecordMapperTest {
                 UPDATED_AT
         );
 
-        IdempotencyRecordEntity entity = mapper.toEntity(
+        IdempotencyRecordEntity entity = IdempotencyRecordMapper.toEntity(
                 "idem_rec_01",
                 IdempotencyScope.PAYMENT_AUTHORIZATION,
                 IdempotencyKey.of("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A"),
@@ -70,7 +68,7 @@ class IdempotencyRecordMapperTest {
                 .build();
         Map<String, String> responseSnapshot = Map.of("paymentId", "pay_test");
 
-        StoredIdempotencyResult result = mapper.toStoredResult(entity, responseSnapshot);
+        StoredIdempotencyResult result = IdempotencyRecordMapper.toStoredResult(entity, responseSnapshot);
 
         assertThat(result.requestFingerprint()).isEqualTo("fingerprint-sha256");
         assertThat(result.status()).isEqualTo(IdempotencyStatus.COMPLETED);
@@ -88,7 +86,7 @@ class IdempotencyRecordMapperTest {
                 .idempotencyKey("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A")
                 .build();
 
-        assertThat(mapper.toScope(entity)).isEqualTo(IdempotencyScope.PAYMENT_AUTHORIZATION);
-        assertThat(mapper.toKey(entity)).isEqualTo(IdempotencyKey.of("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A"));
+        assertThat(IdempotencyRecordMapper.toScope(entity)).isEqualTo(IdempotencyScope.PAYMENT_AUTHORIZATION);
+        assertThat(IdempotencyRecordMapper.toKey(entity)).isEqualTo(IdempotencyKey.of("idem_01HX7QK9JP7E5W5NRZ6T5Q3R1A"));
     }
 }

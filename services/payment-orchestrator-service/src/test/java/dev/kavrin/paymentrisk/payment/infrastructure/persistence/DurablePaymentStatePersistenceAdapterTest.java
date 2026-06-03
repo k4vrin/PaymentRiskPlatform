@@ -6,6 +6,10 @@ import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentAuthorizationEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.PaymentRiskDecisionEntity;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentAuthorizationEntityRepository;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentEntityRepository;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentReversalEntityRepository;
+import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.PaymentRiskDecisionEntityRepository;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +34,13 @@ class DurablePaymentStatePersistenceAdapterTest {
     private static final Instant NOW = Instant.parse("2026-05-25T10:15:30Z");
 
     private final R2dbcEntityTemplate entityTemplate = mock(R2dbcEntityTemplate.class);
+    private final PaymentEntityRepository paymentRepository = mock(PaymentEntityRepository.class);
+    private final PaymentAuthorizationEntityRepository authorizationRepository =
+            mock(PaymentAuthorizationEntityRepository.class);
+    private final PaymentRiskDecisionEntityRepository riskDecisionRepository =
+            mock(PaymentRiskDecisionEntityRepository.class);
+    private final PaymentReversalEntityRepository reversalRepository =
+            mock(PaymentReversalEntityRepository.class);
     private final ReactiveInsertOperation.ReactiveInsert<Object> insertSpec =
             mock(ReactiveInsertOperation.ReactiveInsert.class);
     private final DurablePaymentStatePersistenceAdapter adapter =
@@ -40,7 +51,11 @@ class DurablePaymentStatePersistenceAdapterTest {
                             new PlatformIdGeneratorFactory(),
                             Clock.fixed(NOW, ZoneOffset.UTC)
                     ),
-                    SensitivePaymentDataHasher.withUtf8Key("test-hash-key")
+                    SensitivePaymentDataHasher.withUtf8Key("test-hash-key"),
+                    paymentRepository,
+                    authorizationRepository,
+                    riskDecisionRepository,
+                    reversalRepository
             );
 
     @BeforeEach

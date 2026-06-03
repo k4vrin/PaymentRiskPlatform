@@ -85,6 +85,21 @@ class GlobalApiExceptionHandlerTest {
     }
 
     @Test
+    void paymentStateTransitionExceptionReturnsStructuredConflictResponse() {
+        webTestClient.get()
+                .uri("/test/payment-state-transition")
+                .header("X-Correlation-Id", "corr-payment-state")
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(409)
+                .jsonPath("$.code").isEqualTo("PAYMENT_STATE_CONFLICT")
+                .jsonPath("$.message").isEqualTo("Payment with status DECLINED cannot be reversed")
+                .jsonPath("$.path").isEqualTo("/test/payment-state-transition")
+                .jsonPath("$.correlationId").isEqualTo("corr-payment-state");
+    }
+
+    @Test
     void downstreamTimeoutExceptionReturnsStructuredErrorResponse() {
         webTestClient.get()
                 .uri("/test/timeout")

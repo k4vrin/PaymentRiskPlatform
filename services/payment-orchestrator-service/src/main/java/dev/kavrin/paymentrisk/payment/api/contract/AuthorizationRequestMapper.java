@@ -2,11 +2,11 @@ package dev.kavrin.paymentrisk.payment.api.contract;
 
 import dev.kavrin.paymentrisk.payment.api.dto.AuthorizationRequest;
 import dev.kavrin.paymentrisk.payment.application.command.AuthorizePaymentCommand;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 final class AuthorizationRequestMapper {
-
-    private AuthorizationRequestMapper() {
-    }
 
     static AuthorizePaymentCommand toCommand(
             AuthorizationRequest request,

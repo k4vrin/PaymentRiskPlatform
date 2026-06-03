@@ -3,7 +3,8 @@ package dev.kavrin.paymentrisk.idempotency.domain;
 import java.util.Arrays;
 
 public enum IdempotencyScope {
-    PAYMENT_AUTHORIZATION("payment_authorization");
+    PAYMENT_AUTHORIZATION("payment_authorization"),
+    PAYMENT_REVERSAL("payment_reversal");
 
     private final String value;
 
