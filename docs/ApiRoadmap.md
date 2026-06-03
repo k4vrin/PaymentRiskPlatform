@@ -315,7 +315,12 @@ Update this section after each implementation step that adds, removes, renames, 
             │   ├── doc.go
             │   └── risk_contract_test.go
             ├── health/doc.go
-            └── risk/doc.go
+            └── risk
+                ├── decision_policy.go
+                ├── decision_policy_test.go
+                ├── doc.go
+                ├── models.go
+                └── models_test.go
 ```
 
 ## Phase 0: Project Foundation
@@ -1210,21 +1215,21 @@ local rules, return explainable rule hits, expose health status, and shut down c
 - [x] Log startup, listen address, shutdown start, shutdown completion, and server errors.
 - [x] Do not log raw device fingerprint values.
 
-4. [ ] Implement risk scoring domain models:
+4. [x] Implement risk scoring domain models:
 
-- [ ] Add internal request model that mirrors the protobuf fields needed by rules.
-- [ ] Add internal result model with score, decision, reason codes, rule hits, and rule version.
-- [ ] Add internal rule hit model with rule ID, reason code, score delta, and message.
-- [ ] Keep protobuf types out of the core scoring rules.
-- [ ] Add model tests for decision and rule hit construction where useful.
+- [x] Add internal request model that mirrors the protobuf fields needed by rules.
+- [x] Add internal result model with score, decision, reason codes, rule hits, and rule version.
+- [x] Add internal rule hit model with rule ID, reason code, score delta, and message.
+- [x] Keep protobuf types out of the core scoring rules.
+- [x] Add model tests for decision and rule hit construction where useful.
 
-5. [ ] Implement scoring thresholds and decision policy:
+5. [x] Implement scoring thresholds and decision policy:
 
-- [ ] Use `approveMaxScore` to produce `APPROVED`.
-- [ ] Use `reviewMaxScore` to produce `REVIEW_REQUIRED`.
-- [ ] Produce `DECLINED` above the review threshold.
-- [ ] Reject invalid threshold configuration at startup.
-- [ ] Add policy tests for boundary scores.
+- [x] Use `approveMaxScore` to produce `APPROVED`.
+- [x] Use `reviewMaxScore` to produce `REVIEW_REQUIRED`.
+- [x] Produce `DECLINED` above the review threshold.
+- [x] Reject invalid threshold configuration at startup.
+- [x] Add policy tests for boundary scores.
 
 6. [ ] Implement high amount rule:
 
