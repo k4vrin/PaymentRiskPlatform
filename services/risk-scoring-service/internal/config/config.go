@@ -10,6 +10,7 @@ import (
 const (
 	defaultEnv                    = "local"
 	defaultHost                   = "0.0.0.0"
+	defaultServiceName            = "risk-scoring-service"
 	defaultGrpcPort               = 9090
 	defaultRuleVersion            = "local-v1"
 	defaultApproveMaxScore        = 49
@@ -21,6 +22,7 @@ const (
 type Config struct {
 	Env                    string
 	Host                   string
+	ServiceName            string
 	GrpcPort               int
 	RuleVersion            string
 	ApproveMaxScore        int
@@ -53,6 +55,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		Env:                    getString("RISK_SERVICE_ENV", defaultEnv),
 		Host:                   getString("RISK_SERVICE_HOST", defaultHost),
+		ServiceName:            getString("RISK_SERVICE_NAME", defaultServiceName),
 		GrpcPort:               grpcPort,
 		RuleVersion:            getString("RISK_RULE_VERSION", defaultRuleVersion),
 		ApproveMaxScore:        approveMaxScore,
@@ -75,6 +78,10 @@ func (c Config) Validate() error {
 
 	if strings.TrimSpace(c.Host) == "" {
 		return fmt.Errorf("RISK_SERVICE_HOST is required")
+	}
+
+	if strings.TrimSpace(c.ServiceName) == "" {
+		return fmt.Errorf("RISK_SERVICE_NAME is required")
 	}
 
 	if c.GrpcPort <= 0 || c.GrpcPort > 65535 {

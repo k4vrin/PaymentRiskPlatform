@@ -18,6 +18,10 @@ func TestLoadReturnsDefaults(t *testing.T) {
 		t.Fatalf("expected host 0.0.0.0, got %s", cfg.Host)
 	}
 
+	if cfg.ServiceName != "risk-scoring-service" {
+		t.Fatalf("expected service name risk-scoring-service, got %s", cfg.ServiceName)
+	}
+
 	if cfg.GrpcPort != 9090 {
 		t.Fatalf("expected grpc port 9090, got %d", cfg.GrpcPort)
 	}
@@ -47,6 +51,7 @@ func TestLoadUsesEnvironmentOverrides(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("RISK_SERVICE_ENV", "test")
 	t.Setenv("RISK_SERVICE_HOST", "127.0.0.1")
+	t.Setenv("RISK_SERVICE_NAME", "risk-test-service")
 	t.Setenv("RISK_SERVICE_GRPC_PORT", "9191")
 	t.Setenv("RISK_RULE_VERSION", "rules-test-v2")
 	t.Setenv("RISK_APPROVE_MAX_SCORE", "40")
@@ -65,6 +70,10 @@ func TestLoadUsesEnvironmentOverrides(t *testing.T) {
 
 	if cfg.Host != "127.0.0.1" {
 		t.Fatalf("expected host override, got %s", cfg.Host)
+	}
+
+	if cfg.ServiceName != "risk-test-service" {
+		t.Fatalf("expected service name override, got %s", cfg.ServiceName)
 	}
 
 	if cfg.GrpcPort != 9191 {
@@ -98,6 +107,7 @@ func TestValidateRejectsInvalidPort(t *testing.T) {
 	cfg := Config{
 		Env:                    "test",
 		Host:                   "127.0.0.1",
+		ServiceName:            "risk-scoring-service",
 		GrpcPort:               0,
 		RuleVersion:            "rules-v1",
 		ApproveMaxScore:        40,
@@ -117,6 +127,7 @@ func TestValidateRejectsInvalidThresholdOrder(t *testing.T) {
 	cfg := Config{
 		Env:                    "test",
 		Host:                   "127.0.0.1",
+		ServiceName:            "risk-scoring-service",
 		GrpcPort:               9090,
 		RuleVersion:            "rules-v1",
 		ApproveMaxScore:        80,
@@ -136,6 +147,7 @@ func TestValidateRejectsInvalidLogLevel(t *testing.T) {
 	cfg := Config{
 		Env:                    "test",
 		Host:                   "127.0.0.1",
+		ServiceName:            "risk-scoring-service",
 		GrpcPort:               9090,
 		RuleVersion:            "rules-v1",
 		ApproveMaxScore:        40,
@@ -189,6 +201,7 @@ func clearEnv(t *testing.T) {
 
 	t.Setenv("RISK_SERVICE_ENV", "")
 	t.Setenv("RISK_SERVICE_HOST", "")
+	t.Setenv("RISK_SERVICE_NAME", "")
 	t.Setenv("RISK_SERVICE_GRPC_PORT", "")
 	t.Setenv("RISK_RULE_VERSION", "")
 	t.Setenv("RISK_APPROVE_MAX_SCORE", "")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -17,18 +18,44 @@ func main() {
 		os.Exit(1)
 	}
 
+	logger := newLogger(cfg, os.Stdout)
+	slog.SetDefault(logger)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	slog.Info(
+	logger.Info(
 		"risk scoring service started",
-		"env", cfg.Env,
 		"host", cfg.Host,
-		"grpcPort", cfg.GrpcPort,
-		"ruleVersion", cfg.RuleVersion,
+		"grpc_port", cfg.GrpcPort,
+		"rule_version", cfg.RuleVersion,
 	)
 
 	<-ctx.Done()
 
-	slog.Info("risk scoring service stopped")
+	logger.Info("risk scoring service stopped")
+}
+
+func newLogger(cfg config.Config, output io.Writer) *slog.Logger {
+	level := slog.LevelInfo
+
+	switch cfg.LogLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "error":
+		level = slog.LevelError
+	case "warn":
+		level = slog.LevelWarn
+	case "info":
+		level = slog.LevelInfo
+	}
+
+	handler := slog.NewJSONHandler(output, &slog.HandlerOptions{
+		Level: level,
+	})
+
+	return slog.New(handler).With(
+		"service", cfg.ServiceName,
+		"env", cfg.Env,
+	)
 }

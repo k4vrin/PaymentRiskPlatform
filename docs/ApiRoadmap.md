@@ -301,7 +301,9 @@ Update this section after each implementation step that adds, removes, renames, 
     │               └── id/PlatformIdGeneratorFactoryTest.java
     └── risk-scoring-service
         ├── .env.example
-        ├── cmd/risk-scoring-service/main.go
+        ├── cmd/risk-scoring-service
+        │   ├── main.go
+        │   └── main_test.go
         ├── go.mod
         ├── go.sum
         └── internal
@@ -1200,13 +1202,13 @@ local rules, return explainable rule hits, expose health status, and shut down c
 - [x] Validate required values and numeric ranges.
 - [x] Add config tests for defaults, overrides, and invalid values.
 
-3. [ ] Configure structured logging:
+3. [x] Configure structured logging:
 
-- [ ] Initialize `log/slog` once in `main.go`.
-- [ ] Support configured log level.
-- [ ] Include service name and environment in log attributes.
-- [ ] Log startup, listen address, shutdown start, shutdown completion, and server errors.
-- [ ] Do not log raw device fingerprint values.
+- [x] Initialize `log/slog` once in `main.go`.
+- [x] Support configured log level.
+- [x] Include service name and environment in log attributes.
+- [x] Log startup, listen address, shutdown start, shutdown completion, and server errors.
+- [x] Do not log raw device fingerprint values.
 
 4. [ ] Implement risk scoring domain models:
 
