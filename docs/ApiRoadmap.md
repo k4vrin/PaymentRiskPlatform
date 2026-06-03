@@ -319,8 +319,18 @@ Update this section after each implementation step that adds, removes, renames, 
                 ├── decision_policy.go
                 ├── decision_policy_test.go
                 ├── doc.go
+                ├── high_amount_rule.go
+                ├── high_amount_rule_test.go
+                ├── low_risk_fallback.go
+                ├── low_risk_fallback_test.go
+                ├── merchant_risk_threshold_rule.go
+                ├── merchant_risk_threshold_rule_test.go
                 ├── models.go
-                └── models_test.go
+                ├── models_test.go
+                ├── repeated_device_rule.go
+                ├── repeated_device_rule_test.go
+                ├── suspicious_currency_rule.go
+                └── suspicious_currency_rule_test.go
 ```
 
 ## Phase 0: Project Foundation
@@ -1231,46 +1241,46 @@ local rules, return explainable rule hits, expose health status, and shut down c
 - [x] Reject invalid threshold configuration at startup.
 - [x] Add policy tests for boundary scores.
 
-6. [ ] Implement high amount rule:
+6. [x] Implement high amount rule:
 
-- [ ] Add a deterministic amount threshold.
-- [ ] Add a positive score delta when the threshold is exceeded.
-- [ ] Add `RISK_REASON_CODE_HIGH_AMOUNT`.
-- [ ] Add a `HIGH_AMOUNT_RULE` rule hit.
-- [ ] Add unit tests for below-threshold, at-threshold, and above-threshold amounts.
+- [x] Add a deterministic amount threshold.
+- [x] Add a positive score delta when the threshold is exceeded.
+- [x] Add `RISK_REASON_CODE_HIGH_AMOUNT`.
+- [x] Add a `HIGH_AMOUNT_RULE` rule hit.
+- [x] Add unit tests for below-threshold, at-threshold, and above-threshold amounts.
 
-7. [ ] Implement suspicious currency rule:
+7. [x] Implement suspicious currency rule:
 
-- [ ] Add a configured or fixed suspicious currency set for Phase 4.
-- [ ] Normalize currency casing.
-- [ ] Add a positive score delta for suspicious currencies.
-- [ ] Add `RISK_REASON_CODE_SUSPICIOUS_CURRENCY`.
-- [ ] Add a `SUSPICIOUS_CURRENCY_RULE` rule hit.
-- [ ] Add unit tests for normal, suspicious, and lowercase currency inputs.
+- [x] Add a configured or fixed suspicious currency set for Phase 4.
+- [x] Normalize currency casing.
+- [x] Add a positive score delta for suspicious currencies.
+- [x] Add `RISK_REASON_CODE_SUSPICIOUS_CURRENCY`.
+- [x] Add a `SUSPICIOUS_CURRENCY_RULE` rule hit.
+- [x] Add unit tests for normal, suspicious, and lowercase currency inputs.
 
-8. [ ] Implement repeated device placeholder rule:
+8. [x] Implement repeated device placeholder rule:
 
-- [ ] Add deterministic placeholder behavior without external storage.
-- [ ] Use a clearly documented local heuristic, such as a known test prefix or configured sample list.
-- [ ] Add `RISK_REASON_CODE_REPEATED_DEVICE`.
-- [ ] Add a `REPEATED_DEVICE_RULE` rule hit when the placeholder matches.
-- [ ] Add tests proving the rule is deterministic and does not require database/Redis state.
+- [x] Add deterministic placeholder behavior without external storage.
+- [x] Use a clearly documented local heuristic, such as a known test prefix or configured sample list.
+- [x] Add `RISK_REASON_CODE_REPEATED_DEVICE`.
+- [x] Add a `REPEATED_DEVICE_RULE` rule hit when the placeholder matches.
+- [x] Add tests proving the rule is deterministic and does not require database/Redis state.
 
-9. [ ] Implement merchant risk threshold rule:
+9. [x] Implement merchant risk threshold rule:
 
-- [ ] Add deterministic merchant-risk placeholder behavior without external merchant storage.
-- [ ] Use a documented fixed list, prefix, or configured sample list.
-- [ ] Add `RISK_REASON_CODE_MERCHANT_RISK_THRESHOLD_EXCEEDED`.
-- [ ] Add a `MERCHANT_RISK_THRESHOLD_RULE` rule hit.
-- [ ] Add tests for low-risk and high-risk merchant inputs.
+- [x] Add deterministic merchant-risk placeholder behavior without external merchant storage.
+- [x] Use a documented fixed list, prefix, or configured sample list.
+- [x] Add `RISK_REASON_CODE_MERCHANT_RISK_THRESHOLD_EXCEEDED`.
+- [x] Add a `MERCHANT_RISK_THRESHOLD_RULE` rule hit.
+- [x] Add tests for low-risk and high-risk merchant inputs.
 
-10. [ ] Implement low-risk fallback behavior:
+10. [x] Implement low-risk fallback behavior:
 
-- [ ] Return a low-risk reason code when no positive-risk rules match.
-- [ ] Add `RISK_REASON_CODE_LOW_RISK_PAYMENT`.
-- [ ] Add a `LOW_RISK_RULE` rule hit or documented fallback explanation.
-- [ ] Ensure the fallback does not hide positive rule hits.
-- [ ] Add tests for a clean low-risk request.
+- [x] Return a low-risk reason code when no positive-risk rules match.
+- [x] Add `RISK_REASON_CODE_LOW_RISK_PAYMENT`.
+- [x] Add a `LOW_RISK_RULE` rule hit or documented fallback explanation.
+- [x] Ensure the fallback does not hide positive rule hits.
+- [x] Add tests for a clean low-risk request.
 
 11. [ ] Implement score aggregation:
 
