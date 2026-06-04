@@ -311,10 +311,21 @@ Update this section after each implementation step that adds, removes, renames, 
             │   ├── config.go
             │   ├── config_test.go
             │   └── doc.go
+            ├── go-pointers-cheatsheet.md
             ├── grpc
             │   ├── doc.go
-            │   └── risk_contract_test.go
-            ├── health/doc.go
+            │   ├── request_validator.go
+            │   ├── request_validator_test.go
+            │   ├── risk_contract_test.go
+            │   ├── risk_mapper.go
+            │   ├── risk_mapper_test.go
+            │   ├── risk_scoring_integration_test.go
+            │   ├── risk_scoring_server.go
+            │   └── risk_scoring_server_test.go
+            ├── health
+            │   ├── doc.go
+            │   ├── reporter.go
+            │   └── reporter_test.go
             └── risk
                 ├── decision_policy.go
                 ├── decision_policy_test.go
@@ -329,6 +340,8 @@ Update this section after each implementation step that adds, removes, renames, 
                 ├── models_test.go
                 ├── repeated_device_rule.go
                 ├── repeated_device_rule_test.go
+                ├── scorer.go
+                ├── scorer_test.go
                 ├── suspicious_currency_rule.go
                 └── suspicious_currency_rule_test.go
 ```
@@ -1282,119 +1295,119 @@ local rules, return explainable rule hits, expose health status, and shut down c
 - [x] Ensure the fallback does not hide positive rule hits.
 - [x] Add tests for a clean low-risk request.
 
-11. [ ] Implement score aggregation:
+11. [x] Implement score aggregation:
 
-- [ ] Apply rules in deterministic order.
-- [ ] Sum all rule score deltas into the final score.
-- [ ] Deduplicate response reason codes while preserving stable order.
-- [ ] Include all matching rule hits in response order.
-- [ ] Include configured rule version in every response.
-- [ ] Add tests for multiple-rule requests.
+- [x] Apply rules in deterministic order.
+- [x] Sum all rule score deltas into the final score.
+- [x] Deduplicate response reason codes while preserving stable order.
+- [x] Include all matching rule hits in response order.
+- [x] Include configured rule version in every response.
+- [x] Add tests for multiple-rule requests.
 
-12. [ ] Implement protobuf mapping:
+12. [x] Implement protobuf mapping:
 
-- [ ] Map `ScorePaymentRequest` to internal scoring request.
-- [ ] Map internal decision to protobuf `RiskDecision`.
-- [ ] Map internal reason codes to protobuf `RiskReasonCode`.
-- [ ] Map internal rule hits to protobuf `RiskRuleHit`.
-- [ ] Map internal result to `ScorePaymentResponse`.
-- [ ] Add mapper tests for all decisions and reason codes.
+- [x] Map `ScorePaymentRequest` to internal scoring request.
+- [x] Map internal decision to protobuf `RiskDecision`.
+- [x] Map internal reason codes to protobuf `RiskReasonCode`.
+- [x] Map internal rule hits to protobuf `RiskRuleHit`.
+- [x] Map internal result to `ScorePaymentResponse`.
+- [x] Add mapper tests for all decisions and reason codes.
 
-13. [ ] Implement gRPC risk scoring server:
+13. [x] Implement gRPC risk scoring server:
 
-- [ ] Add a server type under `internal/grpc`.
-- [ ] Embed or implement the generated unimplemented server requirement.
-- [ ] Register generated `RiskScoringService`.
-- [ ] Implement unary `ScorePayment`.
-- [ ] Return protobuf responses from the internal scorer.
-- [ ] Add gRPC handler tests using an in-memory listener or direct server invocation.
+- [x] Add a server type under `internal/grpc`.
+- [x] Embed or implement the generated unimplemented server requirement.
+- [x] Register generated `RiskScoringService`.
+- [x] Implement unary `ScorePayment`.
+- [x] Return protobuf responses from the internal scorer.
+- [x] Add gRPC handler tests using an in-memory listener or direct server invocation.
 
-14. [ ] Add request validation and gRPC error handling:
+14. [x] Add request validation and gRPC error handling:
 
-- [ ] Reject missing `payment_id`.
-- [ ] Reject non-positive `amount_minor`.
-- [ ] Reject missing or malformed `currency`.
-- [ ] Reject missing `merchant_id`.
-- [ ] Reject missing `customer_id`.
-- [ ] Return appropriate gRPC status codes for invalid requests.
-- [ ] Ensure scoring failures do not return partial successful responses.
-- [ ] Add tests for invalid request errors.
+- [x] Reject missing `payment_id`.
+- [x] Reject non-positive `amount_minor`.
+- [x] Reject missing or malformed `currency`.
+- [x] Reject missing `merchant_id`.
+- [x] Reject missing `customer_id`.
+- [x] Return appropriate gRPC status codes for invalid requests.
+- [x] Ensure scoring failures do not return partial successful responses.
+- [x] Add tests for invalid request errors.
 
-15. [ ] Add correlation ID handling:
+15. [x] Add correlation ID handling:
 
-- [ ] Accept correlation ID from the request message.
-- [ ] Prefer request message correlation ID until metadata propagation is implemented.
-- [ ] Include correlation ID in request-scoped logs.
-- [ ] Do not require correlation ID for scoring correctness.
-- [ ] Add tests or handler assertions for missing and present correlation IDs.
+- [x] Accept correlation ID from the request message.
+- [x] Prefer request message correlation ID until metadata propagation is implemented.
+- [x] Include correlation ID in request-scoped logs.
+- [x] Do not require correlation ID for scoring correctness.
+- [x] Add tests or handler assertions for missing and present correlation IDs.
 
-16. [ ] Start the gRPC server from `main.go`:
+16. [x] Start the gRPC server from `main.go`:
 
-- [ ] Build config, logger, scorer, gRPC service, and health service in `main.go`.
-- [ ] Listen on configured host and port.
-- [ ] Register `RiskScoringService`.
-- [ ] Register gRPC health service.
-- [ ] Start serving without blocking signal handling setup.
-- [ ] Return startup errors clearly.
+- [x] Build config, logger, scorer, gRPC service, and health service in `main.go`.
+- [x] Listen on configured host and port.
+- [x] Register `RiskScoringService`.
+- [x] Register gRPC health service.
+- [x] Start serving without blocking signal handling setup.
+- [x] Return startup errors clearly.
 
-17. [ ] Implement gRPC health service:
+17. [x] Implement gRPC health service:
 
-- [ ] Register standard gRPC health checks.
-- [ ] Report `SERVING` after startup.
-- [ ] Report `NOT_SERVING` during shutdown.
-- [ ] Add health service tests where practical.
+- [x] Register standard gRPC health checks.
+- [x] Report `SERVING` after startup.
+- [x] Report `NOT_SERVING` during shutdown.
+- [x] Add health service tests where practical.
 
-18. [ ] Implement graceful shutdown:
+18. [x] Implement graceful shutdown:
 
-- [ ] Handle `SIGINT` and `SIGTERM`.
-- [ ] Stop accepting new requests on shutdown.
-- [ ] Use configured shutdown timeout.
-- [ ] Prefer graceful stop before force stop.
-- [ ] Log shutdown reason and outcome.
-- [ ] Add unit tests for shutdown helper behavior where practical.
+- [x] Handle `SIGINT` and `SIGTERM`.
+- [x] Stop accepting new requests on shutdown.
+- [x] Use configured shutdown timeout.
+- [x] Prefer graceful stop before force stop.
+- [x] Log shutdown reason and outcome.
+- [x] Add unit tests for shutdown helper behavior where practical.
 
-19. [ ] Add Go service integration tests:
+19. [x] Add Go service integration tests:
 
-- [ ] Start the gRPC server on an ephemeral port.
-- [ ] Call `ScorePayment` with a low-risk request.
-- [ ] Call `ScorePayment` with a multi-rule high-risk request.
-- [ ] Verify health reports `SERVING`.
-- [ ] Verify invalid requests return gRPC validation errors.
-- [ ] Keep tests deterministic and free of external infrastructure dependencies.
+- [x] Start the gRPC server with an in-process listener.
+- [x] Call `ScorePayment` with a low-risk request.
+- [x] Call `ScorePayment` with a multi-rule high-risk request.
+- [x] Verify health reports `SERVING`.
+- [x] Verify invalid requests return gRPC validation errors.
+- [x] Keep tests deterministic and free of external infrastructure dependencies.
 
-20. [ ] Add Java-to-Go integration verification:
+20. [x] Add Java-to-Go integration verification:
 
-- [ ] Add or update local configuration so the Java orchestrator can target the Go service address.
-- [ ] Add a focused test or documented manual command proving `GrpcRiskScoringClient` can call the running Go service.
-- [ ] Verify Java mapping still handles approved, review, and declined responses.
-- [ ] Verify deadline/unavailable behavior remains covered by Java adapter tests.
-- [ ] Avoid making the normal Java unit test suite require a manually started Go process.
+- [x] Add or update local configuration so the Java orchestrator can target the Go service address.
+- [x] Add a focused test or documented manual command proving `GrpcRiskScoringClient` can call the running Go service.
+- [x] Verify Java mapping still handles approved, review, and declined responses.
+- [x] Verify deadline/unavailable behavior remains covered by Java adapter tests.
+- [x] Avoid making the normal Java unit test suite require a manually started Go process.
 
-21. [ ] Update local runtime and developer docs:
+21. [x] Update local runtime and developer docs:
 
-- [ ] Update root `README.md` with Go risk service startup commands.
-- [ ] Update `.env.example` if new configuration values are added.
-- [ ] Update `platform/compose.local.yaml` if the service is added to local compose.
-- [ ] Document the rule set and scoring examples.
-- [ ] Document how to run Go tests.
+- [x] Update root `README.md` with Go risk service startup commands.
+- [x] Update `.env.example` if new configuration values are added.
+- [x] Keep `platform/compose.local.yaml` unchanged because Phase 4 runs the Go service with `make risk-run`.
+- [x] Document the rule set and scoring examples.
+- [x] Document how to run Go tests.
 
-22. [ ] Final Phase 4 verification:
+22. [x] Final Phase 4 verification:
 
-- [ ] Run `go test ./...` in `services/risk-scoring-service`.
-- [ ] Run protobuf contract tests.
-- [ ] Run focused Java risk gRPC adapter tests.
-- [ ] Verify the Go service starts locally.
-- [ ] Verify the service shuts down gracefully.
-- [ ] Update this roadmap and project structure with any added files.
+- [x] Run `go test ./...` in `services/risk-scoring-service`.
+- [x] Run protobuf contract tests.
+- [x] Run focused Java risk gRPC adapter tests.
+- [x] Verify the Go service starts locally.
+- [x] Verify the service shuts down gracefully.
+- [x] Update this roadmap and project structure with any added files.
 
 ### Acceptance Criteria
 
-- [ ] Go service starts locally.
-- [ ] Java service can call `ScorePayment`.
-- [ ] Risk scoring returns deterministic results for fixed inputs.
-- [ ] Rule hits explain why a score was produced.
-- [ ] Go tests pass with `go test ./...`.
-- [ ] Service shuts down gracefully.
+- [x] Go service starts locally.
+- [x] Java service can call `ScorePayment`.
+- [x] Risk scoring returns deterministic results for fixed inputs.
+- [x] Rule hits explain why a score was produced.
+- [x] Go tests pass with `go test ./...`.
+- [x] Service shuts down gracefully.
 
 ## Phase 5: Operations API
 

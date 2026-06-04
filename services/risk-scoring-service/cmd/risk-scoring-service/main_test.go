@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/k4vrin/PaymentRiskPlatform/services/risk-scoring-service/internal/config"
 )
@@ -100,4 +101,65 @@ func testConfig(logLevel string) config.Config {
 		LogLevel:               logLevel,
 		ShutdownTimeoutSeconds: 10,
 	}
+}
+
+func TestGracefulStopUsesGracefulStop(t *testing.T) {
+	t.Parallel()
+
+	server := &fakeGrpcServerControl{
+		gracefulStopped: make(chan struct{}),
+		stopped:         make(chan struct{}, 1),
+	}
+	close(server.gracefulStopped)
+
+	gracefulStop(server, time.Second)
+
+	if !server.gracefulStopCalled {
+		t.Fatal("expected GracefulStop to be called")
+	}
+
+	if server.stopCalled {
+		t.Fatal("did not expect Stop to be called")
+	}
+}
+
+func TestGracefulStopFallsBackToStopAfterTimeout(t *testing.T) {
+	t.Parallel()
+
+	server := &fakeGrpcServerControl{
+		gracefulStopped: make(chan struct{}),
+		stopped:         make(chan struct{}, 1),
+	}
+
+	go func() {
+		<-server.stopped
+		close(server.gracefulStopped)
+	}()
+
+	gracefulStop(server, time.Nanosecond)
+
+	if !server.gracefulStopCalled {
+		t.Fatal("expected GracefulStop to be called")
+	}
+
+	if !server.stopCalled {
+		t.Fatal("expected Stop to be called after timeout")
+	}
+}
+
+type fakeGrpcServerControl struct {
+	gracefulStopCalled bool
+	stopCalled         bool
+	gracefulStopped    chan struct{}
+	stopped            chan struct{}
+}
+
+func (s *fakeGrpcServerControl) GracefulStop() {
+	s.gracefulStopCalled = true
+	<-s.gracefulStopped
+}
+
+func (s *fakeGrpcServerControl) Stop() {
+	s.stopCalled = true
+	s.stopped <- struct{}{}
 }

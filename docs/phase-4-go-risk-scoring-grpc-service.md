@@ -183,6 +183,17 @@ Phase 4 uses local deterministic rules:
 The repeated-device and merchant-threshold rules are placeholders. They should be deterministic and documented, but
 they should not pretend to use real historical state until later phases add storage or streaming inputs.
 
+Implemented Phase 4 local rule behavior:
+
+- `HIGH_AMOUNT_RULE`: triggers above `10_000_000` minor units and adds `35`.
+- `SUSPICIOUS_CURRENCY_RULE`: triggers for `BTC`, `ETH`, `XTS`, or `XXX` after trim/case normalization and adds `30`.
+- `REPEATED_DEVICE_RULE`: placeholder trigger for device fingerprints prefixed with `repeat_` and adds `20`.
+- `MERCHANT_RISK_THRESHOLD_RULE`: placeholder trigger for merchant IDs prefixed with `high_risk_` and adds `25`.
+- `LOW_RISK_RULE`: fallback hit with score delta `0` when no positive-risk rules match.
+
+The merchant and repeated-device placeholders are test heuristics only. Real merchant risk should come from merchant
+risk profile data, and real repeated-device detection should come from historical device usage data.
+
 ## Error Behavior
 
 Invalid gRPC requests should return gRPC validation errors, not successful responses with unspecified enum values.
@@ -283,7 +294,8 @@ Handle interrupt signals, stop accepting new work, and force stop only after the
 
 ### Step 19: Go Integration Tests
 
-Start the service on an ephemeral port and call it through a real gRPC client.
+Start the service with an in-process gRPC listener and call it through a real gRPC client. This keeps the test
+deterministic and avoids requiring OS socket permissions.
 
 ### Step 20: Java-To-Go Verification
 
@@ -322,7 +334,7 @@ Use Java tests for:
 - Java gRPC adapter mapping of approved, review, and declined responses;
 - deadline exceeded mapping to `RISK_SERVICE_TIMEOUT`;
 - unavailable mapping to `DOWNSTREAM_UNAVAILABLE`;
-- a focused Java-to-Go integration path where practical.
+- protobuf contract construction and Java adapter compatibility with the Go-owned risk contract.
 
 ## Common Mistakes To Avoid
 

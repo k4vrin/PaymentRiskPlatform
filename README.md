@@ -134,14 +134,42 @@ Start the Go risk scoring service:
 make risk-run
 ```
 
+The Go service listens on `RISK_SERVICE_HOST:RISK_SERVICE_GRPC_PORT`, defaulting to `0.0.0.0:9090`. The Spring Boot
+local profile points its risk gRPC client at `localhost:9090`, so starting `make risk-run` before the Java service wires
+the authorization flow to the local Go scorer.
+
+Useful Go service configuration:
+
+```text
+RISK_SERVICE_ENV=local
+RISK_SERVICE_HOST=0.0.0.0
+RISK_SERVICE_NAME=risk-scoring-service
+RISK_SERVICE_GRPC_PORT=9090
+RISK_RULE_VERSION=local-v1
+RISK_APPROVE_MAX_SCORE=49
+RISK_REVIEW_MAX_SCORE=79
+LOG_LEVEL=info
+SHUTDOWN_TIMEOUT_SECONDS=10
+```
+
+Phase 4 risk rules are deterministic and infrastructure-free:
+
+- high amount: amount above `10_000_000` minor units adds `HIGH_AMOUNT`;
+- suspicious currency: `BTC`, `ETH`, `XTS`, or `XXX` adds `SUSPICIOUS_CURRENCY`;
+- repeated device placeholder: device fingerprints prefixed with `repeat_` add `REPEATED_DEVICE`;
+- merchant risk placeholder: merchant IDs prefixed with `high_risk_` add
+  `MERCHANT_RISK_THRESHOLD_EXCEEDED`;
+- low-risk fallback: clean requests receive `LOW_RISK_PAYMENT`.
+
 ## Current Implementation Status
 
-The project has completed the foundation, API contract baseline, and Phase 2 Payment Authorization API work.
+The project has completed the foundation, API contract baseline, Phase 2 Payment Authorization API work, Phase 3 Payment
+Lookup/Reversal work, and Phase 4 Go Risk Scoring gRPC Service work.
 
 Completed foundations include:
 
 - Spring Boot WebFlux payment orchestrator service structure.
-- Go risk scoring service skeleton.
+- Go risk scoring service with deterministic scoring rules, gRPC health, structured logging, and graceful shutdown.
 - Local Docker Compose platform for PostgreSQL, Redis, Kafka, RabbitMQ, Prometheus, and Grafana.
 - REST API conventions, API versioning, OpenAPI setup, correlation ID handling, and global error responses.
 - Shared protobuf contract for the risk scoring gRPC API.
@@ -158,7 +186,7 @@ Completed foundations include:
 - Kafka-ready outbox payload records, event-envelope mapping, and pending outbox writes for authorization outcomes.
 - Reactive transaction boundary across payment state persistence, outbox insertion, and idempotency completion.
 - Java gRPC risk client adapter with configurable host, port, timeout, response mapping, and timeout/unavailable
-  fallback outcomes.
+  fallback outcomes, verified against the Go protobuf contract.
 - Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
 - Redis repopulation from durable database snapshots after cache misses.
 - Tests for API contracts, correlation IDs, error handling, domain value objects, persistence mappers, Redis cache
@@ -171,10 +199,9 @@ store as the durable source of truth.
 
 Main work not implemented yet:
 
-- Real Go risk scoring server implementation.
-- Payment lookup and reversal APIs.
 - Kafka outbox relay, audit consumer, settlement projection consumer, and RabbitMQ callback worker.
 - Operations APIs, security roles/authentication, observability dashboards, CI, and release-readiness work.
 
 See `docs/ApiRoadmap.md` and `docs/phase-2-payment-authorization.md` for the detailed tracker.
 Phase 3 planning is documented in `docs/phase-3-payment-lookup-and-reversal.md`.
+Phase 4 planning is documented in `docs/phase-4-go-risk-scoring-grpc-service.md`.
