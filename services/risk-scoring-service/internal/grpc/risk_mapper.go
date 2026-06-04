@@ -8,6 +8,8 @@ import (
 )
 
 func ToScoringRequest(request *riskv1.ScorePaymentRequest) risk.ScoringRequest {
+	// Keep protobuf concerns at the adapter edge: risk rules consume internal
+	// Go models, while Java and Go communicate only through generated proto types.
 	return risk.ScoringRequest{
 		PaymentID:         request.GetPaymentId(),
 		MerchantID:        request.GetMerchantId(),
@@ -59,6 +61,8 @@ func ToProtoRuleHit(hit risk.RuleHit) *riskv1.RiskRuleHit {
 }
 
 func ToProtoScorePaymentResponse(result risk.ScoringResult) *riskv1.ScorePaymentResponse {
+	// Map internal rule output back to protobuf so the Java orchestrator can
+	// persist the score, decision, reason codes, and rule-hit explanation.
 	reasonCodes := make([]riskv1.RiskReasonCode, 0, len(result.ReasonCodes))
 	for _, reasonCode := range result.ReasonCodes {
 		reasonCodes = append(reasonCodes, ToProtoReasonCode(reasonCode))

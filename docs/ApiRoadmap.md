@@ -93,16 +93,46 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   ├── api
     │       │   │   │   │   ├── OpsApiPaths.java
     │       │   │   │   │   ├── OpsFilterParameters.java
+    │       │   │   │   │   ├── OpsOutboxController.java
+    │       │   │   │   │   ├── OpsOutboxInspectionResponseMapper.java
+    │       │   │   │   │   ├── OpsPaymentController.java
+    │       │   │   │   │   ├── OpsPaymentSearchResponseMapper.java
     │       │   │   │   │   ├── dto
     │       │   │   │   │   │   ├── OpsPageRequest.java
     │       │   │   │   │   │   ├── OpsPageResponse.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionItemResponse.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionResponse.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchItemResponse.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchResponse.java
     │       │   │   │   │   │   ├── OpsSortDirection.java
     │       │   │   │   │   │   ├── OpsSortRequest.java
     │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
-    │       │   │   │   ├── application/package-info.java
+    │       │   │   │   ├── application
+    │       │   │   │   │   ├── OpsPaymentSearchItem.java
+    │       │   │   │   │   ├── OpsPaymentSearchPort.java
+    │       │   │   │   │   ├── OpsPaymentSearchRequest.java
+    │       │   │   │   │   ├── OpsPaymentSearchResult.java
+    │       │   │   │   │   ├── OpsPaymentSearchService.java
+    │       │   │   │   │   ├── DefaultOpsPaymentSearchService.java
+    │       │   │   │   │   ├── DefaultOpsOutboxInspectionService.java
+    │       │   │   │   │   ├── OpsDeadLetterItem.java
+    │       │   │   │   │   ├── OpsDeadLetterResult.java
+    │       │   │   │   │   ├── OpsOutboxInspectionItem.java
+    │       │   │   │   │   ├── OpsOutboxInspectionPort.java
+    │       │   │   │   │   ├── OpsOutboxInspectionRequest.java
+    │       │   │   │   │   ├── OpsOutboxInspectionResult.java
+    │       │   │   │   │   ├── OpsOutboxInspectionService.java
+    │       │   │   │   │   └── package-info.java
     │       │   │   │   ├── domain/package-info.java
-    │       │   │   │   ├── infrastructure/package-info.java
+    │       │   │   │   ├── infrastructure
+    │       │   │   │   │   ├── DatabaseOpsOutboxInspectionAdapter.java
+    │       │   │   │   │   ├── DatabaseOpsPaymentSearchAdapter.java
+    │       │   │   │   │   ├── persistence
+    │       │   │   │   │   │   ├── DeadLetterRecordEntity.java
+    │       │   │   │   │   │   ├── DeadLetterRecordEntityRepository.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   └── package-info.java
     │       │   │   │   └── package-info.java
     │       │   │   ├── outbox
     │       │   │   │   ├── domain/package-info.java
@@ -260,7 +290,8 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │       ├── application.yaml
     │       │       └── db/migration
     │       │           ├── V1__create_payment_authorization_tables.sql
-    │       │           └── V2__create_payment_reversal_tables.sql
+    │       │           ├── V2__create_payment_reversal_tables.sql
+    │       │           └── V3__create_dead_letter_records.sql
     │       └── test/java/dev/kavrin/paymentrisk
     │           ├── PaymentOrchestratorServiceApplicationTests.java
     │           ├── TestPostgresConfiguration.java
@@ -274,7 +305,20 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   └── redis
     │           │       ├── RedisIdempotencyKeyFormatterTest.java
     │           │       └── SpringRedisIdempotencySnapshotCacheTest.java
-    │           ├── ops/api/OpsApiConventionsTest.java
+    │           ├── ops
+    │           │   ├── api
+    │           │   │   ├── OpsApiConventionsTest.java
+    │           │   │   ├── OpsOutboxControllerTest.java
+    │           │   │   └── OpsPaymentControllerTest.java
+    │           │   ├── application
+    │           │   │   ├── OpsDeadLetterResultTest.java
+    │           │   │   ├── OpsOutboxInspectionResultTest.java
+    │           │   │   ├── OpsPaymentSearchRequestTest.java
+    │           │   │   └── OpsPaymentSearchResultTest.java
+    │           │   └── infrastructure
+    │           │       ├── DatabaseOpsOutboxInspectionAdapterTest.java
+    │           │       ├── DatabaseOpsPaymentSearchAdapterTest.java
+    │           │       └── persistence/DeadLetterRecordEntityRepositoryTest.java
     │           ├── payment
     │           │   ├── api/contract/PaymentAuthorizationControllerTest.java
     │           │   ├── application/service
@@ -1448,87 +1492,87 @@ Goal: Add operator-facing REST endpoints for investigation, failed event review,
 - [x] Use stable sort defaults.
 - [x] Document filter parameter names.
 
-3. [ ] Add ops payment search request model:
+3. [x] Add ops payment search request model:
 
-- [ ] Add status filter.
-- [ ] Add merchant ID filter.
-- [ ] Add customer ID filter.
-- [ ] Add payment ID filter where useful.
-- [ ] Add created-from and created-to filters.
-- [ ] Add page size and cursor/page token.
-- [ ] Validate date range ordering.
-- [ ] Validate maximum page size.
+- [x] Add status filter.
+- [x] Add merchant ID filter.
+- [x] Add customer ID filter.
+- [x] Add payment ID filter where useful.
+- [x] Add created-from and created-to filters.
+- [x] Add page size and cursor/page token.
+- [x] Validate date range ordering.
+- [x] Validate maximum page size.
 
-4. [ ] Add ops payment search read model:
+4. [x] Add ops payment search read model:
 
-- [ ] Include payment ID, merchant ID, customer ID, amount, currency, status, and external reference.
-- [ ] Include authorization summary.
-- [ ] Include risk summary.
-- [ ] Include reversal summary when present.
-- [ ] Include created-at and updated-at.
-- [ ] Exclude raw payment method tokens and raw device fingerprints.
+- [x] Include payment ID, merchant ID, customer ID, amount, currency, status, and external reference.
+- [x] Include authorization summary.
+- [x] Include risk summary.
+- [x] Include reversal summary when present.
+- [x] Include created-at and updated-at.
+- [x] Exclude raw payment method tokens and raw device fingerprints.
 
-5. [ ] Implement payment search persistence adapter:
+5. [x] Implement payment search persistence adapter:
 
-- [ ] Query payments with optional filters.
-- [ ] Join or load authorization/risk/reversal summaries.
-- [ ] Apply stable ordering.
-- [ ] Apply pagination limits.
-- [ ] Return empty result pages for no matches.
-- [ ] Add adapter tests for each filter and combined filters.
+- [x] Query payments with optional filters.
+- [x] Join or load authorization/risk/reversal summaries.
+- [x] Apply stable ordering.
+- [x] Apply pagination limits.
+- [x] Return empty result pages for no matches.
+- [x] Add adapter tests for each filter and combined filters.
 
-6. [ ] Add payment search API endpoint:
+6. [x] Add payment search API endpoint:
 
-- [ ] Add `GET /api/v1/ops/payments`.
-- [ ] Bind query parameters into the search request model.
-- [ ] Delegate to the application query service.
-- [ ] Map results to DTOs.
-- [ ] Add API tests for success, validation errors, empty pages, and pagination.
+- [x] Add `GET /api/v1/ops/payments`.
+- [x] Bind query parameters into the search request model.
+- [x] Delegate to the application query service.
+- [x] Map results to DTOs.
+- [x] Add API tests for success, validation errors, empty pages, and pagination.
 
-7. [ ] Define outbox inspection read model:
+7. [x] Define outbox inspection read model:
 
-- [ ] Include event ID, aggregate ID, aggregate type, event type, schema version, and status.
-- [ ] Include retry count.
-- [ ] Include last error.
-- [ ] Include next retry time.
-- [ ] Include created-at, occurred-at, published-at, and updated-at where available.
-- [ ] Include correlation ID.
-- [ ] Exclude full payload by default or define an explicit payload preview policy.
+- [x] Include event ID, aggregate ID, aggregate type, event type, schema version, and status.
+- [x] Include retry count.
+- [x] Include last error.
+- [x] Include next retry time.
+- [x] Include created-at, occurred-at, published-at, and updated-at where available.
+- [x] Include correlation ID.
+- [x] Exclude full payload by default or define an explicit payload preview policy.
 
-8. [ ] Implement outbox inspection adapter:
+8. [x] Implement outbox inspection adapter:
 
-- [ ] Query outbox records by status.
-- [ ] Query outbox records by event type.
-- [ ] Query outbox records by aggregate ID.
-- [ ] Query failed records ordered by next retry time.
-- [ ] Apply pagination.
-- [ ] Add repository/adapter tests.
+- [x] Query outbox records by status.
+- [x] Query outbox records by event type.
+- [x] Query outbox records by aggregate ID.
+- [x] Query failed records ordered by next retry time.
+- [x] Apply pagination.
+- [x] Add repository/adapter tests.
 
-9. [ ] Add outbox inspection API endpoint:
+9. [x] Add outbox inspection API endpoint:
 
-- [ ] Add `GET /api/v1/ops/outbox`.
-- [ ] Support status, event type, aggregate ID, and created range filters.
-- [ ] Show retry count, last error, and next retry time.
-- [ ] Return structured validation errors.
-- [ ] Add API tests for success and filter validation.
+- [x] Add `GET /api/v1/ops/outbox`.
+- [x] Support status, event type, aggregate ID, and created range filters.
+- [x] Show retry count, last error, and next retry time.
+- [x] Return structured validation errors.
+- [x] Add API tests for success and filter validation.
 
-10. [ ] Define dead-letter record model:
+10. [x] Define dead-letter record model:
 
-- [ ] Define dead-letter ID.
-- [ ] Include source system such as Kafka or RabbitMQ.
-- [ ] Include topic/queue name.
-- [ ] Include partition/offset or delivery tag when applicable.
-- [ ] Include event ID or message ID when available.
-- [ ] Include failure reason and failure timestamp.
-- [ ] Include retry/replay eligibility.
-- [ ] Include correlation ID.
+- [x] Define dead-letter ID.
+- [x] Include source system such as Kafka or RabbitMQ.
+- [x] Include topic/queue name.
+- [x] Include partition/offset or delivery tag when applicable.
+- [x] Include event ID or message ID when available.
+- [x] Include failure reason and failure timestamp.
+- [x] Include retry/replay eligibility.
+- [x] Include correlation ID.
 
-11. [ ] Add dead-letter persistence schema:
+11. [x] Add dead-letter persistence schema:
 
-- [ ] Add a Flyway migration for dead-letter records if no table exists.
-- [ ] Add indexes for source, status, failed-at, and event/message ID.
-- [ ] Add entity/repository classes.
-- [ ] Add repository tests proving insert/read/filter behavior.
+- [x] Add a Flyway migration for dead-letter records if no table exists.
+- [x] Add indexes for source, status, failed-at, and event/message ID.
+- [x] Add entity/repository classes.
+- [x] Add repository tests proving insert/read/filter behavior.
 
 12. [ ] Implement dead-letter inspection API:
 

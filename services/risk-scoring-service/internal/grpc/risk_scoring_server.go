@@ -36,6 +36,9 @@ func NewRiskScoringServer(scorer scorer, logger *slog.Logger) *RiskScoringServer
 }
 
 func RegisterRiskScoringServer(grpcServer *googlegrpc.Server, server *RiskScoringServer) {
+	// This binds the Go implementation to the protobuf service generated from
+	// proto/risk/v1/risk_scoring.proto. The Java service calls this service over
+	// a ManagedChannel using the same generated contract.
 	riskv1.RegisterRiskScoringServiceServer(grpcServer, server)
 }
 
@@ -44,6 +47,9 @@ func (s *RiskScoringServer) ScorePayment(
 	request *riskv1.ScorePaymentRequest,
 ) (*riskv1.ScorePaymentResponse, error) {
 
+	// ScorePayment is the Go side of the Java -> Go risk-scoring call. It
+	// receives the protobuf request, validates it, maps it to internal risk
+	// models, executes rules, and returns a protobuf response to Java.
 	correlationID := correlationIDFromRequest(request)
 
 	logger := s.logger.With(

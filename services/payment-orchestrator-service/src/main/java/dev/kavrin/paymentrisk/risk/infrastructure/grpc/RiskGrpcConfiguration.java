@@ -12,6 +12,8 @@ class RiskGrpcConfiguration {
 
     @Bean(destroyMethod = "shutdown")
     ManagedChannel riskManagedChannel(RiskGrpcProperties properties) {
+        // The Java orchestrator is a gRPC client: it opens a channel to the Go
+        // risk-scoring service host/port and sends protobuf ScorePayment calls.
         return ManagedChannelBuilder
                 .forAddress(properties.host(), properties.port())
                 .usePlaintext()

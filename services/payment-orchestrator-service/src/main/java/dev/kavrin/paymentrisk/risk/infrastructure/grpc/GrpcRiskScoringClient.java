@@ -1,16 +1,11 @@
 package dev.kavrin.paymentrisk.risk.infrastructure.grpc;
 
 import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
+import dev.kavrin.paymentrisk.risk.application.dto.RiskRuleHitSummary;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringOutcome;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
-import dev.kavrin.paymentrisk.risk.application.dto.RiskRuleHitSummary;
-import dev.kavrin.paymentrisk.risk.v1.RiskDecision;
-import dev.kavrin.paymentrisk.risk.v1.RiskReasonCode;
-import dev.kavrin.paymentrisk.risk.v1.RiskRuleHit;
-import dev.kavrin.paymentrisk.risk.v1.RiskScoringServiceGrpc;
-import dev.kavrin.paymentrisk.risk.v1.ScorePaymentRequest;
-import dev.kavrin.paymentrisk.risk.v1.ScorePaymentResponse;
+import dev.kavrin.paymentrisk.risk.v1.*;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.StatusException;
@@ -46,6 +41,9 @@ public class GrpcRiskScoringClient implements RiskScoringClient {
 
     @Override
     public Mono<RiskScoringResponse> score(RiskScoringRequest request) {
+        // This is the Java -> Go boundary. The application service works with
+        // Java DTOs, this adapter converts them to the shared protobuf request,
+        // calls the Go gRPC server, then maps the protobuf response back.
         ScorePaymentRequest grpcRequest = toGrpcRequest(request);
 
         return Mono.create(sink ->
@@ -70,6 +68,8 @@ public class GrpcRiskScoringClient implements RiskScoringClient {
     }
 
     private static ScorePaymentRequest toGrpcRequest(RiskScoringRequest request) {
+        // Field names intentionally mirror proto/risk/v1/risk_scoring.proto so
+        // both services agree on the wire contract even though their internals differ.
         return ScorePaymentRequest.newBuilder()
                 .setPaymentId(request.paymentId())
                 .setAmountMinor(request.amountMinor())
@@ -82,6 +82,8 @@ public class GrpcRiskScoringClient implements RiskScoringClient {
     }
 
     private static RiskScoringResponse toInternalResponse(ScorePaymentResponse response) {
+        // Convert the Go service's protobuf response into the Java application
+        // model used by payment authorization and persistence.
         return new RiskScoringResponse(
                 toInternalOutcome(response.getDecision()),
                 response.getScore(),
