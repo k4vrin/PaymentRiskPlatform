@@ -93,44 +93,78 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   ├── api
     │       │   │   │   │   ├── OpsApiPaths.java
     │       │   │   │   │   ├── OpsFilterParameters.java
-    │       │   │   │   │   ├── OpsOutboxController.java
-    │       │   │   │   │   ├── OpsOutboxInspectionResponseMapper.java
-    │       │   │   │   │   ├── OpsPaymentController.java
-    │       │   │   │   │   ├── OpsPaymentSearchResponseMapper.java
+    │       │   │   │   │   ├── deadletter
+    │       │   │   │   │   │   ├── OpsDeadLetterController.java
+    │       │   │   │   │   │   ├── OpsDeadLetterInspectionResponseMapper.java
+    │       │   │   │   │   │   ├── dto
+    │       │   │   │   │   │   │   ├── OpsDeadLetterInspectionResponse.java
+    │       │   │   │   │   │   │   ├── OpsDeadLetterItemResponse.java
+    │       │   │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── dto
     │       │   │   │   │   │   ├── OpsPageRequest.java
     │       │   │   │   │   │   ├── OpsPageResponse.java
-    │       │   │   │   │   │   ├── OpsOutboxInspectionItemResponse.java
-    │       │   │   │   │   │   ├── OpsOutboxInspectionResponse.java
-    │       │   │   │   │   │   ├── OpsPaymentSearchItemResponse.java
-    │       │   │   │   │   │   ├── OpsPaymentSearchResponse.java
     │       │   │   │   │   │   ├── OpsSortDirection.java
     │       │   │   │   │   │   ├── OpsSortRequest.java
     │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── outbox
+    │       │   │   │   │   │   ├── OpsOutboxController.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionResponseMapper.java
+    │       │   │   │   │   │   ├── dto
+    │       │   │   │   │   │   │   ├── OpsOutboxInspectionItemResponse.java
+    │       │   │   │   │   │   │   ├── OpsOutboxInspectionResponse.java
+    │       │   │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── payment
+    │       │   │   │   │   │   ├── OpsPaymentController.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchResponseMapper.java
+    │       │   │   │   │   │   ├── dto
+    │       │   │   │   │   │   │   ├── OpsPaymentSearchItemResponse.java
+    │       │   │   │   │   │   │   ├── OpsPaymentSearchResponse.java
+    │       │   │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   ├── application
-    │       │   │   │   │   ├── OpsPaymentSearchItem.java
-    │       │   │   │   │   ├── OpsPaymentSearchPort.java
-    │       │   │   │   │   ├── OpsPaymentSearchRequest.java
-    │       │   │   │   │   ├── OpsPaymentSearchResult.java
-    │       │   │   │   │   ├── OpsPaymentSearchService.java
-    │       │   │   │   │   ├── DefaultOpsPaymentSearchService.java
-    │       │   │   │   │   ├── DefaultOpsOutboxInspectionService.java
-    │       │   │   │   │   ├── OpsDeadLetterItem.java
-    │       │   │   │   │   ├── OpsDeadLetterResult.java
-    │       │   │   │   │   ├── OpsOutboxInspectionItem.java
-    │       │   │   │   │   ├── OpsOutboxInspectionPort.java
-    │       │   │   │   │   ├── OpsOutboxInspectionRequest.java
-    │       │   │   │   │   ├── OpsOutboxInspectionResult.java
-    │       │   │   │   │   ├── OpsOutboxInspectionService.java
+    │       │   │   │   │   ├── deadletter
+    │       │   │   │   │   │   ├── DefaultOpsDeadLetterInspectionService.java
+    │       │   │   │   │   │   ├── OpsDeadLetterInspectionPort.java
+    │       │   │   │   │   │   ├── OpsDeadLetterInspectionRequest.java
+    │       │   │   │   │   │   ├── OpsDeadLetterInspectionService.java
+    │       │   │   │   │   │   ├── OpsDeadLetterItem.java
+    │       │   │   │   │   │   ├── OpsDeadLetterResult.java
+    │       │   │   │   │   │   ├── ReplayEligibility.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── outbox
+    │       │   │   │   │   │   ├── DefaultOpsOutboxInspectionService.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionItem.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionPort.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionRequest.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionResult.java
+    │       │   │   │   │   │   ├── OpsOutboxInspectionService.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── payment
+    │       │   │   │   │   │   ├── DefaultOpsPaymentSearchService.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchItem.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchPort.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchRequest.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchResult.java
+    │       │   │   │   │   │   ├── OpsPaymentSearchService.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   ├── domain/package-info.java
     │       │   │   │   ├── infrastructure
-    │       │   │   │   │   ├── DatabaseOpsOutboxInspectionAdapter.java
-    │       │   │   │   │   ├── DatabaseOpsPaymentSearchAdapter.java
-    │       │   │   │   │   ├── persistence
-    │       │   │   │   │   │   ├── DeadLetterRecordEntity.java
-    │       │   │   │   │   │   ├── DeadLetterRecordEntityRepository.java
+    │       │   │   │   │   ├── deadletter
+    │       │   │   │   │   │   ├── DatabaseOpsDeadLetterInspectionAdapter.java
+    │       │   │   │   │   │   ├── package-info.java
+    │       │   │   │   │   │   └── persistence
+    │       │   │   │   │   │       ├── DeadLetterRecordEntity.java
+    │       │   │   │   │   │       ├── DeadLetterRecordEntityRepository.java
+    │       │   │   │   │   │       └── package-info.java
+    │       │   │   │   │   ├── outbox
+    │       │   │   │   │   │   ├── DatabaseOpsOutboxInspectionAdapter.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── payment
+    │       │   │   │   │   │   ├── DatabaseOpsPaymentSearchAdapter.java
     │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   └── package-info.java
@@ -308,17 +342,21 @@ Update this section after each implementation step that adds, removes, renames, 
     │           ├── ops
     │           │   ├── api
     │           │   │   ├── OpsApiConventionsTest.java
-    │           │   │   ├── OpsOutboxControllerTest.java
-    │           │   │   └── OpsPaymentControllerTest.java
+    │           │   │   ├── deadletter/OpsDeadLetterControllerTest.java
+    │           │   │   ├── outbox/OpsOutboxControllerTest.java
+    │           │   │   └── payment/OpsPaymentControllerTest.java
     │           │   ├── application
-    │           │   │   ├── OpsDeadLetterResultTest.java
-    │           │   │   ├── OpsOutboxInspectionResultTest.java
-    │           │   │   ├── OpsPaymentSearchRequestTest.java
-    │           │   │   └── OpsPaymentSearchResultTest.java
+    │           │   │   ├── deadletter/OpsDeadLetterResultTest.java
+    │           │   │   ├── outbox/OpsOutboxInspectionResultTest.java
+    │           │   │   └── payment
+    │           │   │       ├── OpsPaymentSearchRequestTest.java
+    │           │   │       └── OpsPaymentSearchResultTest.java
     │           │   └── infrastructure
-    │           │       ├── DatabaseOpsOutboxInspectionAdapterTest.java
-    │           │       ├── DatabaseOpsPaymentSearchAdapterTest.java
-    │           │       └── persistence/DeadLetterRecordEntityRepositoryTest.java
+    │           │       ├── deadletter
+    │           │       │   ├── DatabaseOpsDeadLetterInspectionAdapterTest.java
+    │           │       │   └── persistence/DeadLetterRecordEntityRepositoryTest.java
+    │           │       ├── outbox/DatabaseOpsOutboxInspectionAdapterTest.java
+    │           │       └── payment/DatabaseOpsPaymentSearchAdapterTest.java
     │           ├── payment
     │           │   ├── api/contract/PaymentAuthorizationControllerTest.java
     │           │   ├── application/service
@@ -1574,13 +1612,13 @@ Goal: Add operator-facing REST endpoints for investigation, failed event review,
 - [x] Add entity/repository classes.
 - [x] Add repository tests proving insert/read/filter behavior.
 
-12. [ ] Implement dead-letter inspection API:
+12. [x] Implement dead-letter inspection API:
 
-- [ ] Add `GET /api/v1/ops/dead-letters`.
-- [ ] Support source, status, topic/queue, event ID, and failed-time filters.
-- [ ] Return paginated results.
-- [ ] Hide sensitive payload fields.
-- [ ] Add API and adapter tests.
+- [x] Add `GET /api/v1/ops/dead-letters`.
+- [x] Support source, status, topic/queue, event ID, and failed-time filters.
+- [x] Return paginated results.
+- [x] Hide sensitive payload fields.
+- [x] Add API and adapter tests.
 
 13. [ ] Define replay job model:
 
@@ -2134,3 +2172,150 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Grafana dashboards show API, risk, Kafka, Redis, and database health.
 - [ ] CI runs Java, Go, protobuf, and container checks.
 - [ ] Runbook documents common production troubleshooting commands.
+
+## Phase 8: Portfolio Polish And Readiness
+
+Goal: Turn the completed payment risk platform into a polished portfolio, resume, and interview artifact that is easy to run, inspect, and discuss.
+
+### Atomic Remaining Work
+
+1. [ ] Add final README overview:
+
+- [ ] State the project purpose in one concise paragraph.
+- [ ] Explain the payment risk, idempotency, and event-driven architecture goals.
+- [ ] List major capabilities by phase.
+- [ ] Include architecture diagram links.
+- [ ] Include API, gRPC, event, and persistence contract links.
+- [ ] Include local quickstart commands.
+- [ ] Include demo script link.
+- [ ] Include production-readiness and known-limitations notes.
+
+2. [ ] Add editable visual architecture assets:
+
+- [ ] Add system context diagram for merchant, orchestrator, risk service, Redis, database, Kafka, RabbitMQ, Prometheus, and Grafana.
+- [ ] Add payment authorization sequence diagram with idempotency cache and database fallback.
+- [ ] Add payment reversal sequence diagram.
+- [ ] Add risk scoring gRPC sequence diagram.
+- [ ] Add outbox relay and consumer projection sequence diagram.
+- [ ] Add RabbitMQ partner callback workflow diagram.
+- [ ] Add observability signal flow diagram for logs, metrics, dashboards, and correlation IDs.
+- [ ] Prefer Mermaid or editable docs over tracked screenshots.
+
+3. [ ] Add sample API and messaging demo flow:
+
+- [ ] Authorize a payment with a merchant credential.
+- [ ] Replay the same authorization with the same idempotency key.
+- [ ] Send an idempotency conflict request.
+- [ ] Retrieve payment details by payment ID.
+- [ ] Reverse an authorized payment.
+- [ ] Show declined and review-required risk outcomes.
+- [ ] Show outbox event creation and relay status.
+- [ ] Show ops payment search results.
+- [ ] Show dead-letter inspection or replay path if implemented.
+- [ ] Show metrics endpoint or dashboard verification.
+- [ ] Keep the primary demo under 10 minutes.
+
+4. [ ] Add incident write-ups:
+
+- [ ] Risk service timeout during authorization.
+- [ ] Duplicate authorization request with conflicting payload.
+- [ ] Kafka outbox publish failure and replay.
+- [ ] Poison message routed to dead-letter handling.
+- [ ] Partner callback retry exhaustion.
+- [ ] Rate-limit or authentication failure investigation.
+- [ ] Include impact, symptoms, detection, root cause, mitigation, and prevention.
+
+5. [ ] Add final test and quality report:
+
+- [ ] Summarize Java unit, slice, integration, and contract tests.
+- [ ] Summarize Go unit and gRPC tests.
+- [ ] Summarize messaging and Testcontainers coverage.
+- [ ] Summarize security and authorization test coverage.
+- [ ] Include CI status and checked commands.
+- [ ] Include known test gaps and intentionally deferred checks.
+- [ ] Include coverage report link or documented coverage command if selected.
+
+6. [ ] Add interview narrative:
+
+- [ ] Add 2-minute project explanation.
+- [ ] Add deep-dive talking points for payment authorization flow.
+- [ ] Add deep-dive talking points for idempotency and Redis/database fallback.
+- [ ] Add deep-dive talking points for gRPC risk scoring.
+- [ ] Add deep-dive talking points for outbox, Kafka, and eventual consistency.
+- [ ] Add deep-dive talking points for RabbitMQ partner callbacks.
+- [ ] Add deep-dive talking points for security, rate limiting, and sensitive-data masking.
+- [ ] Add deep-dive talking points for observability and operational troubleshooting.
+
+7. [ ] Add resume bullet points:
+
+- [ ] Java and Spring Boot WebFlux API bullet.
+- [ ] Go gRPC risk scoring service bullet.
+- [ ] Redis idempotency and cache fallback bullet.
+- [ ] PostgreSQL persistence and schema migration bullet.
+- [ ] Kafka outbox and event-driven projection bullet.
+- [ ] RabbitMQ callback workflow bullet.
+- [ ] Security, API key, rate limiting, and log masking bullet.
+- [ ] Observability, Prometheus, Grafana, Docker, and CI bullet.
+- [ ] Testing and Testcontainers bullet.
+
+8. [ ] Add GitHub project polish:
+
+- [ ] Add repository description guidance.
+- [ ] Add topics/tags guidance for Java, Spring Boot, WebFlux, Go, gRPC, Kafka, RabbitMQ, Redis, PostgreSQL, Docker, fintech, and observability.
+- [ ] Add contribution note or portfolio disclaimer.
+- [ ] Add roadmap completion summary.
+- [ ] Add known limitations and next steps.
+- [ ] Verify license and public sharing expectations.
+- [ ] Verify README badges are accurate if used.
+
+9. [ ] Add portfolio readiness checklist:
+
+- [ ] Verify local startup works from documented commands.
+- [ ] Verify demo commands match current API paths and DTOs.
+- [ ] Verify generated protobuf files are current.
+- [ ] Verify diagrams link to existing files.
+- [ ] Verify docs do not include secrets or private credentials.
+- [ ] Verify examples use safe local credentials only.
+- [ ] Verify logs and error examples do not expose sensitive payment data.
+- [ ] Verify repository structure in this roadmap is current.
+
+### Test Scenarios
+
+- [ ] Demo flow:
+    - [ ] Demo starts from clean local seed data.
+    - [ ] Authorization returns approved, declined, or review-required outcomes as expected.
+    - [ ] Idempotency replay returns the original response.
+    - [ ] Idempotency conflict returns a structured error.
+    - [ ] Reversal updates payment state and emits the expected event.
+    - [ ] Outbox relay publishes or exposes pending status as documented.
+    - [ ] Ops search finds the demo payment by merchant, status, and time range.
+    - [ ] Metrics show authorization, risk, idempotency, and messaging activity.
+- [ ] Documentation links:
+    - [ ] README links to ADRs.
+    - [ ] README links to API and gRPC contracts.
+    - [ ] README links to event contracts.
+    - [ ] README links to diagrams.
+    - [ ] README links to runbook and incident write-ups.
+    - [ ] All referenced files exist.
+- [ ] Interview artifacts:
+    - [ ] 2-minute explanation is concise and specific.
+    - [ ] Deep dives connect design decisions to fintech reliability concerns.
+    - [ ] Resume bullets are concrete and technology-specific.
+    - [ ] Incident write-ups include detection and prevention, not only fixes.
+- [ ] Repository hygiene:
+    - [ ] No secrets in docs, examples, or committed config.
+    - [ ] No private machine paths in public-facing docs unless clearly marked as local examples.
+    - [ ] CI badge is correct if present.
+    - [ ] Demo commands match current service ports and profiles.
+    - [ ] Portfolio docs clearly separate implemented features from future work.
+
+### Acceptance Criteria
+
+- [ ] Project can be explained in a 2-minute interview answer.
+- [ ] README clearly states the fintech payment-risk goals and architecture.
+- [ ] Demo flow proves authorization, idempotency, risk scoring, reversal, events, and ops visibility.
+- [ ] Diagrams make the service boundaries and async messaging paths easy to inspect.
+- [ ] Incident write-ups demonstrate troubleshooting and operational thinking.
+- [ ] Resume bullets highlight Java, Spring Boot WebFlux, Go, gRPC, Redis, PostgreSQL, Kafka, RabbitMQ, Docker, security, observability, and testing.
+- [ ] Repository is easy to run, review, and discuss as a portfolio project.
+- [ ] Release-readiness checklist verifies tests, docs, diagrams, demo commands, and secret hygiene.
