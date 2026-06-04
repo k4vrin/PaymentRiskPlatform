@@ -197,11 +197,22 @@ maps the risk result to an authorization or decline, persists the payment state 
 returns the authorization response, and supports duplicate request replay through Redis with the database idempotency
 store as the durable source of truth.
 
+Phase 5 operations APIs are available under `/api/v1/ops/**` for payment search, outbox inspection, dead-letter
+inspection, replay requests, and consumer-lag visibility. Local ops authorization uses:
+
+```text
+X-User-Id: ops-user
+X-User-Roles: OPS
+```
+
+`OPS` and `ADMIN` can access operations endpoints. Merchant-only and anonymous requests are denied.
+
 Main work not implemented yet:
 
 - Kafka outbox relay, audit consumer, settlement projection consumer, and RabbitMQ callback worker.
-- Operations APIs, security roles/authentication, observability dashboards, CI, and release-readiness work.
+- Production-grade authentication, observability dashboards, CI, and release-readiness work.
 
 See `docs/ApiRoadmap.md` and `docs/phase-2-payment-authorization.md` for the detailed tracker.
 Phase 3 planning is documented in `docs/phase-3-payment-lookup-and-reversal.md`.
 Phase 4 planning is documented in `docs/phase-4-go-risk-scoring-grpc-service.md`.
+Phase 5 planning is documented in `docs/phase-5-operations-api.md`.

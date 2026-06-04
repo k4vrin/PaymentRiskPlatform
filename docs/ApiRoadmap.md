@@ -30,7 +30,8 @@ Update this section after each implementation step that adds, removes, renames, 
 │   ├── phase-1-api-contract-baseline.md
 │   ├── phase-2-payment-authorization.md
 │   ├── phase-3-payment-lookup-and-reversal.md
-│   └── phase-4-go-risk-scoring-grpc-service.md
+│   ├── phase-4-go-risk-scoring-grpc-service.md
+│   └── phase-5-operations-api.md
 ├── platform
 │   ├── compose.local.yaml
 │   └── prometheus
@@ -93,6 +94,13 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   ├── api
     │       │   │   │   │   ├── OpsApiPaths.java
     │       │   │   │   │   ├── OpsFilterParameters.java
+    │       │   │   │   │   ├── consumerlag
+    │       │   │   │   │   │   ├── OpsConsumerLagController.java
+    │       │   │   │   │   │   ├── dto
+    │       │   │   │   │   │   │   ├── ConsumerLagItemResponse.java
+    │       │   │   │   │   │   │   ├── ConsumerLagResponse.java
+    │       │   │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── deadletter
     │       │   │   │   │   │   ├── OpsDeadLetterController.java
     │       │   │   │   │   │   ├── OpsDeadLetterInspectionResponseMapper.java
@@ -123,8 +131,24 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   │   ├── OpsPaymentSearchResponse.java
     │       │   │   │   │   │   │   └── package-info.java
     │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── replay
+    │       │   │   │   │   │   ├── OpsReplayController.java
+    │       │   │   │   │   │   ├── dto
+    │       │   │   │   │   │   │   ├── ReplayJobResponse.java
+    │       │   │   │   │   │   │   ├── ReplayRequest.java
+    │       │   │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   ├── application
+    │       │   │   │   │   ├── consumerlag
+    │       │   │   │   │   │   ├── ConsumerLagItem.java
+    │       │   │   │   │   │   ├── ConsumerLagPort.java
+    │       │   │   │   │   │   ├── ConsumerLagRequest.java
+    │       │   │   │   │   │   ├── ConsumerLagResult.java
+    │       │   │   │   │   │   ├── ConsumerLagService.java
+    │       │   │   │   │   │   ├── ConsumerLagStatus.java
+    │       │   │   │   │   │   ├── DefaultConsumerLagService.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── deadletter
     │       │   │   │   │   │   ├── DefaultOpsDeadLetterInspectionService.java
     │       │   │   │   │   │   ├── OpsDeadLetterInspectionPort.java
@@ -150,9 +174,27 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   ├── OpsPaymentSearchResult.java
     │       │   │   │   │   │   ├── OpsPaymentSearchService.java
     │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── replay
+    │       │   │   │   │   │   ├── DefaultReplayRequestService.java
+    │       │   │   │   │   │   ├── ReplayAuditPort.java
+    │       │   │   │   │   │   ├── ReplayJobResult.java
+    │       │   │   │   │   │   ├── ReplayJobStore.java
+    │       │   │   │   │   │   ├── ReplayRequestCommand.java
+    │       │   │   │   │   │   ├── ReplayRequestService.java
+    │       │   │   │   │   │   ├── ReplayTarget.java
+    │       │   │   │   │   │   ├── ReplayTargetLookupPort.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
-    │       │   │   │   ├── domain/package-info.java
+    │       │   │   │   ├── domain
+    │       │   │   │   │   ├── ReplayJob.java
+    │       │   │   │   │   ├── ReplayJobId.java
+    │       │   │   │   │   ├── ReplayJobStatus.java
+    │       │   │   │   │   ├── ReplaySource.java
+    │       │   │   │   │   └── package-info.java
     │       │   │   │   ├── infrastructure
+    │       │   │   │   │   ├── consumerlag
+    │       │   │   │   │   │   ├── UnavailableConsumerLagAdapter.java
+    │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   ├── deadletter
     │       │   │   │   │   │   ├── DatabaseOpsDeadLetterInspectionAdapter.java
     │       │   │   │   │   │   ├── package-info.java
@@ -166,6 +208,15 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   ├── payment
     │       │   │   │   │   │   ├── DatabaseOpsPaymentSearchAdapter.java
     │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   ├── replay
+    │       │   │   │   │   │   ├── DatabaseReplayJobStore.java
+    │       │   │   │   │   │   ├── DatabaseReplayTargetLookupAdapter.java
+    │       │   │   │   │   │   ├── OutboxReplayAuditAdapter.java
+    │       │   │   │   │   │   ├── package-info.java
+    │       │   │   │   │   │   └── persistence
+    │       │   │   │   │   │       ├── ReplayJobEntity.java
+    │       │   │   │   │   │       ├── ReplayJobEntityRepository.java
+    │       │   │   │   │   │       └── package-info.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   └── package-info.java
     │       │   │   ├── outbox
@@ -289,7 +340,11 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │   │   └── package-info.java
     │       │   │   │   │   └── package-info.java
     │       │   │   │   └── package-info.java
-    │       │   │   ├── security/package-info.java
+    │       │   │   ├── security
+    │       │   │   │   ├── HeaderRoleAuthenticationWebFilter.java
+    │       │   │   │   ├── SecurityConfiguration.java
+    │       │   │   │   ├── SecurityRoles.java
+    │       │   │   │   └── package-info.java
     │       │   │   └── shared
     │       │   │       ├── api
     │       │   │       │   ├── contract/ContractPingController.java
@@ -325,7 +380,8 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │       └── db/migration
     │       │           ├── V1__create_payment_authorization_tables.sql
     │       │           ├── V2__create_payment_reversal_tables.sql
-    │       │           └── V3__create_dead_letter_records.sql
+    │       │           ├── V3__create_dead_letter_records.sql
+    │       │           └── V4__create_ops_replay_jobs.sql
     │       └── test/java/dev/kavrin/paymentrisk
     │           ├── PaymentOrchestratorServiceApplicationTests.java
     │           ├── TestPostgresConfiguration.java
@@ -342,21 +398,26 @@ Update this section after each implementation step that adds, removes, renames, 
     │           ├── ops
     │           │   ├── api
     │           │   │   ├── OpsApiConventionsTest.java
+    │           │   │   ├── consumerlag/OpsConsumerLagControllerTest.java
     │           │   │   ├── deadletter/OpsDeadLetterControllerTest.java
     │           │   │   ├── outbox/OpsOutboxControllerTest.java
-    │           │   │   └── payment/OpsPaymentControllerTest.java
+    │           │   │   ├── payment/OpsPaymentControllerTest.java
+    │           │   │   └── replay/OpsReplayControllerTest.java
     │           │   ├── application
     │           │   │   ├── deadletter/OpsDeadLetterResultTest.java
     │           │   │   ├── outbox/OpsOutboxInspectionResultTest.java
-    │           │   │   └── payment
+    │           │   │   ├── payment
     │           │   │       ├── OpsPaymentSearchRequestTest.java
     │           │   │       └── OpsPaymentSearchResultTest.java
+    │           │   │   └── replay/DefaultReplayRequestServiceTest.java
+    │           │   ├── domain/ReplayJobTest.java
     │           │   └── infrastructure
     │           │       ├── deadletter
     │           │       │   ├── DatabaseOpsDeadLetterInspectionAdapterTest.java
     │           │       │   └── persistence/DeadLetterRecordEntityRepositoryTest.java
     │           │       ├── outbox/DatabaseOpsOutboxInspectionAdapterTest.java
-    │           │       └── payment/DatabaseOpsPaymentSearchAdapterTest.java
+    │           │       ├── payment/DatabaseOpsPaymentSearchAdapterTest.java
+    │           │       └── replay/persistence/ReplayJobEntityRepositoryTest.java
     │           ├── payment
     │           │   ├── api/contract/PaymentAuthorizationControllerTest.java
     │           │   ├── application/service
@@ -385,6 +446,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │           ├── risk
     │           │   ├── application/RiskScoringClientTest.java
     │           │   └── infrastructure/grpc/GrpcRiskScoringClientTest.java
+    │           ├── security/SecurityConfigurationTest.java
     │           └── shared
     │               ├── api
     │               │   ├── contract
@@ -1620,104 +1682,104 @@ Goal: Add operator-facing REST endpoints for investigation, failed event review,
 - [x] Hide sensitive payload fields.
 - [x] Add API and adapter tests.
 
-13. [ ] Define replay job model:
+13. [x] Define replay job model:
 
-- [ ] Add replay job ID.
-- [ ] Include target event/message ID.
-- [ ] Include replay source such as outbox or dead-letter.
-- [ ] Include requested-by principal.
-- [ ] Include requested-at timestamp.
-- [ ] Include status such as requested, running, succeeded, failed, rejected.
-- [ ] Include failure reason when applicable.
+- [x] Add replay job ID.
+- [x] Include target event/message ID.
+- [x] Include replay source such as outbox or dead-letter.
+- [x] Include requested-by principal.
+- [x] Include requested-at timestamp.
+- [x] Include status such as requested, running, succeeded, failed, rejected.
+- [x] Include failure reason when applicable.
 
-14. [ ] Add replay job persistence:
+14. [x] Add replay job persistence:
 
-- [ ] Add Flyway migration for replay jobs if needed.
-- [ ] Add entity/repository.
-- [ ] Add unique constraints that prevent duplicate active replay jobs for the same target.
-- [ ] Add repository tests.
+- [x] Add Flyway migration for replay jobs if needed.
+- [x] Add entity/repository.
+- [x] Add unique constraints that prevent duplicate active replay jobs for the same target.
+- [x] Add repository tests.
 
-15. [ ] Implement replay eligibility policy:
+15. [x] Implement replay eligibility policy:
 
-- [ ] Define which outbox statuses are replayable.
-- [ ] Define which dead-letter statuses are replayable.
-- [ ] Reject already running replay jobs.
-- [ ] Reject non-existent targets with structured not-found errors.
-- [ ] Reject terminal non-replayable targets with structured conflict errors.
-- [ ] Add policy tests.
+- [x] Define which outbox statuses are replayable.
+- [x] Define which dead-letter statuses are replayable.
+- [x] Reject already running replay jobs.
+- [x] Reject non-existent targets with structured not-found errors.
+- [x] Reject terminal non-replayable targets with structured conflict errors.
+- [x] Add policy tests.
 
-16. [ ] Implement replay command service:
+16. [x] Implement replay command service:
 
-- [ ] Add command model for replay requests.
-- [ ] Validate replay target and source.
-- [ ] Create replay job.
-- [ ] Mark target as replay requested where appropriate.
-- [ ] Emit or enqueue work for the actual replay executor.
-- [ ] Return replay job response.
-- [ ] Add service tests for success, not-found, conflict, and duplicate active replay.
+- [x] Add command model for replay requests.
+- [x] Validate replay target and source.
+- [x] Create replay job.
+- [x] Leave target state unchanged until Phase 6 replay execution is implemented.
+- [x] Emit an audit outbox event for the replay request.
+- [x] Return replay job response.
+- [x] Add service tests for success, not-found, conflict, and duplicate active replay.
 
-17. [ ] Add replay API endpoint:
+17. [x] Add replay API endpoint:
 
-- [ ] Add `POST /api/v1/ops/replay/{eventId}` or a source-aware replay endpoint.
-- [ ] Accept optional replay reason.
-- [ ] Read authenticated operator identity.
-- [ ] Delegate to replay command service.
-- [ ] Return replay job details.
-- [ ] Add API tests for success and structured failures.
+- [x] Add `POST /api/v1/ops/replay/{eventId}` or a source-aware replay endpoint.
+- [x] Accept optional replay reason.
+- [x] Read authenticated operator identity.
+- [x] Delegate to replay command service.
+- [x] Return replay job details.
+- [x] Add API tests for success and structured failures.
 
-18. [ ] Add replay audit behavior:
+18. [x] Add replay audit behavior:
 
-- [ ] Define replay audit event shape.
-- [ ] Include operator identity, target ID, source, reason, correlation ID, and requested-at.
-- [ ] Persist audit record or emit outbox event according to selected architecture.
-- [ ] Add tests proving audit is written/emitted on replay request.
+- [x] Define replay audit event shape.
+- [x] Include operator identity, target ID, source, reason, correlation ID, and requested-at.
+- [x] Persist audit record or emit outbox event according to selected architecture.
+- [x] Add tests proving audit is written/emitted on replay request.
 
-19. [ ] Define consumer lag read model:
+19. [x] Define consumer lag read model:
 
-- [ ] Include consumer group.
-- [ ] Include topic.
-- [ ] Include partition.
-- [ ] Include current offset, end offset, and lag.
-- [ ] Include last observed time.
-- [ ] Include status such as healthy, warning, or critical.
+- [x] Include consumer group.
+- [x] Include topic.
+- [x] Include partition.
+- [x] Include current offset, end offset, and lag.
+- [x] Include last observed time.
+- [x] Include status such as healthy, warning, or critical.
 
-20. [ ] Implement consumer lag adapter:
+20. [x] Implement consumer lag adapter:
 
-- [ ] Read lag from Kafka admin/client APIs or a stored metrics projection.
-- [ ] Handle unavailable Kafka gracefully.
-- [ ] Return an empty or unavailable status when no consumers exist.
-- [ ] Add tests with fake adapter/client.
+- [x] Define a consumer-lag adapter boundary for Kafka admin/client APIs or a stored metrics projection.
+- [x] Handle unavailable Kafka gracefully.
+- [x] Return an empty or unavailable status when no consumers exist.
+- [x] Add tests with fake adapter/client.
 
-21. [ ] Add consumer lag API endpoint:
+21. [x] Add consumer lag API endpoint:
 
-- [ ] Add `GET /api/v1/ops/consumer-lag`.
-- [ ] Support consumer group and topic filters.
-- [ ] Return structured unavailable errors or degraded status when Kafka cannot be queried.
-- [ ] Add API tests.
+- [x] Add `GET /api/v1/ops/consumer-lag`.
+- [x] Support consumer group and topic filters.
+- [x] Return structured unavailable errors or degraded status when Kafka cannot be queried.
+- [x] Add API tests.
 
-22. [ ] Add operations authorization rules:
+22. [x] Add operations authorization rules:
 
-- [ ] Restrict all `/api/v1/ops/**` endpoints to `OPS` and `ADMIN`.
-- [ ] Deny merchant-only principals.
-- [ ] Deny anonymous requests.
-- [ ] Add security tests for allowed and denied roles.
+- [x] Restrict all `/api/v1/ops/**` endpoints to `OPS` and `ADMIN`.
+- [x] Deny merchant-only principals.
+- [x] Deny anonymous requests.
+- [x] Add security tests for allowed and denied roles.
 
-23. [ ] Add Phase 5 documentation and verification:
+23. [x] Add Phase 5 documentation and verification:
 
-- [ ] Document operations endpoints and filter parameters.
-- [ ] Update `README.md` if local usage changes.
-- [ ] Update this roadmap project structure for added files.
-- [ ] Add focused API, service, repository, and security tests.
-- [ ] Run the relevant Java test suite.
+- [x] Document operations endpoints and filter parameters.
+- [x] Update `README.md` if local usage changes.
+- [x] Update this roadmap project structure for added files.
+- [x] Add focused API, service, repository, and security tests.
+- [x] Run the relevant Java test suite.
 
 ### Acceptance Criteria
 
-- [ ] Operators can search payments by status and date range.
-- [ ] Operators can inspect failed outbox events.
-- [ ] Operators can inspect dead-letter records.
-- [ ] Operators can request replay for eligible events.
-- [ ] Operations endpoints enforce role-based authorization.
-- [ ] Replay requests create audit events.
+- [x] Operators can search payments by status and date range.
+- [x] Operators can inspect failed outbox events.
+- [x] Operators can inspect dead-letter records.
+- [x] Operators can request replay for eligible events.
+- [x] Operations endpoints enforce role-based authorization.
+- [x] Replay requests create audit events.
 
 ## Phase 6: Messaging And Event APIs
 

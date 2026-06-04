@@ -31,6 +31,10 @@ public class PlatformIdGeneratorFactory {
         return prefixedCompactUuid("evt");
     }
 
+    public String replayJobId() {
+        return prefixedCompactUuid("replay");
+    }
+
     public String correlationId() {
         return UUID.randomUUID().toString();
     }
