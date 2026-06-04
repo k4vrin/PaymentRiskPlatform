@@ -89,7 +89,21 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   │       └── package-info.java
     │       │   │   │   └── package-info.java
     │       │   │   ├── merchant/package-info.java
-    │       │   │   ├── ops/package-info.java
+    │       │   │   ├── ops
+    │       │   │   │   ├── api
+    │       │   │   │   │   ├── OpsApiPaths.java
+    │       │   │   │   │   ├── OpsFilterParameters.java
+    │       │   │   │   │   ├── dto
+    │       │   │   │   │   │   ├── OpsPageRequest.java
+    │       │   │   │   │   │   ├── OpsPageResponse.java
+    │       │   │   │   │   │   ├── OpsSortDirection.java
+    │       │   │   │   │   │   ├── OpsSortRequest.java
+    │       │   │   │   │   │   └── package-info.java
+    │       │   │   │   │   └── package-info.java
+    │       │   │   │   ├── application/package-info.java
+    │       │   │   │   ├── domain/package-info.java
+    │       │   │   │   ├── infrastructure/package-info.java
+    │       │   │   │   └── package-info.java
     │       │   │   ├── outbox
     │       │   │   │   ├── domain/package-info.java
     │       │   │   │   ├── infrastructure
@@ -260,6 +274,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │           │   └── redis
     │           │       ├── RedisIdempotencyKeyFormatterTest.java
     │           │       └── SpringRedisIdempotencySnapshotCacheTest.java
+    │           ├── ops/api/OpsApiConventionsTest.java
     │           ├── payment
     │           │   ├── api/contract/PaymentAuthorizationControllerTest.java
     │           │   ├── application/service
@@ -1413,34 +1428,205 @@ local rules, return explainable rule hits, expose health status, and shut down c
 
 Goal: Add operator-facing REST endpoints for investigation, failed event review, replay, and platform visibility.
 
-### Steps
+### Atomic Remaining Work
 
-- [ ] Create ops package structure:
-    - [ ] `ops/api`
-    - [ ] `ops/api/dto`
-    - [ ] `ops/application`
-    - [ ] `ops/domain`
-- [ ] Implement payment search:
-    - [ ] `GET /api/v1/ops/payments`
-    - [ ] Filter by status
-    - [ ] Filter by merchant
-    - [ ] Filter by customer
-    - [ ] Filter by created time range
-    - [ ] Paginate results
-- [ ] Implement outbox inspection:
-    - [ ] `GET /api/v1/ops/outbox`
-    - [ ] Filter by status
-    - [ ] Show retry count, last error, and next retry time
-- [ ] Implement dead-letter inspection:
-    - [ ] `GET /api/v1/ops/dead-letters`
-- [ ] Implement replay command:
-    - [ ] `POST /api/v1/ops/replay/{eventId}`
-    - [ ] Validate event is replayable
-    - [ ] Create replay job
-    - [ ] Audit replay request
-- [ ] Implement consumer lag view:
-    - [ ] `GET /api/v1/ops/consumer-lag`
-- [ ] Restrict operations APIs to `OPS` and `ADMIN` roles.
+1. [x] Add Phase 5 package and boundary structure:
+
+- [x] Add `ops/api` for WebFlux controllers.
+- [x] Add `ops/api/dto` for request and response DTOs.
+- [x] Add `ops/application` for query and command services.
+- [x] Add `ops/domain` for replay/audit/visibility concepts.
+- [x] Add `ops/infrastructure` for database and messaging adapters if needed.
+- [x] Keep ops controllers thin and delegate to application services.
+
+2. [x] Define operations API contract conventions:
+
+- [x] Use `/api/v1/ops/**` for operator endpoints.
+- [x] Use existing `ApiErrorResponse` for errors.
+- [x] Use existing correlation ID behavior.
+- [x] Use stable pagination request/response shapes.
+- [x] Use stable sort defaults.
+- [x] Document filter parameter names.
+
+3. [ ] Add ops payment search request model:
+
+- [ ] Add status filter.
+- [ ] Add merchant ID filter.
+- [ ] Add customer ID filter.
+- [ ] Add payment ID filter where useful.
+- [ ] Add created-from and created-to filters.
+- [ ] Add page size and cursor/page token.
+- [ ] Validate date range ordering.
+- [ ] Validate maximum page size.
+
+4. [ ] Add ops payment search read model:
+
+- [ ] Include payment ID, merchant ID, customer ID, amount, currency, status, and external reference.
+- [ ] Include authorization summary.
+- [ ] Include risk summary.
+- [ ] Include reversal summary when present.
+- [ ] Include created-at and updated-at.
+- [ ] Exclude raw payment method tokens and raw device fingerprints.
+
+5. [ ] Implement payment search persistence adapter:
+
+- [ ] Query payments with optional filters.
+- [ ] Join or load authorization/risk/reversal summaries.
+- [ ] Apply stable ordering.
+- [ ] Apply pagination limits.
+- [ ] Return empty result pages for no matches.
+- [ ] Add adapter tests for each filter and combined filters.
+
+6. [ ] Add payment search API endpoint:
+
+- [ ] Add `GET /api/v1/ops/payments`.
+- [ ] Bind query parameters into the search request model.
+- [ ] Delegate to the application query service.
+- [ ] Map results to DTOs.
+- [ ] Add API tests for success, validation errors, empty pages, and pagination.
+
+7. [ ] Define outbox inspection read model:
+
+- [ ] Include event ID, aggregate ID, aggregate type, event type, schema version, and status.
+- [ ] Include retry count.
+- [ ] Include last error.
+- [ ] Include next retry time.
+- [ ] Include created-at, occurred-at, published-at, and updated-at where available.
+- [ ] Include correlation ID.
+- [ ] Exclude full payload by default or define an explicit payload preview policy.
+
+8. [ ] Implement outbox inspection adapter:
+
+- [ ] Query outbox records by status.
+- [ ] Query outbox records by event type.
+- [ ] Query outbox records by aggregate ID.
+- [ ] Query failed records ordered by next retry time.
+- [ ] Apply pagination.
+- [ ] Add repository/adapter tests.
+
+9. [ ] Add outbox inspection API endpoint:
+
+- [ ] Add `GET /api/v1/ops/outbox`.
+- [ ] Support status, event type, aggregate ID, and created range filters.
+- [ ] Show retry count, last error, and next retry time.
+- [ ] Return structured validation errors.
+- [ ] Add API tests for success and filter validation.
+
+10. [ ] Define dead-letter record model:
+
+- [ ] Define dead-letter ID.
+- [ ] Include source system such as Kafka or RabbitMQ.
+- [ ] Include topic/queue name.
+- [ ] Include partition/offset or delivery tag when applicable.
+- [ ] Include event ID or message ID when available.
+- [ ] Include failure reason and failure timestamp.
+- [ ] Include retry/replay eligibility.
+- [ ] Include correlation ID.
+
+11. [ ] Add dead-letter persistence schema:
+
+- [ ] Add a Flyway migration for dead-letter records if no table exists.
+- [ ] Add indexes for source, status, failed-at, and event/message ID.
+- [ ] Add entity/repository classes.
+- [ ] Add repository tests proving insert/read/filter behavior.
+
+12. [ ] Implement dead-letter inspection API:
+
+- [ ] Add `GET /api/v1/ops/dead-letters`.
+- [ ] Support source, status, topic/queue, event ID, and failed-time filters.
+- [ ] Return paginated results.
+- [ ] Hide sensitive payload fields.
+- [ ] Add API and adapter tests.
+
+13. [ ] Define replay job model:
+
+- [ ] Add replay job ID.
+- [ ] Include target event/message ID.
+- [ ] Include replay source such as outbox or dead-letter.
+- [ ] Include requested-by principal.
+- [ ] Include requested-at timestamp.
+- [ ] Include status such as requested, running, succeeded, failed, rejected.
+- [ ] Include failure reason when applicable.
+
+14. [ ] Add replay job persistence:
+
+- [ ] Add Flyway migration for replay jobs if needed.
+- [ ] Add entity/repository.
+- [ ] Add unique constraints that prevent duplicate active replay jobs for the same target.
+- [ ] Add repository tests.
+
+15. [ ] Implement replay eligibility policy:
+
+- [ ] Define which outbox statuses are replayable.
+- [ ] Define which dead-letter statuses are replayable.
+- [ ] Reject already running replay jobs.
+- [ ] Reject non-existent targets with structured not-found errors.
+- [ ] Reject terminal non-replayable targets with structured conflict errors.
+- [ ] Add policy tests.
+
+16. [ ] Implement replay command service:
+
+- [ ] Add command model for replay requests.
+- [ ] Validate replay target and source.
+- [ ] Create replay job.
+- [ ] Mark target as replay requested where appropriate.
+- [ ] Emit or enqueue work for the actual replay executor.
+- [ ] Return replay job response.
+- [ ] Add service tests for success, not-found, conflict, and duplicate active replay.
+
+17. [ ] Add replay API endpoint:
+
+- [ ] Add `POST /api/v1/ops/replay/{eventId}` or a source-aware replay endpoint.
+- [ ] Accept optional replay reason.
+- [ ] Read authenticated operator identity.
+- [ ] Delegate to replay command service.
+- [ ] Return replay job details.
+- [ ] Add API tests for success and structured failures.
+
+18. [ ] Add replay audit behavior:
+
+- [ ] Define replay audit event shape.
+- [ ] Include operator identity, target ID, source, reason, correlation ID, and requested-at.
+- [ ] Persist audit record or emit outbox event according to selected architecture.
+- [ ] Add tests proving audit is written/emitted on replay request.
+
+19. [ ] Define consumer lag read model:
+
+- [ ] Include consumer group.
+- [ ] Include topic.
+- [ ] Include partition.
+- [ ] Include current offset, end offset, and lag.
+- [ ] Include last observed time.
+- [ ] Include status such as healthy, warning, or critical.
+
+20. [ ] Implement consumer lag adapter:
+
+- [ ] Read lag from Kafka admin/client APIs or a stored metrics projection.
+- [ ] Handle unavailable Kafka gracefully.
+- [ ] Return an empty or unavailable status when no consumers exist.
+- [ ] Add tests with fake adapter/client.
+
+21. [ ] Add consumer lag API endpoint:
+
+- [ ] Add `GET /api/v1/ops/consumer-lag`.
+- [ ] Support consumer group and topic filters.
+- [ ] Return structured unavailable errors or degraded status when Kafka cannot be queried.
+- [ ] Add API tests.
+
+22. [ ] Add operations authorization rules:
+
+- [ ] Restrict all `/api/v1/ops/**` endpoints to `OPS` and `ADMIN`.
+- [ ] Deny merchant-only principals.
+- [ ] Deny anonymous requests.
+- [ ] Add security tests for allowed and denied roles.
+
+23. [ ] Add Phase 5 documentation and verification:
+
+- [ ] Document operations endpoints and filter parameters.
+- [ ] Update `README.md` if local usage changes.
+- [ ] Update this roadmap project structure for added files.
+- [ ] Add focused API, service, repository, and security tests.
+- [ ] Run the relevant Java test suite.
 
 ### Acceptance Criteria
 
@@ -1455,37 +1641,227 @@ Goal: Add operator-facing REST endpoints for investigation, failed event review,
 
 Goal: Implement the transactional outbox, Kafka events, consumers, RabbitMQ callback commands, and related operational visibility.
 
-### Steps
+### Atomic Remaining Work
 
-- [ ] Define event envelope:
-    - [ ] `eventId`
-    - [ ] `schemaVersion`
-    - [ ] `eventType`
-    - [ ] `aggregateId`
-    - [ ] `aggregateType`
-    - [ ] `occurredAt`
-    - [ ] `producer`
-    - [ ] `correlationId`
-    - [ ] `payload`
-- [ ] Define Kafka topics:
-    - [ ] `payment.authorization.requested`
-    - [ ] `risk.score.completed`
-    - [ ] `payment.authorization.completed`
-    - [ ] `payment.reversal.completed`
-    - [ ] `platform.dead-letter.recorded`
-- [ ] Implement outbox relay worker.
-- [ ] Implement Kafka producer retry and failure marking.
-- [ ] Implement payment audit consumer.
-- [ ] Implement settlement projection consumer.
-- [ ] Implement ops metrics consumer.
-- [ ] Implement idempotent consumer tracking.
-- [ ] Implement poison-message dead-letter handling.
-- [ ] Define RabbitMQ command:
-    - [ ] Queue `partner.callback.commands`
-    - [ ] Command `CallPartnerWebhook`
-    - [ ] Dead-letter queue `partner.callback.commands.dlq`
-- [ ] Implement partner callback worker.
-- [ ] Add retry and acknowledgement behavior for callback commands.
+1. [ ] Verify and finalize event envelope contract:
+
+- [ ] Confirm `eventId`.
+- [ ] Confirm `schemaVersion`.
+- [ ] Confirm `eventType`.
+- [ ] Confirm `aggregateId`.
+- [ ] Confirm `aggregateType`.
+- [ ] Confirm `occurredAt`.
+- [ ] Confirm `producer`.
+- [ ] Confirm `correlationId`.
+- [ ] Confirm `payload`.
+- [ ] Add tests for envelope serialization and required fields.
+
+2. [ ] Define Kafka topic names and ownership:
+
+- [ ] Define `payment.authorization.requested`.
+- [ ] Define `risk.score.completed`.
+- [ ] Define `payment.authorization.completed`.
+- [ ] Define `payment.reversal.completed`.
+- [ ] Define `platform.dead-letter.recorded`.
+- [ ] Document producer and consumer ownership for each topic.
+- [ ] Document partition key selection for each topic.
+
+3. [ ] Add Kafka topic configuration:
+
+- [ ] Add typed Spring properties for topic names.
+- [ ] Add local defaults.
+- [ ] Add production placeholders.
+- [ ] Add tests for default topic configuration.
+- [ ] Add optional topic creation/admin configuration if selected.
+
+4. [ ] Define outbox relay query model:
+
+- [ ] Select pending outbox events.
+- [ ] Select failed events whose next retry time has arrived.
+- [ ] Order by creation time.
+- [ ] Limit batch size.
+- [ ] Skip locked/in-flight records where supported.
+- [ ] Add repository tests.
+
+5. [ ] Implement outbox claim/lock behavior:
+
+- [ ] Mark selected records as in-progress or claimed.
+- [ ] Store claim timestamp.
+- [ ] Store relay instance ID if useful.
+- [ ] Avoid double publishing by concurrent relays.
+- [ ] Add concurrency-oriented repository tests where practical.
+
+6. [ ] Implement Kafka event publisher adapter:
+
+- [ ] Map outbox event record to Kafka topic.
+- [ ] Use aggregate ID or configured key as the Kafka key.
+- [ ] Add envelope headers such as correlation ID and schema version where useful.
+- [ ] Publish payload bytes/string without reserializing incorrectly.
+- [ ] Add producer adapter tests with a fake Kafka template/sender.
+
+7. [ ] Implement outbox relay worker:
+
+- [ ] Schedule or trigger relay batches.
+- [ ] Claim eligible records.
+- [ ] Publish each event.
+- [ ] Mark success after Kafka acknowledgement.
+- [ ] Mark failure when publish fails.
+- [ ] Keep worker idempotent across restarts.
+- [ ] Add worker tests for success, partial failure, and empty batches.
+
+8. [ ] Implement producer retry policy:
+
+- [ ] Define max attempts.
+- [ ] Define retry backoff.
+- [ ] Compute next retry time.
+- [ ] Store retry count.
+- [ ] Store last error.
+- [ ] Mark terminal failure after max attempts.
+- [ ] Add retry policy tests.
+
+9. [ ] Implement outbox failure marking:
+
+- [ ] Mark transient publish failures as retryable.
+- [ ] Mark terminal publish failures as failed.
+- [ ] Preserve original event payload.
+- [ ] Preserve correlation ID.
+- [ ] Add repository/service tests.
+
+10. [ ] Define consumer tracking schema:
+
+- [ ] Add processed message/event table if needed.
+- [ ] Include consumer name.
+- [ ] Include topic.
+- [ ] Include partition and offset.
+- [ ] Include event ID.
+- [ ] Include processed-at timestamp.
+- [ ] Add uniqueness constraints for idempotency.
+- [ ] Add migration and repository tests.
+
+11. [ ] Implement idempotent consumer guard:
+
+- [ ] Check whether event ID has already been processed by consumer.
+- [ ] Record successful processing.
+- [ ] Avoid reprocessing duplicates.
+- [ ] Handle transaction boundaries around projection writes and processed tracking.
+- [ ] Add guard tests.
+
+12. [ ] Implement payment audit consumer:
+
+- [ ] Consume payment lifecycle events.
+- [ ] Validate envelope schema version.
+- [ ] Project events into payment audit/history storage.
+- [ ] Preserve correlation ID and occurred-at.
+- [ ] Use idempotent consumer guard.
+- [ ] Add consumer tests for authorized, declined, reversed, duplicate, and invalid messages.
+
+13. [ ] Add payment audit persistence:
+
+- [ ] Add audit/history table or projection if needed.
+- [ ] Add entity/repository.
+- [ ] Add indexes by payment ID and occurred-at.
+- [ ] Add repository tests.
+
+14. [ ] Implement settlement projection consumer:
+
+- [ ] Consume authorization and reversal outcome events.
+- [ ] Build settlement-ready projection rows.
+- [ ] Update projection on reversal.
+- [ ] Use idempotent consumer guard.
+- [ ] Add tests for authorized, declined, reversed, and duplicate events.
+
+15. [ ] Add settlement projection persistence:
+
+- [ ] Add settlement projection table if needed.
+- [ ] Add entity/repository.
+- [ ] Add indexes by merchant, status, and business date.
+- [ ] Add repository tests.
+
+16. [ ] Implement ops metrics consumer:
+
+- [ ] Consume selected platform/payment events.
+- [ ] Update counters/projections for ops views.
+- [ ] Track event processing failures.
+- [ ] Use idempotent consumer guard where needed.
+- [ ] Add tests.
+
+17. [ ] Implement poison-message dead-letter handling:
+
+- [ ] Detect deserialization failures.
+- [ ] Detect unsupported schema versions.
+- [ ] Detect handler exceptions after retries.
+- [ ] Persist dead-letter record.
+- [ ] Include topic, partition, offset, key, headers, error, and correlation ID.
+- [ ] Emit `platform.dead-letter.recorded` if selected.
+- [ ] Add tests for poison messages.
+
+18. [ ] Define RabbitMQ callback command contract:
+
+- [ ] Define queue `partner.callback.commands`.
+- [ ] Define dead-letter queue `partner.callback.commands.dlq`.
+- [ ] Define `CallPartnerWebhook` command payload.
+- [ ] Include payment ID, merchant ID, target URL/reference, callback type, attempt, and correlation ID.
+- [ ] Document acknowledgement and retry behavior.
+
+19. [ ] Add RabbitMQ configuration:
+
+- [ ] Add queue/exchange/routing-key properties.
+- [ ] Add local defaults.
+- [ ] Add queue declaration beans if selected.
+- [ ] Add DLQ binding configuration.
+- [ ] Add configuration tests.
+
+20. [ ] Implement callback command producer:
+
+- [ ] Create callback command after selected payment outcomes.
+- [ ] Persist command intent or publish through RabbitMQ as selected.
+- [ ] Include correlation ID.
+- [ ] Avoid publishing inside an uncommitted database transaction unless using outbox/command table.
+- [ ] Add producer tests.
+
+21. [ ] Implement partner callback worker:
+
+- [ ] Consume `CallPartnerWebhook`.
+- [ ] Call partner webhook/client abstraction.
+- [ ] Handle success acknowledgement.
+- [ ] Handle transient failure retry.
+- [ ] Handle terminal failure.
+- [ ] Add worker tests with fake partner client.
+
+22. [ ] Add RabbitMQ retry and DLQ behavior:
+
+- [ ] Define retry count source.
+- [ ] Define retry delay/backoff.
+- [ ] Nack/requeue or republish according to selected strategy.
+- [ ] Route terminal failures to DLQ.
+- [ ] Add tests for ack, retry, and DLQ paths.
+
+23. [ ] Add messaging observability:
+
+- [ ] Add outbox lag metric.
+- [ ] Add publish success/failure metric.
+- [ ] Add consumer processing metric.
+- [ ] Add dead-letter count metric.
+- [ ] Add callback success/failure metric.
+- [ ] Add tests where practical.
+
+24. [ ] Add Phase 6 integration tests:
+
+- [ ] Use Kafka Testcontainers for outbox relay publish path.
+- [ ] Use Kafka Testcontainers for consumer projection path.
+- [ ] Use RabbitMQ Testcontainers for callback worker path.
+- [ ] Verify idempotent consumer behavior.
+- [ ] Verify dead-letter persistence.
+- [ ] Keep tests isolated and deterministic.
+
+25. [ ] Update messaging documentation:
+
+- [ ] Document topics.
+- [ ] Document event payloads.
+- [ ] Document outbox relay behavior.
+- [ ] Document consumer idempotency.
+- [ ] Document RabbitMQ callback behavior.
+- [ ] Update this roadmap project structure for added files.
 
 ### Acceptance Criteria
 
@@ -1501,41 +1877,209 @@ Goal: Implement the transactional outbox, Kafka events, consumers, RabbitMQ call
 
 Goal: Harden the APIs for a realistic fintech portfolio demonstration with security controls, metrics, dashboards, and CI checks.
 
-### Steps
+### Atomic Remaining Work
 
-- [ ] Configure Spring Security role model:
-    - [ ] `MERCHANT`
-    - [ ] `OPS`
-    - [ ] `AUDITOR`
-    - [ ] `ADMIN`
-    - [ ] `SERVICE`
-- [ ] Add API key or token-based authentication for merchant APIs.
-- [ ] Add service-to-service authentication for internal calls.
-- [ ] Hash API keys and avoid plaintext secret storage.
-- [ ] Add secure headers and CORS defaults.
-- [ ] Add request rate limiting by merchant and client.
-- [ ] Add metrics:
-    - [ ] API latency
-    - [ ] Authorization throughput
-    - [ ] Decline count by reason
-    - [ ] Risk service latency
-    - [ ] Risk timeout count
-    - [ ] Redis hit/miss rate
-    - [ ] Kafka producer failures
-    - [ ] Consumer lag
-    - [ ] Outbox lag
-    - [ ] Dead-letter count
-    - [ ] Replay success/failure count
-- [ ] Add Prometheus scrape configuration.
-- [ ] Add Grafana dashboards.
-- [ ] Add CI checks:
-    - [ ] Java tests
-    - [ ] Go tests
-    - [ ] Protobuf generation
-    - [ ] Docker Compose validation
-    - [ ] Container image build
-- [ ] Add Linux operations runbook.
-- [ ] Add one incident write-up for a failed risk service or Kafka replay scenario.
+1. [ ] Finalize Spring Security role model:
+
+- [ ] Define `MERCHANT`.
+- [ ] Define `OPS`.
+- [ ] Define `AUDITOR`.
+- [ ] Define `ADMIN`.
+- [ ] Define `SERVICE`.
+- [ ] Document which endpoints each role can access.
+- [ ] Add role enum/constants where appropriate.
+
+2. [ ] Add endpoint authorization matrix:
+
+- [ ] Merchant payment APIs require `MERCHANT` or `ADMIN`.
+- [ ] Ops APIs require `OPS` or `ADMIN`.
+- [ ] Audit read APIs require `AUDITOR`, `OPS`, or `ADMIN`.
+- [ ] Internal/service endpoints require `SERVICE` or `ADMIN`.
+- [ ] Health/readiness endpoints use selected public/protected behavior.
+- [ ] Add security tests for each endpoint group.
+
+3. [ ] Implement merchant authentication mechanism:
+
+- [ ] Choose API key or token-based authentication for local portfolio scope.
+- [ ] Define credential header format.
+- [ ] Add authentication filter.
+- [ ] Resolve merchant identity from credential.
+- [ ] Attach merchant identity to request context.
+- [ ] Add success and failure tests.
+
+4. [ ] Add API key storage model if API keys are selected:
+
+- [ ] Add merchant API key table or config-backed store.
+- [ ] Store key ID.
+- [ ] Store hashed secret.
+- [ ] Store merchant ID.
+- [ ] Store active/revoked status.
+- [ ] Store created-at and rotated-at.
+- [ ] Add repository tests.
+
+5. [ ] Add API key hashing:
+
+- [ ] Use strong keyed or salted hashing.
+- [ ] Avoid plaintext secret storage.
+- [ ] Add constant-time comparison where applicable.
+- [ ] Add tests for match, mismatch, and rotation.
+
+6. [ ] Implement service-to-service authentication:
+
+- [ ] Define internal credential strategy.
+- [ ] Protect internal messaging/ops hooks if any.
+- [ ] Document how the Java service authenticates to internal dependencies.
+- [ ] Add tests for allowed and denied service credentials.
+
+7. [ ] Configure secure headers:
+
+- [ ] Add content security policy where practical.
+- [ ] Add frame options.
+- [ ] Add HSTS where appropriate for production profile.
+- [ ] Add content type options.
+- [ ] Add tests or configuration assertions.
+
+8. [ ] Configure CORS:
+
+- [ ] Define local allowed origins.
+- [ ] Define production placeholder allowed origins.
+- [ ] Restrict methods and headers.
+- [ ] Add preflight tests.
+
+9. [ ] Add request rate limiting:
+
+- [ ] Define merchant-level limit.
+- [ ] Define client/IP-level limit if selected.
+- [ ] Use Redis or in-memory local implementation as selected.
+- [ ] Return structured rate-limit errors.
+- [ ] Add tests for allowed, exceeded, and reset behavior.
+
+10. [ ] Add log masking policy:
+
+- [ ] Mask payment method tokens.
+- [ ] Mask device fingerprints.
+- [ ] Mask API keys/tokens.
+- [ ] Mask authorization headers.
+- [ ] Add tests for log/error masking helpers.
+
+11. [ ] Add API latency metrics:
+
+- [ ] Record request duration by route and status.
+- [ ] Avoid high-cardinality labels.
+- [ ] Add tests or actuator metric assertions.
+
+12. [ ] Add payment authorization metrics:
+
+- [ ] Count authorization attempts.
+- [ ] Count authorized outcomes.
+- [ ] Count declined outcomes.
+- [ ] Count review-required outcomes.
+- [ ] Count duplicate idempotency replays.
+- [ ] Add service-level metric tests where practical.
+
+13. [ ] Add decline/risk metrics:
+
+- [ ] Count decline by reason code.
+- [ ] Record risk service latency.
+- [ ] Count risk timeouts.
+- [ ] Count risk unavailable responses.
+- [ ] Add tests with fake meter registry.
+
+14. [ ] Add Redis idempotency/cache metrics:
+
+- [ ] Count Redis hits.
+- [ ] Count Redis misses.
+- [ ] Count Redis write failures.
+- [ ] Count database fallback hits.
+- [ ] Add tests where practical.
+
+15. [ ] Add messaging metrics:
+
+- [ ] Count Kafka producer successes.
+- [ ] Count Kafka producer failures.
+- [ ] Record outbox lag.
+- [ ] Record consumer lag.
+- [ ] Count dead-letter records.
+- [ ] Count replay success/failure.
+- [ ] Add tests or documented dashboard queries.
+
+16. [ ] Update Prometheus configuration:
+
+- [ ] Scrape Spring Boot actuator metrics.
+- [ ] Scrape Go risk service metrics if exposed in a later step.
+- [ ] Keep local Prometheus config aligned with service ports.
+- [ ] Validate config syntax.
+
+17. [ ] Add Grafana dashboards:
+
+- [ ] Add API health dashboard.
+- [ ] Add payment authorization dashboard.
+- [ ] Add risk service dashboard.
+- [ ] Add Redis/idempotency dashboard.
+- [ ] Add Kafka/outbox dashboard.
+- [ ] Add database health dashboard.
+- [ ] Store dashboard JSON under platform docs/config.
+
+18. [ ] Add CI workflow for Java:
+
+- [ ] Run Maven validation.
+- [ ] Run Java tests.
+- [ ] Cache Maven dependencies.
+- [ ] Publish test reports if selected.
+
+19. [ ] Add CI workflow for Go:
+
+- [ ] Run `go test ./...`.
+- [ ] Cache Go modules/build cache.
+- [ ] Run `go vet` if selected.
+- [ ] Publish test reports if selected.
+
+20. [ ] Add CI workflow for protobuf:
+
+- [ ] Run `make proto`.
+- [ ] Fail if generated files are stale.
+- [ ] Run Java and Go contract tests.
+
+21. [ ] Add CI workflow for platform validation:
+
+- [ ] Validate Docker Compose config.
+- [ ] Build service container images if Dockerfiles exist.
+- [ ] Run lightweight smoke checks where practical.
+
+22. [ ] Add container build configuration:
+
+- [ ] Add Dockerfile for payment orchestrator if missing.
+- [ ] Add Dockerfile for risk scoring service if missing.
+- [ ] Add image build targets to `Makefile`.
+- [ ] Add CI build checks.
+
+23. [ ] Add Linux operations runbook:
+
+- [ ] Document local startup and shutdown.
+- [ ] Document logs inspection.
+- [ ] Document database checks.
+- [ ] Document Redis checks.
+- [ ] Document Kafka checks.
+- [ ] Document RabbitMQ checks.
+- [ ] Document replay and dead-letter workflows.
+
+24. [ ] Add incident write-up:
+
+- [ ] Choose failed risk service or Kafka replay scenario.
+- [ ] Document impact.
+- [ ] Document detection signals.
+- [ ] Document timeline.
+- [ ] Document mitigation.
+- [ ] Document prevention/follow-up actions.
+
+25. [ ] Add release readiness checklist:
+
+- [ ] Verify tests pass.
+- [ ] Verify docs are current.
+- [ ] Verify dashboards are available.
+- [ ] Verify runbook is available.
+- [ ] Verify secrets are not committed.
+- [ ] Verify local environment can be started from documented commands.
 
 ### Acceptance Criteria
 

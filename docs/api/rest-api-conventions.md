@@ -76,6 +76,26 @@ authorization failures, and fallback internal errors should all use the same top
 - Keep controllers thin; validation and request/response mapping belong at the API boundary, while business decisions
   belong in application/domain services.
 
+## Operations API
+
+Operator-facing endpoints use:
+
+```text
+/api/v1/ops
+```
+
+Operations controllers should keep the same WebFlux and error-handling conventions as public payment endpoints:
+
+- Use `ApiErrorResponse` for validation, not-found, conflict, authorization, downstream, and internal errors.
+- Use the existing correlation ID filter and return the resolved ID in responses and errors.
+- Use `size` and `pageToken` as pagination query parameters.
+- Use `sortBy` and `sortDirection` as sorting query parameters.
+- Default list endpoints to `sortBy=createdAt` and `sortDirection=DESC` unless a more specific endpoint contract states
+  otherwise.
+- Prefer these filter names when applicable: `status`, `merchantId`, `customerId`, `paymentId`, `aggregateId`,
+  `eventType`, `createdFrom`, and `createdTo`.
+- Keep operations controllers thin and delegate query/command decisions to `ops.application` services.
+
 ## OpenAPI
 
 OpenAPI JSON is exposed through SpringDoc at the standard SpringDoc endpoint.
