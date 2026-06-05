@@ -21,6 +21,10 @@ public class HeaderRoleAuthenticationWebFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        if (isPaymentApi(exchange)) {
+            return chain.filter(exchange);
+        }
+
         var rolesHeader = exchange.getRequest().getHeaders().getFirst(USER_ROLES_HEADER);
 
         if (rolesHeader == null || rolesHeader.isBlank()) {
@@ -47,5 +51,13 @@ public class HeaderRoleAuthenticationWebFilter implements WebFilter {
 
         return chain.filter(exchange)
                 .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
+    }
+
+    private static boolean isPaymentApi(ServerWebExchange exchange) {
+        return exchange.getRequest()
+                .getPath()
+                .pathWithinApplication()
+                .value()
+                .startsWith("/api/v1/payments/");
     }
 }

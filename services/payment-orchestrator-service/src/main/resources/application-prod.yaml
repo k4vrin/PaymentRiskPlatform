@@ -29,6 +29,10 @@ payment:
     hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY}
 
 payment-risk:
+  security:
+    api-key:
+      hashing:
+        pepper: ${PAYMENT_RISK_API_KEY_HASHING_PEPPER}
   rabbitmq:
     callback:
       enabled: ${PAYMENT_RISK_CALLBACK_ENABLED:false}

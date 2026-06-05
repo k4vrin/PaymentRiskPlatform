@@ -5,3 +5,9 @@ spring:
 payment:
   sensitive-data:
     hash-key: test-sensitive-data-hash-key
+
+payment-risk:
+  security:
+    api-key:
+      hashing:
+        pepper: test-api-key-hashing-pepper

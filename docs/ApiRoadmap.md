@@ -2025,61 +2025,78 @@ Detailed implementation guide: `docs/phase-6-messaging-and-event-apis.md`.
 
 Goal: Harden the APIs for a realistic fintech portfolio demonstration with security controls, metrics, dashboards, and CI checks.
 
+Authentication strategy:
+
+- Payment APIs use merchant API keys.
+- Ops APIs use JWTs with ops/admin/auditor roles.
+- Internal service endpoints use JWTs with the `SERVICE` role.
+
 ### Atomic Remaining Work
 
-1. [ ] Finalize Spring Security role model:
+1. [x] Finalize Spring Security role model:
 
-- [ ] Define `MERCHANT`.
-- [ ] Define `OPS`.
-- [ ] Define `AUDITOR`.
-- [ ] Define `ADMIN`.
-- [ ] Define `SERVICE`.
-- [ ] Document which endpoints each role can access.
-- [ ] Add role enum/constants where appropriate.
+- [x] Define `MERCHANT`.
+- [x] Define `OPS`.
+- [x] Define `AUDITOR`.
+- [x] Define `ADMIN`.
+- [x] Define `SERVICE`.
+- [x] Treat `MERCHANT` as the authority resolved from valid merchant API keys.
+- [x] Treat `OPS`, `AUDITOR`, `ADMIN`, and `SERVICE` as JWT authorities.
+- [x] Document which endpoints each role can access.
+- [x] Add role enum/constants where appropriate.
 
-2. [ ] Add endpoint authorization matrix:
+2. [x] Add endpoint authorization matrix:
 
-- [ ] Merchant payment APIs require `MERCHANT` or `ADMIN`.
-- [ ] Ops APIs require `OPS` or `ADMIN`.
-- [ ] Audit read APIs require `AUDITOR`, `OPS`, or `ADMIN`.
-- [ ] Internal/service endpoints require `SERVICE` or `ADMIN`.
-- [ ] Health/readiness endpoints use selected public/protected behavior.
-- [ ] Add security tests for each endpoint group.
+- [x] Payment APIs require the resolved `MERCHANT` authority; API key resolution is Step 3.
+- [x] Ops APIs require a JWT with `OPS` or `ADMIN`.
+- [x] Audit read APIs require `AUDITOR`, `OPS`, or `ADMIN`.
+- [x] Internal/service endpoints require a JWT with `SERVICE` or `ADMIN`.
+- [x] Health/readiness endpoints use selected public/protected behavior.
+- [x] Add security tests for each endpoint group.
 
-3. [ ] Implement merchant authentication mechanism:
+3. [x] Implement merchant API key authentication:
 
-- [ ] Choose API key or token-based authentication for local portfolio scope.
-- [ ] Define credential header format.
-- [ ] Add authentication filter.
-- [ ] Resolve merchant identity from credential.
-- [ ] Attach merchant identity to request context.
-- [ ] Add success and failure tests.
+- [x] Use API keys for payment authorization, lookup, and reversal APIs.
+- [x] Define credential header format, for example `X-API-Key`.
+- [x] Add API key authentication filter.
+- [x] Resolve merchant identity from credential.
+- [x] Attach merchant identity to request context.
+- [x] Add success and failure tests.
 
-4. [ ] Add API key storage model if API keys are selected:
+4. [x] Add merchant API key storage model:
 
-- [ ] Add merchant API key table or config-backed store.
-- [ ] Store key ID.
-- [ ] Store hashed secret.
-- [ ] Store merchant ID.
-- [ ] Store active/revoked status.
-- [ ] Store created-at and rotated-at.
-- [ ] Add repository tests.
+- [x] Add merchant API key table or config-backed store.
+- [x] Store key ID.
+- [x] Store hashed secret.
+- [x] Store merchant ID.
+- [x] Store active/revoked status.
+- [x] Store created-at and rotated-at.
+- [x] Add repository tests.
 
-5. [ ] Add API key hashing:
+5. [x] Add API key hashing:
 
-- [ ] Use strong keyed or salted hashing.
-- [ ] Avoid plaintext secret storage.
-- [ ] Add constant-time comparison where applicable.
-- [ ] Add tests for match, mismatch, and rotation.
+- [x] Use strong keyed or salted hashing.
+- [x] Avoid plaintext secret storage.
+- [x] Add constant-time comparison where applicable.
+- [x] Add tests for match, mismatch, and rotation.
 
-6. [ ] Implement service-to-service authentication:
+6. [ ] Implement ops JWT authentication:
 
-- [ ] Define internal credential strategy.
-- [ ] Protect internal messaging/ops hooks if any.
-- [ ] Document how the Java service authenticates to internal dependencies.
-- [ ] Add tests for allowed and denied service credentials.
+- [ ] Accept bearer JWTs for `/api/v1/ops/**`.
+- [ ] Validate issuer, audience, signature, expiration, and role claims.
+- [ ] Map JWT role claims to `OPS`, `AUDITOR`, and `ADMIN`.
+- [ ] Keep existing local role-header behavior only as a local/test fallback if retained.
+- [ ] Add tests for missing, invalid, expired, wrong-audience, and allowed JWTs.
 
-7. [ ] Configure secure headers:
+7. [ ] Implement internal service JWT authentication:
+
+- [ ] Accept bearer JWTs for internal/service endpoints.
+- [ ] Validate issuer, audience, signature, expiration, and role claims.
+- [ ] Require `SERVICE` or `ADMIN` for service-only routes.
+- [ ] Document how internal services obtain and send service JWTs.
+- [ ] Add tests for allowed and denied service JWTs.
+
+8. [ ] Configure secure headers:
 
 - [ ] Add content security policy where practical.
 - [ ] Add frame options.
@@ -2087,14 +2104,14 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Add content type options.
 - [ ] Add tests or configuration assertions.
 
-8. [ ] Configure CORS:
+9. [ ] Configure CORS:
 
 - [ ] Define local allowed origins.
 - [ ] Define production placeholder allowed origins.
 - [ ] Restrict methods and headers.
 - [ ] Add preflight tests.
 
-9. [ ] Add request rate limiting:
+10. [ ] Add request rate limiting:
 
 - [ ] Define merchant-level limit.
 - [ ] Define client/IP-level limit if selected.
@@ -2102,7 +2119,7 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Return structured rate-limit errors.
 - [ ] Add tests for allowed, exceeded, and reset behavior.
 
-10. [ ] Add log masking policy:
+11. [ ] Add log masking policy:
 
 - [ ] Mask payment method tokens.
 - [ ] Mask device fingerprints.
@@ -2110,13 +2127,13 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Mask authorization headers.
 - [ ] Add tests for log/error masking helpers.
 
-11. [ ] Add API latency metrics:
+12. [ ] Add API latency metrics:
 
 - [ ] Record request duration by route and status.
 - [ ] Avoid high-cardinality labels.
 - [ ] Add tests or actuator metric assertions.
 
-12. [ ] Add payment authorization metrics:
+13. [ ] Add payment authorization metrics:
 
 - [ ] Count authorization attempts.
 - [ ] Count authorized outcomes.
@@ -2125,7 +2142,7 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Count duplicate idempotency replays.
 - [ ] Add service-level metric tests where practical.
 
-13. [ ] Add decline/risk metrics:
+14. [ ] Add decline/risk metrics:
 
 - [ ] Count decline by reason code.
 - [ ] Record risk service latency.
@@ -2133,7 +2150,7 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Count risk unavailable responses.
 - [ ] Add tests with fake meter registry.
 
-14. [ ] Add Redis idempotency/cache metrics:
+15. [ ] Add Redis idempotency/cache metrics:
 
 - [ ] Count Redis hits.
 - [ ] Count Redis misses.
@@ -2141,7 +2158,7 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Count database fallback hits.
 - [ ] Add tests where practical.
 
-15. [ ] Add messaging metrics:
+16. [ ] Add messaging metrics:
 
 - [ ] Count Kafka producer successes.
 - [ ] Count Kafka producer failures.
@@ -2151,14 +2168,14 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Count replay success/failure.
 - [ ] Add tests or documented dashboard queries.
 
-16. [ ] Update Prometheus configuration:
+17. [ ] Update Prometheus configuration:
 
 - [ ] Scrape Spring Boot actuator metrics.
 - [ ] Scrape Go risk service metrics if exposed in a later step.
 - [ ] Keep local Prometheus config aligned with service ports.
 - [ ] Validate config syntax.
 
-17. [ ] Add Grafana dashboards:
+18. [ ] Add Grafana dashboards:
 
 - [ ] Add API health dashboard.
 - [ ] Add payment authorization dashboard.
@@ -2168,40 +2185,40 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Add database health dashboard.
 - [ ] Store dashboard JSON under platform docs/config.
 
-18. [ ] Add CI workflow for Java:
+19. [ ] Add CI workflow for Java:
 
 - [ ] Run Maven validation.
 - [ ] Run Java tests.
 - [ ] Cache Maven dependencies.
 - [ ] Publish test reports if selected.
 
-19. [ ] Add CI workflow for Go:
+20. [ ] Add CI workflow for Go:
 
 - [ ] Run `go test ./...`.
 - [ ] Cache Go modules/build cache.
 - [ ] Run `go vet` if selected.
 - [ ] Publish test reports if selected.
 
-20. [ ] Add CI workflow for protobuf:
+21. [ ] Add CI workflow for protobuf:
 
 - [ ] Run `make proto`.
 - [ ] Fail if generated files are stale.
 - [ ] Run Java and Go contract tests.
 
-21. [ ] Add CI workflow for platform validation:
+22. [ ] Add CI workflow for platform validation:
 
 - [ ] Validate Docker Compose config.
 - [ ] Build service container images if Dockerfiles exist.
 - [ ] Run lightweight smoke checks where practical.
 
-22. [ ] Add container build configuration:
+23. [ ] Add container build configuration:
 
 - [ ] Add Dockerfile for payment orchestrator if missing.
 - [ ] Add Dockerfile for risk scoring service if missing.
 - [ ] Add image build targets to `Makefile`.
 - [ ] Add CI build checks.
 
-23. [ ] Add Linux operations runbook:
+24. [ ] Add Linux operations runbook:
 
 - [ ] Document local startup and shutdown.
 - [ ] Document logs inspection.
@@ -2211,7 +2228,7 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Document RabbitMQ checks.
 - [ ] Document replay and dead-letter workflows.
 
-24. [ ] Add incident write-up:
+25. [ ] Add incident write-up:
 
 - [ ] Choose failed risk service or Kafka replay scenario.
 - [ ] Document impact.
@@ -2220,7 +2237,7 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 - [ ] Document mitigation.
 - [ ] Document prevention/follow-up actions.
 
-25. [ ] Add release readiness checklist:
+26. [ ] Add release readiness checklist:
 
 - [ ] Verify tests pass.
 - [ ] Verify docs are current.
@@ -2232,6 +2249,9 @@ Goal: Harden the APIs for a realistic fintech portfolio demonstration with secur
 ### Acceptance Criteria
 
 - [ ] Protected endpoints require authentication.
+- [ ] Payment APIs authenticate merchants with API keys.
+- [ ] Ops APIs authenticate operators with JWT bearer tokens.
+- [ ] Internal service endpoints authenticate service callers with JWT bearer tokens carrying `SERVICE`.
 - [ ] Role-based access rules are enforced.
 - [ ] Sensitive data is masked in logs.
 - [ ] Prometheus exposes service metrics.
