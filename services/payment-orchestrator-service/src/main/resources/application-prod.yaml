@@ -29,6 +29,17 @@ payment:
     hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY}
 
 payment-risk:
+  rabbitmq:
+    callback:
+      enabled: ${PAYMENT_RISK_CALLBACK_ENABLED:false}
+      exchange: ${CALLBACK_EXCHANGE}
+      queue: ${CALLBACK_QUEUE}
+      dead-letter-queue: ${CALLBACK_DLQ}
+      routing-key: ${CALLBACK_ROUTING_KEY}
+      max-attempts: ${CALLBACK_MAX_ATTEMPTS:3}
+      command-producer-consumer-name: ${CALLBACK_COMMAND_PRODUCER_CONSUMER_NAME:partner-callback-command-producer}
+      expected-schema-version: ${CALLBACK_EXPECTED_SCHEMA_VERSION:v1}
+      target-url-template: ${CALLBACK_TARGET_URL_TEMPLATE}
   kafka:
     topics:
       payment-authorization-requested: ${PAYMENT_RISK_KAFKA_TOPIC_PAYMENT_AUTHORIZATION_REQUESTED}

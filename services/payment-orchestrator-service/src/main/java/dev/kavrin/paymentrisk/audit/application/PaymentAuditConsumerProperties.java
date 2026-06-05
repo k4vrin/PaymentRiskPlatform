@@ -18,5 +18,5 @@ public class PaymentAuditConsumerProperties {
     private String consumerName = "payment-audit-consumer";
 
     @NotBlank
-    private String expectedSchemaVersion = "1";
+    private String expectedSchemaVersion = "v1";
 }

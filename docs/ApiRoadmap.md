@@ -1925,101 +1925,101 @@ Detailed implementation guide: `docs/phase-6-messaging-and-event-apis.md`.
 - [x] Add indexes by merchant, status, and business date.
 - [x] Add repository tests.
 
-16. [ ] Implement ops metrics consumer:
+16. [x] Implement ops metrics consumer:
 
-- [ ] Consume selected platform/payment events.
-- [ ] Update counters/projections for ops views.
-- [ ] Track event processing failures.
-- [ ] Use idempotent consumer guard where needed.
-- [ ] Add tests.
+- [x] Consume selected platform/payment events.
+- [x] Update counters/projections for ops views.
+- [x] Track event processing failures.
+- [x] Use idempotent consumer guard where needed.
+- [x] Add tests.
 
-17. [ ] Implement poison-message dead-letter handling:
+17. [x] Implement poison-message dead-letter handling:
 
-- [ ] Detect deserialization failures.
-- [ ] Detect unsupported schema versions.
-- [ ] Detect handler exceptions after retries.
-- [ ] Persist dead-letter record.
-- [ ] Include topic, partition, offset, key, headers, error, and correlation ID.
-- [ ] Emit `platform.dead-letter.recorded` if selected.
-- [ ] Add tests for poison messages.
+- [x] Detect deserialization failures.
+- [x] Detect unsupported schema versions.
+- [x] Detect handler exceptions after retries.
+- [x] Persist dead-letter record.
+- [x] Include topic, partition, offset, key, headers, error, and correlation ID.
+- [x] Emit `platform.dead-letter.recorded` if selected.
+- [x] Add tests for poison messages.
 
-18. [ ] Define RabbitMQ callback command contract:
+18. [x] Define RabbitMQ callback command contract:
 
-- [ ] Define queue `partner.callback.commands`.
-- [ ] Define dead-letter queue `partner.callback.commands.dlq`.
-- [ ] Define `CallPartnerWebhook` command payload.
-- [ ] Include payment ID, merchant ID, target URL/reference, callback type, attempt, and correlation ID.
-- [ ] Document acknowledgement and retry behavior.
+- [x] Define queue `partner.callback.commands`.
+- [x] Define dead-letter queue `partner.callback.commands.dlq`.
+- [x] Define `CallPartnerWebhook` command payload.
+- [x] Include payment ID, merchant ID, target URL/reference, callback type, attempt, and correlation ID.
+- [x] Document acknowledgement and retry behavior.
 
-19. [ ] Add RabbitMQ configuration:
+19. [x] Add RabbitMQ configuration:
 
-- [ ] Add queue/exchange/routing-key properties.
-- [ ] Add local defaults.
-- [ ] Add queue declaration beans if selected.
-- [ ] Add DLQ binding configuration.
-- [ ] Add configuration tests.
+- [x] Add queue/exchange/routing-key properties.
+- [x] Add local defaults.
+- [x] Add queue declaration beans if selected.
+- [x] Add DLQ binding configuration.
+- [x] Add configuration tests.
 
-20. [ ] Implement callback command producer:
+20. [x] Implement callback command producer:
 
-- [ ] Create callback command after selected payment outcomes.
-- [ ] Persist command intent or publish through RabbitMQ as selected.
-- [ ] Include correlation ID.
-- [ ] Avoid publishing inside an uncommitted database transaction unless using outbox/command table.
-- [ ] Add producer tests.
+- [x] Create callback command after selected payment outcomes.
+- [x] Persist command intent or publish through RabbitMQ as selected.
+- [x] Include correlation ID.
+- [x] Avoid publishing inside an uncommitted database transaction unless using outbox/command table.
+- [x] Add producer tests.
 
-21. [ ] Implement partner callback worker:
+21. [x] Implement partner callback worker:
 
-- [ ] Consume `CallPartnerWebhook`.
-- [ ] Call partner webhook/client abstraction.
-- [ ] Handle success acknowledgement.
-- [ ] Handle transient failure retry.
-- [ ] Handle terminal failure.
-- [ ] Add worker tests with fake partner client.
+- [x] Consume `CallPartnerWebhook`.
+- [x] Call partner webhook/client abstraction.
+- [x] Handle success acknowledgement.
+- [x] Handle transient failure retry.
+- [x] Handle terminal failure.
+- [x] Add worker tests with fake partner client.
 
-22. [ ] Add RabbitMQ retry and DLQ behavior:
+22. [x] Add RabbitMQ retry and DLQ behavior:
 
-- [ ] Define retry count source.
-- [ ] Define retry delay/backoff.
-- [ ] Nack/requeue or republish according to selected strategy.
-- [ ] Route terminal failures to DLQ.
-- [ ] Add tests for ack, retry, and DLQ paths.
+- [x] Define retry count source.
+- [x] Define retry delay/backoff.
+- [x] Nack/requeue or republish according to selected strategy.
+- [x] Route terminal failures to DLQ.
+- [x] Add tests for ack, retry, and DLQ paths.
 
-23. [ ] Add messaging observability:
+23. [x] Add messaging observability:
 
-- [ ] Add outbox lag metric.
-- [ ] Add publish success/failure metric.
-- [ ] Add consumer processing metric.
-- [ ] Add dead-letter count metric.
-- [ ] Add callback success/failure metric.
-- [ ] Add tests where practical.
+- [x] Add outbox lag metric.
+- [x] Add publish success/failure metric.
+- [x] Add consumer processing metric.
+- [x] Add dead-letter count metric.
+- [x] Add callback success/failure metric.
+- [x] Add tests where practical.
 
-24. [ ] Add Phase 6 integration tests:
+24. [x] Add Phase 6 integration tests:
 
-- [ ] Use Kafka Testcontainers for outbox relay publish path.
-- [ ] Use Kafka Testcontainers for consumer projection path.
-- [ ] Use RabbitMQ Testcontainers for callback worker path.
-- [ ] Verify idempotent consumer behavior.
-- [ ] Verify dead-letter persistence.
-- [ ] Keep tests isolated and deterministic.
+- [x] Use Kafka Testcontainers for outbox relay publish path.
+- [x] Use Kafka Testcontainers for consumer projection path.
+- [x] Use RabbitMQ Testcontainers for callback worker path.
+- [x] Verify idempotent consumer behavior.
+- [x] Verify dead-letter persistence.
+- [x] Keep tests isolated and deterministic.
 
-25. [ ] Update messaging documentation:
+25. [x] Update messaging documentation:
 
-- [ ] Document topics.
-- [ ] Document event payloads.
-- [ ] Document outbox relay behavior.
-- [ ] Document consumer idempotency.
-- [ ] Document RabbitMQ callback behavior.
-- [ ] Update this roadmap project structure for added files.
+- [x] Document topics.
+- [x] Document event payloads.
+- [x] Document outbox relay behavior.
+- [x] Document consumer idempotency.
+- [x] Document RabbitMQ callback behavior.
+- [x] Update this roadmap project structure for added files.
 
 ### Acceptance Criteria
 
-- [ ] Payment authorization creates Kafka-ready outbox records.
-- [ ] Outbox relay publishes events after transaction commit.
-- [ ] Audit consumer builds payment history from events.
-- [ ] Settlement consumer builds settlement projection entities.
-- [ ] Poison Kafka records create dead-letter records.
-- [ ] RabbitMQ callback commands are acknowledged only after terminal handling.
-- [ ] Callback failures retry and eventually route to DLQ.
+- [x] Payment authorization creates Kafka-ready outbox records.
+- [x] Outbox relay publishes events after transaction commit.
+- [x] Audit consumer builds payment history from events.
+- [x] Settlement consumer builds settlement projection entities.
+- [x] Poison Kafka records create dead-letter records.
+- [x] RabbitMQ callback commands are acknowledged only after terminal handling.
+- [x] Callback failures retry and eventually route to DLQ.
 
 ## Phase 7: Security, Observability, And Release Readiness
 

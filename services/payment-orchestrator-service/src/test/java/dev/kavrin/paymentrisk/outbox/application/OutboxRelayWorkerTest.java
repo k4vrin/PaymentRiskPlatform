@@ -1,6 +1,8 @@
 package dev.kavrin.paymentrisk.outbox.application;
 
 import dev.kavrin.paymentrisk.outbox.domain.OutboxEvent;
+import dev.kavrin.paymentrisk.shared.messaging.MessagingObservability;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -57,7 +59,8 @@ class OutboxRelayWorkerTest {
                 new FakeClaimer(List.of(event("evt_1"))),
                 new FakePublisher(),
                 new FakeStatusUpdater(),
-                new OutboxProducerRetryPolicy(enabledProperties())
+                new OutboxProducerRetryPolicy(enabledProperties()),
+                observability()
         );
 
         StepVerifier.create(worker.runOnce())
@@ -72,7 +75,8 @@ class OutboxRelayWorkerTest {
                 new FakeClaimer(List.of()),
                 new FakePublisher(),
                 new FakeStatusUpdater(),
-                new OutboxProducerRetryPolicy(enabledProperties())
+                new OutboxProducerRetryPolicy(enabledProperties()),
+                observability()
         );
 
         StepVerifier.create(worker.runOnce())
@@ -99,8 +103,13 @@ class OutboxRelayWorkerTest {
                 claimer,
                 publisher,
                 statusUpdater,
-                new OutboxProducerRetryPolicy(properties)
+                new OutboxProducerRetryPolicy(properties),
+                observability()
         );
+    }
+
+    private static MessagingObservability observability() {
+        return new MessagingObservability(new SimpleMeterRegistry());
     }
 
     private static OutboxEvent event(String eventId) {

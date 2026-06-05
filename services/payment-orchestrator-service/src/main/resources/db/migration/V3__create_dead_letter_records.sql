@@ -13,6 +13,7 @@ CREATE TABLE dead_letter_records
     failed_at        TIMESTAMP WITH TIME ZONE NOT NULL,
     replay_eligible  BOOLEAN                  NOT NULL DEFAULT FALSE,
     correlation_id   VARCHAR(120),
+    headers_json TEXT,
     payload_preview  TEXT,
     created_at       TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT chk_dead_letter_records_source CHECK (

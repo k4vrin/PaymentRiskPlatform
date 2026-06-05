@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.outbox.infrastructure.messaging;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.kavrin.paymentrisk.outbox.domain.OutboxEvent;
 import dev.kavrin.paymentrisk.shared.messaging.KafkaTopicProperties;
 import dev.kavrin.paymentrisk.shared.messaging.KafkaTopics;
@@ -16,7 +17,7 @@ class KafkaOutboxEventPublisherTest {
 
     private final CapturingSender sender = new CapturingSender();
     private final KafkaOutboxEventPublisher publisher =
-            new KafkaOutboxEventPublisher(new KafkaTopicProperties(null, null), sender);
+            new KafkaOutboxEventPublisher(new ObjectMapper(), new KafkaTopicProperties(null, null), sender);
 
     @Test
     void shouldPublishPayloadToMappedTopicWithAggregateKeyAndHeaders() {
@@ -28,7 +29,10 @@ class KafkaOutboxEventPublisherTest {
 
         assertThat(record.topic()).isEqualTo(KafkaTopics.PAYMENT_AUTHORIZATION_COMPLETED);
         assertThat(record.key()).isEqualTo("pay_123");
-        assertThat(record.value()).isEqualTo("{\"paymentId\":\"pay_123\"}");
+        assertThat(record.value()).contains("\"eventId\":\"evt_123\"");
+        assertThat(record.value()).contains("\"schemaVersion\":\"v1\"");
+        assertThat(record.value()).contains("\"eventType\":\"PaymentAuthorized\"");
+        assertThat(record.value()).contains("\"payload\":{\"paymentId\":\"pay_123\"}");
         assertThat(header(record, "event_id")).isEqualTo("evt_123");
         assertThat(header(record, "event_type")).isEqualTo("PaymentAuthorized");
         assertThat(header(record, "schema_version")).isEqualTo("v1");

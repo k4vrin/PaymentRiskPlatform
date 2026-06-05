@@ -28,7 +28,7 @@ class EventEnvelopeTest {
     void shouldSerializeEnvelopeWithRequiredFields() throws Exception {
         var envelope = new EventEnvelope<>(
                 "evt_123",
-                "1",
+                "v1",
                 "PaymentAuthorized",
                 "pay_123",
                 "Payment",
@@ -42,7 +42,7 @@ class EventEnvelopeTest {
         JsonNode root = objectMapper.readTree(json);
 
         assertThat(root.get("eventId").asText()).isEqualTo("evt_123");
-        assertThat(root.get("schemaVersion").asText()).isEqualTo("1");
+        assertThat(root.get("schemaVersion").asText()).isEqualTo("v1");
         assertThat(root.get("eventType").asText()).isEqualTo("PaymentAuthorized");
         assertThat(root.get("aggregateId").asText()).isEqualTo("pay_123");
         assertThat(root.get("aggregateType").asText()).isEqualTo("Payment");
@@ -67,7 +67,7 @@ class EventEnvelopeTest {
     void shouldRejectMissingPayload() {
         assertThatThrownBy(() -> new EventEnvelope<>(
                 "evt_123",
-                "1",
+                "v1",
                 "PaymentAuthorized",
                 "pay_123",
                 "Payment",
@@ -83,7 +83,7 @@ class EventEnvelopeTest {
     void shouldRejectMissingOccurredAt() {
         assertThatThrownBy(() -> new EventEnvelope<>(
                 "evt_123",
-                "1",
+                "v1",
                 "PaymentAuthorized",
                 "pay_123",
                 "Payment",
@@ -126,7 +126,7 @@ class EventEnvelopeTest {
     private static final class EventEnvelopeBuilder {
 
         private String eventId = "evt_123";
-        private String schemaVersion = "1";
+        private String schemaVersion = "v1";
         private String eventType = "PaymentAuthorized";
         private String aggregateId = "pay_123";
         private String aggregateType = "Payment";

@@ -2,6 +2,17 @@ spring:
   application:
     name: payment-orchestrator-service
 payment-risk:
+  rabbitmq:
+    callback:
+      enabled: false
+      exchange: partner.callback.exchange
+      queue: partner.callback.commands
+      dead-letter-queue: partner.callback.commands.dlq
+      routing-key: partner.callback.command
+      max-attempts: 3
+      command-producer-consumer-name: partner-callback-command-producer
+      expected-schema-version: "v1"
+      target-url-template: http://localhost:8080/partner-callbacks/{merchantId}
   kafka:
     topics:
       payment-authorization-requested: payment.authorization.requested
@@ -17,11 +28,15 @@ payment-risk:
       payment-audit:
         enabled: false
         consumer-name: payment-audit-consumer
-        expected-schema-version: "1"
+        expected-schema-version: "v1"
       settlement-projection:
         enabled: false
         consumer-name: settlement-projection-consumer
-        expected-schema-version: "1"
+        expected-schema-version: "v1"
+      ops-metrics:
+        enabled: false
+        consumer-name: ops-metrics-consumer
+        expected-schema-version: "v1"
   outbox:
     relay:
       enabled: false

@@ -90,7 +90,7 @@ class KafkaPaymentAuditConsumerTest {
     private static PaymentAuditConsumerProperties properties() {
         var properties = new PaymentAuditConsumerProperties();
         properties.setConsumerName("payment-audit-consumer");
-        properties.setExpectedSchemaVersion("1");
+        properties.setExpectedSchemaVersion("v1");
         return properties;
     }
 
@@ -111,7 +111,7 @@ class KafkaPaymentAuditConsumerTest {
                 0,
                 offset,
                 "pay_123",
-                eventJson(eventId, eventType, "1")
+                eventJson(eventId, eventType, "v1")
         );
     }
 

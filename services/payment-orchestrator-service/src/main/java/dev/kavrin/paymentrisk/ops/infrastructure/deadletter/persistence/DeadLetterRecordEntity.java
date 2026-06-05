@@ -55,6 +55,9 @@ public class DeadLetterRecordEntity {
     @Column("correlation_id")
     private String correlationId;
 
+    @Column("headers_json")
+    private String headersJson;
+
     @Column("payload_preview")
     private String payloadPreview;
 

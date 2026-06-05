@@ -1,4 +1,4 @@
-package dev.kavrin.paymentrisk.settlement.application;
+package dev.kavrin.paymentrisk.ops.application.metrics;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -7,18 +7,18 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Configuration for the settlement projection Kafka consumer.
+ * Configuration for the ops metrics Kafka consumer.
  */
 @Getter
 @Setter
 @Validated
-@ConfigurationProperties(prefix = "payment-risk.kafka.consumers.settlement-projection")
-public class SettlementProjectionConsumerProperties {
+@ConfigurationProperties(prefix = "payment-risk.kafka.consumers.ops-metrics")
+public class OpsMetricsConsumerProperties {
 
     private boolean enabled = false;
 
     @NotBlank
-    private String consumerName = "settlement-projection-consumer";
+    private String consumerName = "ops-metrics-consumer";
 
     @NotBlank
     private String expectedSchemaVersion = "v1";

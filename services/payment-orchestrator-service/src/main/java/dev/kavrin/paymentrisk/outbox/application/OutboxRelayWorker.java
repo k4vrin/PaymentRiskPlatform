@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.outbox.application;
 
+import dev.kavrin.paymentrisk.shared.messaging.MessagingObservability;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,6 +21,7 @@ public class OutboxRelayWorker {
     private final OutboxEventPublisher publisher;
     private final OutboxRelayStatusUpdater statusUpdater;
     private final OutboxProducerRetryPolicy retryPolicy;
+    private final MessagingObservability observability;
 
     @Scheduled(fixedDelayString = "${payment-risk.outbox.relay.fixed-delay-millis:5000}")
     public void relayBatch() {
@@ -47,7 +49,12 @@ public class OutboxRelayWorker {
                                         event.eventType(),
                                         event.aggregateId()
                                 ))
+                                .doOnSuccess(ignored -> {
+                                    observability.recordOutboxPublished(event.eventType());
+                                    observability.recordOutboxLag(event.eventType(), event.createdAt(), Instant.now());
+                                })
                                 .onErrorResume(error -> {
+                                    observability.recordOutboxPublishFailure(event.eventType());
                                     var decision = retryPolicy.decide(
                                             event.retryCount(),
                                             Instant.now()

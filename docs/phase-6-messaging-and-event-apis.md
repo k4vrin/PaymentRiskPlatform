@@ -77,7 +77,7 @@ sequenceDiagram
     API->>DB: Commit payment state and outbox row
     Relay->>DB: Claim eligible rows with FOR UPDATE SKIP LOCKED
     DB-->>Relay: Return PUBLISHING rows
-    Relay->>Kafka: Send ProducerRecord(topic, aggregateId, payloadJson)
+    Relay->>Kafka: Send ProducerRecord(topic, aggregateId, envelopeJson)
     Kafka-->>Relay: Acknowledge send
     Relay->>DB: Mark row PUBLISHED and clear claim
     Kafka-->>Consumer: Deliver event
@@ -158,9 +158,27 @@ The Kafka publisher:
 
 - maps outbox `eventType` to a configured Kafka topic;
 - uses `aggregateId` as Kafka key for ordering by payment;
-- sends `payloadJson` as-is without reserializing it;
+- wraps the durable outbox payload in the standard event envelope before publishing;
 - adds useful headers such as `event_id`, `event_type`, `schema_version`, `aggregate_id`, `aggregate_type`, and
   `correlation_id`.
+
+Outbox rows store event metadata and the event-specific payload separately. Kafka consumers receive the full envelope:
+
+```json
+{
+  "eventId": "evt_123",
+  "schemaVersion": "v1",
+  "eventType": "PaymentAuthorized",
+  "aggregateId": "pay_123",
+  "aggregateType": "PAYMENT",
+  "occurredAt": "2026-06-05T10:00:00Z",
+  "producer": "payment-orchestrator-service",
+  "correlationId": "corr_123",
+  "payload": {
+    "paymentId": "pay_123"
+  }
+}
+```
 
 ### Relay Worker
 
@@ -263,6 +281,78 @@ The projection stores merchant, customer, amount, currency, last event metadata,
 `business_date`.
 Indexes support settlement batches by merchant, status, and business date.
 
+### Ops Metrics Projection
+
+`KafkaOpsMetricsConsumer` consumes selected payment/platform events and updates durable counters in `ops_event_metrics`.
+
+Examples:
+
+- `events.total`
+- `payments.authorized`
+- `payments.declined`
+- `payments.reversed`
+- `dead_letters.recorded`
+
+The consumer uses `IdempotentConsumerGuard`, so duplicate Kafka delivery does not increment counters twice.
+
+### Poison Message Handling
+
+Kafka consumer failures flow through `KafkaConsumerFailureHandler` and `DatabaseKafkaDeadLetterRecorder`.
+
+Dead-letter records include source system, topic, partition, offset, event/message ID, correlation ID, headers JSON,
+error reason, and payload preview.
+
+Recording a Kafka dead letter also writes a `DeadLetterRecorded` outbox event. The outbox relay publishes that event to
+`platform.dead-letter.recorded`.
+
+### RabbitMQ Callback Commands
+
+Partner callbacks use RabbitMQ because they are commands/work items, not durable business facts.
+
+Command queue:
+
+```text
+partner.callback.commands
+```
+
+Dead-letter queue:
+
+```text
+partner.callback.commands.dlq
+```
+
+`KafkaPartnerCallbackCommandProducer` consumes final payment outcome events and publishes `CallPartnerWebhook` commands.
+The command includes payment ID, merchant ID, target URL, callback type, attempt, and correlation ID.
+
+`PartnerCallbackWorker` consumes the command and calls `PartnerWebhookClient`.
+
+Retry behavior:
+
+- success returns normally, so RabbitMQ acknowledges the message;
+- transient failure republishes a new command with `attempt + 1`;
+- terminal failure rejects without requeue so RabbitMQ routes to DLQ.
+
+### Messaging Observability
+
+Micrometer meters added:
+
+- `payment_risk_outbox_lag_seconds`
+- `payment_risk_outbox_publish_total`
+- `payment_risk_consumer_events_total`
+- `payment_risk_dead_letters_total`
+- `payment_risk_partner_callback_total`
+
+### Integration Coverage
+
+`Phase6MessagingIntegrationTest` verifies the broker-backed paths:
+
+- Kafka Testcontainers receives the outbox publisher's envelope and headers;
+- Kafka Testcontainers feeds an audit projection path, then the idempotent guard skips a duplicate delivery;
+- PostgreSQL Testcontainers persists poison-message dead-letter records;
+- RabbitMQ Testcontainers delivers a callback command to the worker boundary.
+
+These tests keep the transport real while keeping assertions close to the existing application components.
+
 ## Layer-By-Layer Design
 
 ### Application Layer
@@ -317,15 +407,38 @@ This layer owns Kafka adapter details:
 - producer headers;
 - `KafkaTemplate` bridging into Reactor.
 
+### Added Project Structure
+
+Phase 6 messaging code now lives in these feature packages:
+
+```text
+callback/application
+callback/application/command
+callback/domain
+callback/infrastructure/config
+callback/infrastructure/http
+callback/infrastructure/messaging
+consumer/application
+consumer/infrastructure/persistence
+ops/application/metrics
+ops/infrastructure/messaging
+ops/infrastructure/persistence
+outbox/application
+outbox/infrastructure/messaging
+outbox/infrastructure/persistence
+shared/event
+shared/messaging
+```
+
 ## Failure Model
 
 Phase 6 separates three failure types:
 
-| Failure                                       | Current behavior                               | Later Phase 6 work                                               |
-|-----------------------------------------------|------------------------------------------------|------------------------------------------------------------------|
-| Kafka publish fails                           | row becomes `FAILED`, payload preserved        | ops replay execution for terminal failures                       |
-| Consumer sees duplicate event                 | processed marker prevents duplicate projection | concrete audit/settlement/ops consumers will use this guard      |
-| Consumer cannot deserialize or handle message | planned dead-letter record                     | poison-message handler and `platform.dead-letter.recorded` event |
+| Failure                                       | Current behavior                               | Follow-up work                             |
+|-----------------------------------------------|------------------------------------------------|--------------------------------------------|
+| Kafka publish fails                           | row becomes `FAILED`, payload preserved        | ops replay execution for terminal failures |
+| Consumer sees duplicate event                 | processed marker prevents duplicate projection | monitor duplicate rates through metrics    |
+| Consumer cannot deserialize or handle message | dead-letter record plus outbox event           | replay tooling in a later operations step  |
 
 ## Why This Design
 
@@ -343,13 +456,10 @@ The outbox relay makes that scenario recoverable because the event remains a dat
 `SKIP LOCKED` allows horizontal scaling. Multiple relay workers can run, and each worker claims different rows without
 blocking the others.
 
-## Remaining Phase 6 Work
+## Deferred Follow-Up Work
 
-Next slices should add:
+Later phases can add:
 
-- ops metrics consumer;
-- poison-message dead-letter handling;
-- RabbitMQ callback command contract and callback worker;
 - replay execution from ops replay jobs;
 - consumer lag adapter backed by real Kafka admin APIs.
 
@@ -364,7 +474,10 @@ cd services/payment-orchestrator-service
 ./mvnw -Dtest=DatabaseOutboxRelayClaimingTest,DatabaseProcessedMessageStoreTest test
 ./mvnw -Dtest=KafkaPaymentAuditConsumerTest,KafkaSettlementProjectionConsumerTest test
 ./mvnw -Dtest=DatabasePaymentAuditProjectorTest,DatabaseSettlementProjectionProjectorTest test
+./mvnw -Dtest=CallPartnerWebhookCommandTest,CallbackRabbitConfigurationTest,RabbitPartnerCallbackCommandPublisherTest,PartnerCallbackWorkerTest,PartnerCallbackRabbitErrorHandlerTest,KafkaPartnerCallbackCommandProducerTest,KafkaOpsMetricsConsumerTest,OutboxRelayWorkerTest test
+./mvnw -Dtest=DatabaseOpsMetricsProjectorTest,DatabaseKafkaDeadLetterRecorderTest test
+./mvnw -Dtest=KafkaOutboxEventPublisherTest,EventEnvelopeTest,KafkaPaymentAuditConsumerTest,KafkaSettlementProjectionConsumerTest,KafkaOpsMetricsConsumerTest,KafkaPartnerCallbackCommandProducerTest,Phase6MessagingIntegrationTest test
 ```
 
-The database-backed tests use Testcontainers PostgreSQL because row locking and `SKIP LOCKED` behavior must be verified
-against real PostgreSQL.
+The integration tests use Testcontainers PostgreSQL, Kafka, and RabbitMQ because row locking, broker publish/consume,
+and queue delivery behavior must be verified against real infrastructure.

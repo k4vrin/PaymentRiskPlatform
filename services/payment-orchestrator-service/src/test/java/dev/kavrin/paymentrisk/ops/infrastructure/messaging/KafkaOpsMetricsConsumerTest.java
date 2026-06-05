@@ -1,13 +1,16 @@
-package dev.kavrin.paymentrisk.settlement.infrastructure.messaging;
+package dev.kavrin.paymentrisk.ops.infrastructure.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.kavrin.paymentrisk.consumer.application.IdempotentConsumerGuard;
+import dev.kavrin.paymentrisk.consumer.application.KafkaConsumerFailureHandler;
 import dev.kavrin.paymentrisk.consumer.application.ProcessedMessageCommand;
 import dev.kavrin.paymentrisk.consumer.application.ProcessedMessageStore;
-import dev.kavrin.paymentrisk.settlement.application.SettlementProjectionConsumerProperties;
-import dev.kavrin.paymentrisk.settlement.application.SettlementProjectionEvent;
-import dev.kavrin.paymentrisk.settlement.application.SettlementProjectionProjector;
-import dev.kavrin.paymentrisk.settlement.application.UnsupportedSettlementEventSchemaException;
+import dev.kavrin.paymentrisk.ops.application.metrics.OpsMetricsConsumerProperties;
+import dev.kavrin.paymentrisk.ops.application.metrics.OpsMetricsEvent;
+import dev.kavrin.paymentrisk.ops.application.metrics.OpsMetricsProjector;
+import dev.kavrin.paymentrisk.ops.application.metrics.UnsupportedOpsMetricsEventSchemaException;
+import dev.kavrin.paymentrisk.shared.messaging.MessagingObservability;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -24,32 +27,29 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class KafkaSettlementProjectionConsumerTest {
+class KafkaOpsMetricsConsumerTest {
 
     private final InMemoryProcessedMessageStore store = new InMemoryProcessedMessageStore();
-    private final RecordingSettlementProjectionProjector projector = new RecordingSettlementProjectionProjector();
-    private final KafkaSettlementProjectionConsumer consumer = new KafkaSettlementProjectionConsumer(
+    private final RecordingOpsMetricsProjector projector = new RecordingOpsMetricsProjector();
+    private final KafkaOpsMetricsConsumer consumer = new KafkaOpsMetricsConsumer(
             new ObjectMapper(),
             properties(),
             new IdempotentConsumerGuard(store, transactionalOperator()),
-            projector
+            projector,
+            mock(KafkaConsumerFailureHandler.class),
+            new MessagingObservability(new SimpleMeterRegistry())
     );
 
     @Test
-    void shouldProjectAuthorizedDeclinedAndReversedEvents() {
+    void shouldProjectSelectedPaymentAndPlatformEvents() {
         StepVerifier.create(consumer.handle(record("evt_auth", "PaymentAuthorized", 1)))
                 .verifyComplete();
-        StepVerifier.create(consumer.handle(record("evt_declined", "PaymentDeclined", 2)))
-                .verifyComplete();
-        StepVerifier.create(consumer.handle(record("evt_reversed", "PaymentReversed", 3)))
+        StepVerifier.create(consumer.handle(record("evt_dlq", "DeadLetterRecorded", 2)))
                 .verifyComplete();
 
         assertThat(projector.projected)
-                .extracting(SettlementProjectionEvent::eventType)
-                .containsExactly("PaymentAuthorized", "PaymentDeclined", "PaymentReversed");
-        assertThat(projector.projected)
-                .extracting(SettlementProjectionEvent::paymentId)
-                .containsOnly("pay_123");
+                .extracting(OpsMetricsEvent::eventType)
+                .containsExactly("PaymentAuthorized", "DeadLetterRecorded");
     }
 
     @Test
@@ -60,33 +60,22 @@ class KafkaSettlementProjectionConsumerTest {
                 .verifyComplete();
 
         assertThat(projector.projected)
-                .extracting(SettlementProjectionEvent::eventId)
+                .extracting(OpsMetricsEvent::eventId)
                 .containsExactly("evt_auth");
     }
 
     @Test
     void shouldRejectUnsupportedSchemaVersion() {
         StepVerifier.create(consumer.handle(recordWithSchema("evt_auth", "PaymentAuthorized", "2")))
-                .expectError(UnsupportedSettlementEventSchemaException.class)
+                .expectError(UnsupportedOpsMetricsEventSchemaException.class)
                 .verify();
 
         assertThat(projector.projected).isEmpty();
-        assertThat(store.processed).isEmpty();
     }
 
-    @Test
-    void shouldRejectUnsupportedEventType() {
-        StepVerifier.create(consumer.handle(record("evt_requested", "PaymentAuthorizationRequested", 1)))
-                .expectError(IllegalArgumentException.class)
-                .verify();
-
-        assertThat(projector.projected).isEmpty();
-        assertThat(store.processed).isEmpty();
-    }
-
-    private static SettlementProjectionConsumerProperties properties() {
-        var properties = new SettlementProjectionConsumerProperties();
-        properties.setConsumerName("settlement-projection-consumer");
+    private static OpsMetricsConsumerProperties properties() {
+        var properties = new OpsMetricsConsumerProperties();
+        properties.setConsumerName("ops-metrics-consumer");
         properties.setExpectedSchemaVersion("v1");
         return properties;
     }
@@ -126,11 +115,7 @@ class KafkaSettlementProjectionConsumerTest {
         );
     }
 
-    private static String eventJson(
-            String eventId,
-            String eventType,
-            String schemaVersion
-    ) {
+    private static String eventJson(String eventId, String eventType, String schemaVersion) {
         return """
                 {
                   "eventId": "%s",
@@ -141,23 +126,17 @@ class KafkaSettlementProjectionConsumerTest {
                   "occurredAt": "2026-06-05T10:00:00Z",
                   "producer": "payment-orchestrator-service",
                   "correlationId": "corr_123",
-                  "payload": {
-                    "paymentId": "pay_123",
-                    "merchantId": "mer_123",
-                    "customerId": "cus_123",
-                    "amountMinor": 1299,
-                    "currency": "USD"
-                  }
+                  "payload": {"paymentId": "pay_123"}
                 }
                 """.formatted(eventId, schemaVersion, eventType);
     }
 
-    private static final class RecordingSettlementProjectionProjector implements SettlementProjectionProjector {
+    private static final class RecordingOpsMetricsProjector implements OpsMetricsProjector {
 
-        private final List<SettlementProjectionEvent> projected = new ArrayList<>();
+        private final List<OpsMetricsEvent> projected = new ArrayList<>();
 
         @Override
-        public Mono<Void> project(SettlementProjectionEvent event) {
+        public Mono<Void> project(OpsMetricsEvent event) {
             return Mono.fromRunnable(() -> projected.add(event));
         }
     }
