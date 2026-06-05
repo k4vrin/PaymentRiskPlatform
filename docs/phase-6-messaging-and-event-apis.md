@@ -228,9 +228,40 @@ Two unique constraints protect idempotency:
 - one consumer can process a given Kafka `(topic, partition, offset)` once.
 
 `IdempotentConsumerGuard` records the marker and runs projection work inside one transaction. Marker insert happens
-before
-projection work. If another consumer already inserted the marker, projection work is skipped. If projection work fails,
+before projection work. If another consumer already inserted the marker, projection work is skipped. If projection work
+fails,
 the transaction rolls back the marker so Kafka retry can try again.
+
+### Payment Audit Projection
+
+`KafkaPaymentAuditConsumer` consumes final payment lifecycle events:
+
+- `PaymentAuthorized`
+- `PaymentDeclined`
+- `PaymentReversed`
+
+It validates the envelope schema version, preserves `correlationId` and `occurredAt`, then stores an append-only history
+row in `payment_audit_events`.
+
+The audit table is indexed by:
+
+- `event_id` for idempotency and traceability;
+- `payment_id` for payment history lookup;
+- `occurred_at` and `(payment_id, occurred_at)` for ordered timelines.
+
+### Settlement Projection
+
+`KafkaSettlementProjectionConsumer` consumes authorization and reversal outcomes and writes `settlement_projections`.
+
+Projection behavior:
+
+- `PaymentAuthorized` creates or updates a `SETTLEMENT_READY` row;
+- `PaymentDeclined` creates or updates a `NOT_SETTLED` row;
+- `PaymentReversed` moves the row to `REVERSED`.
+
+The projection stores merchant, customer, amount, currency, last event metadata, correlation ID, and UTC
+`business_date`.
+Indexes support settlement batches by merchant, status, and business date.
 
 ## Layer-By-Layer Design
 
@@ -316,8 +347,6 @@ blocking the others.
 
 Next slices should add:
 
-- audit/history consumer;
-- settlement projection consumer;
 - ops metrics consumer;
 - poison-message dead-letter handling;
 - RabbitMQ callback command contract and callback worker;
@@ -333,6 +362,8 @@ cd services/payment-orchestrator-service
 ./mvnw -Dtest=OutboxRelayQueryTest,OutboxRelayWorkerTest,KafkaOutboxEventPublisherTest,DatabaseOutboxRelayEventReaderTest,DatabaseOutboxRelayClaimingTest test
 ./mvnw -Dtest=OutboxProducerRetryPolicyTest,OutboxRelayWorkerTest,ProcessedMessageCommandTest,IdempotentConsumerGuardTest test
 ./mvnw -Dtest=DatabaseOutboxRelayClaimingTest,DatabaseProcessedMessageStoreTest test
+./mvnw -Dtest=KafkaPaymentAuditConsumerTest,KafkaSettlementProjectionConsumerTest test
+./mvnw -Dtest=DatabasePaymentAuditProjectorTest,DatabaseSettlementProjectionProjectorTest test
 ```
 
 The database-backed tests use Testcontainers PostgreSQL because row locking and `SKIP LOCKED` behavior must be verified

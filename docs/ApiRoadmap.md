@@ -1894,36 +1894,36 @@ Detailed implementation guide: `docs/phase-6-messaging-and-event-apis.md`.
 - [x] Handle transaction boundaries around projection writes and processed tracking.
 - [x] Add guard tests.
 
-12. [ ] Implement payment audit consumer:
+12. [x] Implement payment audit consumer:
 
-- [ ] Consume payment lifecycle events.
-- [ ] Validate envelope schema version.
-- [ ] Project events into payment audit/history storage.
-- [ ] Preserve correlation ID and occurred-at.
-- [ ] Use idempotent consumer guard.
-- [ ] Add consumer tests for authorized, declined, reversed, duplicate, and invalid messages.
+- [x] Consume payment lifecycle events.
+- [x] Validate envelope schema version.
+- [x] Project events into payment audit/history storage.
+- [x] Preserve correlation ID and occurred-at.
+- [x] Use idempotent consumer guard.
+- [x] Add consumer tests for authorized, declined, reversed, duplicate, and invalid messages.
 
-13. [ ] Add payment audit persistence:
+13. [x] Add payment audit persistence:
 
-- [ ] Add audit/history table or projection if needed.
-- [ ] Add entity/repository.
-- [ ] Add indexes by payment ID and occurred-at.
-- [ ] Add repository tests.
+- [x] Add audit/history table or projection if needed.
+- [x] Add entity/repository.
+- [x] Add indexes by payment ID and occurred-at.
+- [x] Add repository tests.
 
-14. [ ] Implement settlement projection consumer:
+14. [x] Implement settlement projection consumer:
 
-- [ ] Consume authorization and reversal outcome events.
-- [ ] Build settlement-ready projection rows.
-- [ ] Update projection on reversal.
-- [ ] Use idempotent consumer guard.
-- [ ] Add tests for authorized, declined, reversed, and duplicate events.
+- [x] Consume authorization and reversal outcome events.
+- [x] Build settlement-ready projection rows.
+- [x] Update projection on reversal.
+- [x] Use idempotent consumer guard.
+- [x] Add tests for authorized, declined, reversed, and duplicate events.
 
-15. [ ] Add settlement projection persistence:
+15. [x] Add settlement projection persistence:
 
-- [ ] Add settlement projection table if needed.
-- [ ] Add entity/repository.
-- [ ] Add indexes by merchant, status, and business date.
-- [ ] Add repository tests.
+- [x] Add settlement projection table if needed.
+- [x] Add entity/repository.
+- [x] Add indexes by merchant, status, and business date.
+- [x] Add repository tests.
 
 16. [ ] Implement ops metrics consumer:
 

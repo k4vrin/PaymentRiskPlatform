@@ -13,6 +13,15 @@ payment-risk:
       enabled: false
       partitions: 1
       replicas: 1
+    consumers:
+      payment-audit:
+        enabled: false
+        consumer-name: payment-audit-consumer
+        expected-schema-version: "1"
+      settlement-projection:
+        enabled: false
+        consumer-name: settlement-projection-consumer
+        expected-schema-version: "1"
   outbox:
     relay:
       enabled: false
