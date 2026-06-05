@@ -37,3 +37,10 @@ payment:
       timeout: 500ms
   sensitive-data:
     hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY:local-development-sensitive-data-hash-key}
+
+payment-risk:
+  kafka:
+    topic-admin:
+      enabled: ${PAYMENT_RISK_KAFKA_TOPIC_ADMIN_ENABLED:false}
+      partitions: ${PAYMENT_RISK_KAFKA_TOPIC_PARTITIONS:1}
+      replicas: ${PAYMENT_RISK_KAFKA_TOPIC_REPLICAS:1}

@@ -1,3 +1,15 @@
 spring:
   application:
     name: payment-orchestrator-service
+payment-risk:
+  kafka:
+    topics:
+      payment-authorization-requested: payment.authorization.requested
+      risk-score-completed: risk.score.completed
+      payment-authorization-completed: payment.authorization.completed
+      payment-reversal-completed: payment.reversal.completed
+      platform-dead-letter-recorded: platform.dead-letter.recorded
+    topic-admin:
+      enabled: false
+      partitions: 1
+      replicas: 1

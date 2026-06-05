@@ -27,3 +27,16 @@ payment:
       timeout: ${PAYMENT_RISK_GRPC_TIMEOUT:500ms}
   sensitive-data:
     hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY}
+
+payment-risk:
+  kafka:
+    topics:
+      payment-authorization-requested: ${PAYMENT_RISK_KAFKA_TOPIC_PAYMENT_AUTHORIZATION_REQUESTED}
+      risk-score-completed: ${PAYMENT_RISK_KAFKA_TOPIC_RISK_SCORE_COMPLETED}
+      payment-authorization-completed: ${PAYMENT_RISK_KAFKA_TOPIC_PAYMENT_AUTHORIZATION_COMPLETED}
+      payment-reversal-completed: ${PAYMENT_RISK_KAFKA_TOPIC_PAYMENT_REVERSAL_COMPLETED}
+      platform-dead-letter-recorded: ${PAYMENT_RISK_KAFKA_TOPIC_PLATFORM_DEAD_LETTER_RECORDED}
+    topic-admin:
+      enabled: ${PAYMENT_RISK_KAFKA_TOPIC_ADMIN_ENABLED:false}
+      partitions: ${PAYMENT_RISK_KAFKA_TOPIC_PARTITIONS:3}
+      replicas: ${PAYMENT_RISK_KAFKA_TOPIC_REPLICAS:3}

@@ -1787,36 +1787,36 @@ Goal: Implement the transactional outbox, Kafka events, consumers, RabbitMQ call
 
 ### Atomic Remaining Work
 
-1. [ ] Verify and finalize event envelope contract:
+1. [x] Verify and finalize event envelope contract:
 
-- [ ] Confirm `eventId`.
-- [ ] Confirm `schemaVersion`.
-- [ ] Confirm `eventType`.
-- [ ] Confirm `aggregateId`.
-- [ ] Confirm `aggregateType`.
-- [ ] Confirm `occurredAt`.
-- [ ] Confirm `producer`.
-- [ ] Confirm `correlationId`.
-- [ ] Confirm `payload`.
-- [ ] Add tests for envelope serialization and required fields.
+- [x] Confirm `eventId`.
+- [x] Confirm `schemaVersion`.
+- [x] Confirm `eventType`.
+- [x] Confirm `aggregateId`.
+- [x] Confirm `aggregateType`.
+- [x] Confirm `occurredAt`.
+- [x] Confirm `producer`.
+- [x] Confirm `correlationId`.
+- [x] Confirm `payload`.
+- [x] Add tests for envelope serialization and required fields.
 
-2. [ ] Define Kafka topic names and ownership:
+2. [x] Define Kafka topic names and ownership:
 
-- [ ] Define `payment.authorization.requested`.
-- [ ] Define `risk.score.completed`.
-- [ ] Define `payment.authorization.completed`.
-- [ ] Define `payment.reversal.completed`.
-- [ ] Define `platform.dead-letter.recorded`.
-- [ ] Document producer and consumer ownership for each topic.
-- [ ] Document partition key selection for each topic.
+- [x] Define `payment.authorization.requested`.
+- [x] Define `risk.score.completed`.
+- [x] Define `payment.authorization.completed`.
+- [x] Define `payment.reversal.completed`.
+- [x] Define `platform.dead-letter.recorded`.
+- [x] Document producer and consumer ownership for each topic.
+- [x] Document partition key selection for each topic.
 
-3. [ ] Add Kafka topic configuration:
+3. [x] Add Kafka topic configuration:
 
-- [ ] Add typed Spring properties for topic names.
-- [ ] Add local defaults.
-- [ ] Add production placeholders.
-- [ ] Add tests for default topic configuration.
-- [ ] Add optional topic creation/admin configuration if selected.
+- [x] Add typed Spring properties for topic names.
+- [x] Add local defaults.
+- [x] Add production placeholders.
+- [x] Add tests for default topic configuration.
+- [x] Add optional topic creation/admin configuration if selected.
 
 4. [ ] Define outbox relay query model:
 

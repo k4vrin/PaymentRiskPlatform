@@ -289,6 +289,8 @@ This platform solves those needs in a compact reference implementation with real
 - `payment.reversal.completed`
 - `platform.dead-letter.recorded`
 
+Topic ownership and partition keys are documented in `docs/events/kafka-topics.md`.
+
 ### Kafka Event Types
 
 - `PaymentAuthorizationRequested`
