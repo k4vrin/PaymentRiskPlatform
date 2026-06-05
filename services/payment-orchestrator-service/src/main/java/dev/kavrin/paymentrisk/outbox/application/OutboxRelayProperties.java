@@ -25,4 +25,14 @@ public class OutboxRelayProperties {
 
     @NotBlank
     private String instanceId = "payment-orchestrator-service";
+
+    @Min(1)
+    @Max(20)
+    private int maxAttempts = 5;
+
+    @Min(1000)
+    private long initialBackoffMillis = 1000;
+
+    @Min(1000)
+    private long maxBackoffMillis = 60000;
 }

@@ -29,7 +29,8 @@ the machinery around those rows:
 8. RabbitMQ callback commands are prepared for partner webhook delivery.
 
 The first implemented slice of Phase 6 covers event envelope contracts, Kafka topic configuration, relay query/claiming,
-Kafka publish mapping, and the scheduled relay worker.
+Kafka publish mapping, the scheduled relay worker, producer retry decisions, failure marking, and consumer idempotency
+markers.
 
 ## Architecture Picture
 
@@ -43,7 +44,8 @@ flowchart LR
     RELAY --> PUBLISH["KafkaOutboxEventPublisher"]
     PUBLISH --> KAFKA[("Kafka topics")]
     PUBLISH --> SUCCESS["mark PUBLISHED"]
-    PUBLISH --> FAILURE["mark FAILED"]
+    PUBLISH --> RETRY["retry policy<br/>backoff + max attempts"]
+    RETRY --> FAILURE["mark FAILED<br/>retryable or terminal"]
     SUCCESS --> OUTBOX
     FAILURE --> OUTBOX
 
@@ -80,7 +82,8 @@ sequenceDiagram
     Relay->>DB: Mark row PUBLISHED and clear claim
     Kafka-->>Consumer: Deliver event
     Consumer->>DB: Check processed-event guard
-    Consumer->>DB: Apply projection and record processed event
+    Consumer->>DB: Record processed marker
+    Consumer->>DB: Apply projection in same transaction
 ```
 
 ## Outbox Relay State Model
@@ -91,8 +94,9 @@ stateDiagram-v2
     PENDING --> PUBLISHING: Relay claims row
     FAILED --> PUBLISHING: Retry time reached
     PUBLISHING --> PUBLISHED: Kafka send acknowledged
-    PUBLISHING --> FAILED: Kafka send failed
-    FAILED --> PUBLISHING: Later retry
+    PUBLISHING --> FAILED: Kafka send failed, next_retry_at set
+    PUBLISHING --> FAILED: Max attempts reached, next_retry_at cleared
+    FAILED --> PUBLISHING: Retry time reached
     PUBLISHED --> [*]
 ```
 
@@ -170,6 +174,9 @@ payment-risk:
       batch-size: 50
       fixed-delay-millis: 5000
       instance-id: ${HOSTNAME:payment-orchestrator-service}
+      max-attempts: 5
+      initial-backoff-millis: 1000
+      max-backoff-millis: 60000
 ```
 
 When enabled, one batch does:
@@ -177,10 +184,53 @@ When enabled, one batch does:
 ```text
 claim eligible rows -> publish event -> mark PUBLISHED
                          |
-                         +-> on error, mark FAILED
+                         +-> on error, retry policy -> mark FAILED
 ```
 
 The worker continues after a partial failure so one bad publish does not stop the whole batch.
+
+### Producer Retry Policy
+
+`OutboxProducerRetryPolicy` decides what happens after Kafka publish fails.
+
+The policy:
+
+- increments `retry_count`;
+- computes exponential backoff from `initialBackoffMillis`;
+- caps delay at `maxBackoffMillis`;
+- marks terminal failure when `maxAttempts` is reached.
+
+Terminal failures still use outbox status `FAILED`, but `next_retry_at` is cleared. That distinction matters:
+
+- `FAILED` with `next_retry_at` set means the relay can retry later;
+- `FAILED` with `next_retry_at = NULL` means operators must inspect or replay manually.
+
+### Consumer Idempotency
+
+Kafka can deliver the same event more than once. Phase 6 adds a processed-message marker table:
+
+```text
+processed_kafka_messages
+```
+
+Each marker stores:
+
+- consumer name;
+- topic;
+- partition;
+- offset;
+- event ID;
+- processed timestamp.
+
+Two unique constraints protect idempotency:
+
+- one consumer can process a given `event_id` once;
+- one consumer can process a given Kafka `(topic, partition, offset)` once.
+
+`IdempotentConsumerGuard` records the marker and runs projection work inside one transaction. Marker insert happens
+before
+projection work. If another consumer already inserted the marker, projection work is skipped. If projection work fails,
+the transaction rolls back the marker so Kafka retry can try again.
 
 ## Layer-By-Layer Design
 
@@ -201,6 +251,7 @@ The application layer owns relay workflow interfaces and scheduling:
 - `OutboxRelayStatusUpdater`
 - `OutboxRelayWorker`
 - `OutboxRelayProperties`
+- `OutboxProducerRetryPolicy`
 
 It should not know about SQL details or Kafka client APIs.
 
@@ -239,11 +290,11 @@ This layer owns Kafka adapter details:
 
 Phase 6 separates three failure types:
 
-| Failure                                       | Current behavior                        | Later Phase 6 work                                               |
-|-----------------------------------------------|-----------------------------------------|------------------------------------------------------------------|
-| Kafka publish fails                           | row becomes `FAILED`, payload preserved | retry policy computes next retry and terminal failure            |
-| Consumer sees duplicate event                 | planned processed-event guard           | processed-message table and idempotent consumer wrapper          |
-| Consumer cannot deserialize or handle message | planned dead-letter record              | poison-message handler and `platform.dead-letter.recorded` event |
+| Failure                                       | Current behavior                               | Later Phase 6 work                                               |
+|-----------------------------------------------|------------------------------------------------|------------------------------------------------------------------|
+| Kafka publish fails                           | row becomes `FAILED`, payload preserved        | ops replay execution for terminal failures                       |
+| Consumer sees duplicate event                 | processed marker prevents duplicate projection | concrete audit/settlement/ops consumers will use this guard      |
+| Consumer cannot deserialize or handle message | planned dead-letter record                     | poison-message handler and `platform.dead-letter.recorded` event |
 
 ## Why This Design
 
@@ -265,9 +316,6 @@ blocking the others.
 
 Next slices should add:
 
-- producer retry policy with backoff and max attempts;
-- terminal failure marking;
-- processed-message schema for idempotent consumers;
 - audit/history consumer;
 - settlement projection consumer;
 - ops metrics consumer;
@@ -283,6 +331,8 @@ Focused verification for the implemented Phase 6 messaging slice:
 ```bash
 cd services/payment-orchestrator-service
 ./mvnw -Dtest=OutboxRelayQueryTest,OutboxRelayWorkerTest,KafkaOutboxEventPublisherTest,DatabaseOutboxRelayEventReaderTest,DatabaseOutboxRelayClaimingTest test
+./mvnw -Dtest=OutboxProducerRetryPolicyTest,OutboxRelayWorkerTest,ProcessedMessageCommandTest,IdempotentConsumerGuardTest test
+./mvnw -Dtest=DatabaseOutboxRelayClaimingTest,DatabaseProcessedMessageStoreTest test
 ```
 
 The database-backed tests use Testcontainers PostgreSQL because row locking and `SKIP LOCKED` behavior must be verified

@@ -1,6 +1,7 @@
 package dev.kavrin.paymentrisk.outbox.infrastructure.persistence;
 
 import dev.kavrin.paymentrisk.TestPostgresConfiguration;
+import dev.kavrin.paymentrisk.outbox.application.OutboxProducerRetryDecision;
 import dev.kavrin.paymentrisk.outbox.application.OutboxRelayQuery;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.entities.OutboxEventEntity;
 import dev.kavrin.paymentrisk.payment.infrastructure.persistence.repository.OutboxEventEntityRepository;
@@ -121,14 +122,43 @@ class DatabaseOutboxRelayClaimingTest {
     void shouldMarkFailedAndPreservePayloadForRetry() {
         insert(event("evt_failed", "PUBLISHING", NOW.minusSeconds(30), NOW, NOW, "relay-1"));
 
-        statusUpdater.markFailed("evt_failed", "Kafka unavailable").block();
+        var decision = OutboxProducerRetryDecision.retryable(
+                1,
+                NOW.plusSeconds(5)
+        );
+
+        statusUpdater.markFailure("evt_failed", decision, "Kafka unavailable").block();
 
         var event = outboxRepository.findById("evt_failed").block();
 
         assertThat(event).isNotNull();
         assertThat(event.getStatus()).isEqualTo("FAILED");
+        assertThat(event.getRetryCount()).isEqualTo(1);
+        assertThat(event.getNextRetryAt()).isEqualTo(NOW.plusSeconds(5));
         assertThat(event.getLastError()).isEqualTo("Kafka unavailable");
         assertThat(event.getPayloadJson()).isEqualTo("{\"eventId\":\"evt_failed\"}");
+        assertThat(event.getCorrelationId()).isEqualTo("corr_evt_failed");
+        assertThat(event.getLockedAt()).isNull();
+        assertThat(event.getRelayInstanceId()).isNull();
+    }
+
+    @Test
+    void shouldMarkTerminalFailureWithoutSchedulingRetry() {
+        insert(event("evt_terminal", "PUBLISHING", NOW.minusSeconds(30), NOW, NOW, "relay-1"));
+
+        var decision = OutboxProducerRetryDecision.terminal(5);
+
+        statusUpdater.markFailure("evt_terminal", decision, "Kafka unavailable").block();
+
+        var event = outboxRepository.findById("evt_terminal").block();
+
+        assertThat(event).isNotNull();
+        assertThat(event.getStatus()).isEqualTo("FAILED");
+        assertThat(event.getRetryCount()).isEqualTo(5);
+        assertThat(event.getNextRetryAt()).isNull();
+        assertThat(event.getLastError()).isEqualTo("Kafka unavailable");
+        assertThat(event.getPayloadJson()).isEqualTo("{\"eventId\":\"evt_terminal\"}");
+        assertThat(event.getCorrelationId()).isEqualTo("corr_evt_terminal");
         assertThat(event.getLockedAt()).isNull();
         assertThat(event.getRelayInstanceId()).isNull();
     }

@@ -20,7 +20,7 @@ class OutboxRelayWorkerTest {
         var claimer = new FakeClaimer(List.of(event("evt_1"), event("evt_2")));
         var publisher = new FakePublisher();
         var statusUpdater = new FakeStatusUpdater();
-        var worker = new OutboxRelayWorker(properties, claimer, publisher, statusUpdater);
+        var worker = worker(properties, claimer, publisher, statusUpdater);
 
         StepVerifier.create(worker.runOnce())
                 .expectNext(2L)
@@ -38,7 +38,7 @@ class OutboxRelayWorkerTest {
         var claimer = new FakeClaimer(List.of(event("evt_ok"), event("evt_fail"), event("evt_after")));
         var publisher = new FakePublisher("evt_fail");
         var statusUpdater = new FakeStatusUpdater();
-        var worker = new OutboxRelayWorker(properties, claimer, publisher, statusUpdater);
+        var worker = worker(properties, claimer, publisher, statusUpdater);
 
         StepVerifier.create(worker.runOnce())
                 .expectNext(3L)
@@ -56,7 +56,8 @@ class OutboxRelayWorkerTest {
                 properties,
                 new FakeClaimer(List.of(event("evt_1"))),
                 new FakePublisher(),
-                new FakeStatusUpdater()
+                new FakeStatusUpdater(),
+                new OutboxProducerRetryPolicy(enabledProperties())
         );
 
         StepVerifier.create(worker.runOnce())
@@ -70,7 +71,8 @@ class OutboxRelayWorkerTest {
                 enabledProperties(),
                 new FakeClaimer(List.of()),
                 new FakePublisher(),
-                new FakeStatusUpdater()
+                new FakeStatusUpdater(),
+                new OutboxProducerRetryPolicy(enabledProperties())
         );
 
         StepVerifier.create(worker.runOnce())
@@ -84,6 +86,21 @@ class OutboxRelayWorkerTest {
         properties.setBatchSize(10);
         properties.setInstanceId("relay-test");
         return properties;
+    }
+
+    private static OutboxRelayWorker worker(
+            OutboxRelayProperties properties,
+            FakeClaimer claimer,
+            FakePublisher publisher,
+            FakeStatusUpdater statusUpdater
+    ) {
+        return new OutboxRelayWorker(
+                properties,
+                claimer,
+                publisher,
+                statusUpdater,
+                new OutboxProducerRetryPolicy(properties)
+        );
     }
 
     private static OutboxEvent event(String eventId) {
@@ -162,7 +179,11 @@ class OutboxRelayWorkerTest {
         }
 
         @Override
-        public Mono<Void> markFailed(String eventId, String errorMessage) {
+        public Mono<Void> markFailure(
+                String eventId,
+                OutboxProducerRetryDecision decision,
+                String errorMessage
+        ) {
             failed.add(eventId);
             failureMessages.add(errorMessage);
             return Mono.empty();

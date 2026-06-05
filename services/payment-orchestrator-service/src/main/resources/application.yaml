@@ -19,3 +19,6 @@ payment-risk:
       batch-size: 50
       fixed-delay-millis: 5000
       instance-id: ${HOSTNAME:payment-orchestrator-service}
+      max-attempts: 5
+      initial-backoff-millis: 1000
+      max-backoff-millis: 60000

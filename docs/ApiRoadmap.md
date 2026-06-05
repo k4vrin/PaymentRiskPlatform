@@ -1857,42 +1857,42 @@ Detailed implementation guide: `docs/phase-6-messaging-and-event-apis.md`.
 - [x] Keep worker idempotent across restarts.
 - [x] Add worker tests for success, partial failure, and empty batches.
 
-8. [ ] Implement producer retry policy:
+8. [x] Implement producer retry policy:
 
-- [ ] Define max attempts.
-- [ ] Define retry backoff.
-- [ ] Compute next retry time.
-- [ ] Store retry count.
-- [ ] Store last error.
-- [ ] Mark terminal failure after max attempts.
-- [ ] Add retry policy tests.
+- [x] Define max attempts.
+- [x] Define retry backoff.
+- [x] Compute next retry time.
+- [x] Store retry count.
+- [x] Store last error.
+- [x] Mark terminal failure after max attempts.
+- [x] Add retry policy tests.
 
-9. [ ] Implement outbox failure marking:
+9. [x] Implement outbox failure marking:
 
-- [ ] Mark transient publish failures as retryable.
-- [ ] Mark terminal publish failures as failed.
-- [ ] Preserve original event payload.
-- [ ] Preserve correlation ID.
-- [ ] Add repository/service tests.
+- [x] Mark transient publish failures as retryable.
+- [x] Mark terminal publish failures as failed.
+- [x] Preserve original event payload.
+- [x] Preserve correlation ID.
+- [x] Add repository/service tests.
 
-10. [ ] Define consumer tracking schema:
+10. [x] Define consumer tracking schema:
 
-- [ ] Add processed message/event table if needed.
-- [ ] Include consumer name.
-- [ ] Include topic.
-- [ ] Include partition and offset.
-- [ ] Include event ID.
-- [ ] Include processed-at timestamp.
-- [ ] Add uniqueness constraints for idempotency.
-- [ ] Add migration and repository tests.
+- [x] Add processed message/event table if needed.
+- [x] Include consumer name.
+- [x] Include topic.
+- [x] Include partition and offset.
+- [x] Include event ID.
+- [x] Include processed-at timestamp.
+- [x] Add uniqueness constraints for idempotency.
+- [x] Add migration and repository tests.
 
-11. [ ] Implement idempotent consumer guard:
+11. [x] Implement idempotent consumer guard:
 
-- [ ] Check whether event ID has already been processed by consumer.
-- [ ] Record successful processing.
-- [ ] Avoid reprocessing duplicates.
-- [ ] Handle transaction boundaries around projection writes and processed tracking.
-- [ ] Add guard tests.
+- [x] Check whether event ID has already been processed by consumer.
+- [x] Record successful processing.
+- [x] Avoid reprocessing duplicates.
+- [x] Handle transaction boundaries around projection writes and processed tracking.
+- [x] Add guard tests.
 
 12. [ ] Implement payment audit consumer:
 

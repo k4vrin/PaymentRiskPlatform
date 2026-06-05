@@ -19,6 +19,7 @@ public class OutboxRelayWorker {
     private final OutboxRelayEventClaimer claimer;
     private final OutboxEventPublisher publisher;
     private final OutboxRelayStatusUpdater statusUpdater;
+    private final OutboxProducerRetryPolicy retryPolicy;
 
     @Scheduled(fixedDelayString = "${payment-risk.outbox.relay.fixed-delay-millis:5000}")
     public void relayBatch() {
@@ -46,15 +47,18 @@ public class OutboxRelayWorker {
                                         event.eventType(),
                                         event.aggregateId()
                                 ))
-                                .onErrorResume(error ->
-                                        Mono.defer(() -> statusUpdater.markFailed(event.eventId(), error.getMessage()))
-                                                .then(Mono.fromRunnable(() -> log.warn(
-                                                        "Failed to publish outbox event eventId={} eventType={} error={}",
-                                                        event.eventId(),
-                                                        event.eventType(),
-                                                        error.getMessage()
-                                                )))
-                                )
+                                .onErrorResume(error -> {
+                                    var decision = retryPolicy.decide(
+                                            event.retryCount(),
+                                            Instant.now()
+                                    );
+
+                                    return statusUpdater.markFailure(
+                                            event.eventId(),
+                                            decision,
+                                            error.getMessage()
+                                    );
+                                })
                                 .thenReturn(1L)
                 )
                 .reduce(0L, Long::sum);

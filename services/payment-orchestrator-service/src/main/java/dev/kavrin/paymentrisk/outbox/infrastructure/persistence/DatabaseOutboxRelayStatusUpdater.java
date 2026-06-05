@@ -1,5 +1,6 @@
 package dev.kavrin.paymentrisk.outbox.infrastructure.persistence;
 
+import dev.kavrin.paymentrisk.outbox.application.OutboxProducerRetryDecision;
 import dev.kavrin.paymentrisk.outbox.application.OutboxRelayStatusUpdater;
 import lombok.RequiredArgsConstructor;
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -33,19 +34,82 @@ public class DatabaseOutboxRelayStatusUpdater implements OutboxRelayStatusUpdate
                 .then();
     }
 
+
     @Override
-    public Mono<Void> markFailed(String eventId, String errorMessage) {
+    public Mono<Void> markFailure(
+            String eventId,
+            OutboxProducerRetryDecision decision,
+            String errorMessage
+    ) {
         var safeError = truncate(errorMessage);
 
+        if (decision.retryable()) {
+            return markRetryableFailure(
+                    eventId,
+                    decision,
+                    safeError
+            );
+        }
+
+        return markTerminalFailure(
+                eventId,
+                decision,
+                safeError
+        );
+    }
+
+    /**
+     * Records a transient publish failure and schedules
+     * the next relay attempt.
+     */
+    private Mono<Void> markRetryableFailure(
+            String eventId,
+            OutboxProducerRetryDecision decision,
+            String errorMessage
+    ) {
         return databaseClient.sql("""
                         UPDATE outbox_events
                         SET status = 'FAILED',
+                            retry_count = :retryCount,
+                            next_retry_at = :nextRetryAt,
                             last_error = :lastError,
                             locked_at = NULL,
                             relay_instance_id = NULL
                         WHERE event_id = :eventId
                         """)
-                .bind("lastError", safeError)
+                .bind("retryCount", decision.nextRetryCount())
+                .bind("nextRetryAt", decision.nextRetryAt())
+                .bind("lastError", errorMessage)
+                .bind("eventId", eventId)
+                .fetch()
+                .rowsUpdated()
+                .then();
+    }
+
+    /**
+     * Records a terminal publish failure.
+     * <p>
+     * Terminal failures stay FAILED for ops visibility, but next_retry_at is
+     * cleared so the relay query no longer picks them up automatically.
+     */
+    private Mono<Void> markTerminalFailure(
+            String eventId,
+            OutboxProducerRetryDecision decision,
+            String errorMessage
+    ) {
+        return databaseClient.sql("""
+                        UPDATE outbox_events
+                        SET status = :status,
+                            retry_count = :retryCount,
+                            next_retry_at = NULL,
+                            last_error = :lastError,
+                            locked_at = NULL,
+                            relay_instance_id = NULL
+                        WHERE event_id = :eventId
+                        """)
+                .bind("status", decision.failureStatus())
+                .bind("retryCount", decision.nextRetryCount())
+                .bind("lastError", errorMessage)
                 .bind("eventId", eventId)
                 .fetch()
                 .rowsUpdated()
