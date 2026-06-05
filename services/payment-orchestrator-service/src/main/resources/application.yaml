@@ -13,3 +13,9 @@ payment-risk:
       enabled: false
       partitions: 1
       replicas: 1
+  outbox:
+    relay:
+      enabled: false
+      batch-size: 50
+      fixed-delay-millis: 5000
+      instance-id: ${HOSTNAME:payment-orchestrator-service}

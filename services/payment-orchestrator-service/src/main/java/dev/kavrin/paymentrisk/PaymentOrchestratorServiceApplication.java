@@ -6,9 +6,11 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.List;
 
+@EnableScheduling
 @SpringBootApplication
 public class PaymentOrchestratorServiceApplication {
 

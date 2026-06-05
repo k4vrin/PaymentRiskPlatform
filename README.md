@@ -209,10 +209,11 @@ X-User-Roles: OPS
 
 Main work not implemented yet:
 
-- Kafka outbox relay, audit consumer, settlement projection consumer, and RabbitMQ callback worker.
+- Kafka audit consumer, settlement projection consumer, and RabbitMQ callback worker.
 - Production-grade authentication, observability dashboards, CI, and release-readiness work.
 
 See `docs/ApiRoadmap.md` and `docs/phase-2-payment-authorization.md` for the detailed tracker.
 Phase 3 planning is documented in `docs/phase-3-payment-lookup-and-reversal.md`.
 Phase 4 planning is documented in `docs/phase-4-go-risk-scoring-grpc-service.md`.
 Phase 5 planning is documented in `docs/phase-5-operations-api.md`.
+Phase 6 messaging is documented in `docs/phase-6-messaging-and-event-apis.md`.

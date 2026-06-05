@@ -124,6 +124,7 @@ CREATE TABLE outbox_events
     created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     published_at   TIMESTAMP WITH TIME ZONE,
     locked_at      TIMESTAMP WITH TIME ZONE,
+    relay_instance_id VARCHAR(120),
     CONSTRAINT chk_outbox_events_status CHECK (
         status IN (
                    'PENDING',
@@ -161,3 +162,6 @@ CREATE INDEX idx_payments_device_fingerprint_hash
 
 CREATE INDEX idx_outbox_events_status_next_retry_at
     ON outbox_events (status, next_retry_at);
+
+CREATE INDEX idx_outbox_events_relay_candidates
+    ON outbox_events (status, next_retry_at, created_at);

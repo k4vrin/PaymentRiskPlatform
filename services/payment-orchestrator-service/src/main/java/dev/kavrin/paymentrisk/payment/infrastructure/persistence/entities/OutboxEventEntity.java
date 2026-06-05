@@ -63,4 +63,7 @@ public class OutboxEventEntity {
 
     @Column("locked_at")
     private Instant lockedAt;
+
+    @Column("relay_instance_id")
+    private String relayInstanceId;
 }

@@ -26,12 +26,14 @@ Update this section after each implementation step that adds, removes, renames, 
 │   │   ├── rest-api-conventions.md
 │   │   └── risk-grpc-contract.md
 │   ├── events
-│   │   └── event-envelope.md
+│   │   ├── event-envelope.md
+│   │   └── kafka-topics.md
 │   ├── phase-1-api-contract-baseline.md
 │   ├── phase-2-payment-authorization.md
 │   ├── phase-3-payment-lookup-and-reversal.md
 │   ├── phase-4-go-risk-scoring-grpc-service.md
-│   └── phase-5-operations-api.md
+│   ├── phase-5-operations-api.md
+│   └── phase-6-messaging-and-event-apis.md
 ├── platform
 │   ├── compose.local.yaml
 │   └── prometheus
@@ -1785,6 +1787,8 @@ Goal: Add operator-facing REST endpoints for investigation, failed event review,
 
 Goal: Implement the transactional outbox, Kafka events, consumers, RabbitMQ callback commands, and related operational visibility.
 
+Detailed implementation guide: `docs/phase-6-messaging-and-event-apis.md`.
+
 ### Atomic Remaining Work
 
 1. [x] Verify and finalize event envelope contract:
@@ -1818,40 +1822,40 @@ Goal: Implement the transactional outbox, Kafka events, consumers, RabbitMQ call
 - [x] Add tests for default topic configuration.
 - [x] Add optional topic creation/admin configuration if selected.
 
-4. [ ] Define outbox relay query model:
+4. [x] Define outbox relay query model:
 
-- [ ] Select pending outbox events.
-- [ ] Select failed events whose next retry time has arrived.
-- [ ] Order by creation time.
-- [ ] Limit batch size.
-- [ ] Skip locked/in-flight records where supported.
-- [ ] Add repository tests.
+- [x] Select pending outbox events.
+- [x] Select failed events whose next retry time has arrived.
+- [x] Order by creation time.
+- [x] Limit batch size.
+- [x] Skip locked/in-flight records where supported.
+- [x] Add repository tests.
 
-5. [ ] Implement outbox claim/lock behavior:
+5. [x] Implement outbox claim/lock behavior:
 
-- [ ] Mark selected records as in-progress or claimed.
-- [ ] Store claim timestamp.
-- [ ] Store relay instance ID if useful.
-- [ ] Avoid double publishing by concurrent relays.
-- [ ] Add concurrency-oriented repository tests where practical.
+- [x] Mark selected records as in-progress or claimed.
+- [x] Store claim timestamp.
+- [x] Store relay instance ID if useful.
+- [x] Avoid double publishing by concurrent relays.
+- [x] Add concurrency-oriented repository tests where practical.
 
-6. [ ] Implement Kafka event publisher adapter:
+6. [x] Implement Kafka event publisher adapter:
 
-- [ ] Map outbox event record to Kafka topic.
-- [ ] Use aggregate ID or configured key as the Kafka key.
-- [ ] Add envelope headers such as correlation ID and schema version where useful.
-- [ ] Publish payload bytes/string without reserializing incorrectly.
-- [ ] Add producer adapter tests with a fake Kafka template/sender.
+- [x] Map outbox event record to Kafka topic.
+- [x] Use aggregate ID or configured key as the Kafka key.
+- [x] Add envelope headers such as correlation ID and schema version where useful.
+- [x] Publish payload bytes/string without reserializing incorrectly.
+- [x] Add producer adapter tests with a fake Kafka template/sender.
 
-7. [ ] Implement outbox relay worker:
+7. [x] Implement outbox relay worker:
 
-- [ ] Schedule or trigger relay batches.
-- [ ] Claim eligible records.
-- [ ] Publish each event.
-- [ ] Mark success after Kafka acknowledgement.
-- [ ] Mark failure when publish fails.
-- [ ] Keep worker idempotent across restarts.
-- [ ] Add worker tests for success, partial failure, and empty batches.
+- [x] Schedule or trigger relay batches.
+- [x] Claim eligible records.
+- [x] Publish each event.
+- [x] Mark success after Kafka acknowledgement.
+- [x] Mark failure when publish fails.
+- [x] Keep worker idempotent across restarts.
+- [x] Add worker tests for success, partial failure, and empty batches.
 
 8. [ ] Implement producer retry policy:
 
