@@ -32,6 +32,7 @@ Authentication:
 
 - JWT bearer token with `OPS` or `ADMIN` authority.
 - Current local/test fallback: `X-User-Roles: OPS` or `X-User-Roles: ADMIN`.
+- JWTs are validated for signature, issuer, audience, expiration, and `roles` claims.
 
 Allowed roles:
 
@@ -48,6 +49,7 @@ Authentication:
 
 - JWT bearer token with `AUDITOR`, `OPS`, or `ADMIN` authority.
 - Current local/test fallback: `X-User-Roles: AUDITOR`, `OPS`, or `ADMIN`.
+- JWTs are validated for signature, issuer, audience, expiration, and `roles` claims.
 
 Allowed roles:
 
@@ -65,6 +67,7 @@ Authentication:
 
 - JWT bearer token with `SERVICE` or `ADMIN` authority.
 - Current local/test fallback: `X-User-Roles: SERVICE` or `ADMIN`.
+- Internal callers send bearer JWTs with `actor_type=SERVICE` and `roles=["SERVICE"]`.
 
 Allowed roles:
 
@@ -80,3 +83,30 @@ Local behavior:
 Production behavior:
 
 - readiness/details should remain minimal publicly or move behind `SERVICE`/`ADMIN`.
+
+## Security Headers And CORS
+
+Responses include:
+
+- `Content-Security-Policy`
+- `X-Frame-Options: DENY`
+- `X-Content-Type-Options: nosniff`
+- HSTS headers when served over HTTPS
+
+CORS allows configured origins only. Local defaults include:
+
+- `http://localhost:3000`
+- `http://localhost:5173`
+- `http://localhost:8080`
+
+Allowed methods are `GET`, `POST`, and `OPTIONS`. Allowed request headers are restricted to auth, API key, correlation,
+content type, and idempotency headers.
+
+## Request Rate Limiting
+
+Payment API requests are protected by a Redis fixed-window limiter under `payment-risk.security.rate-limit`.
+
+- Authenticated merchant requests use the resolved merchant ID as the rate-limit identity.
+- Unauthenticated requests fall back to client IP before authentication rejects the request.
+- Responses include `X-RateLimit-Limit` and `X-RateLimit-Remaining`.
+- Exceeded limits return `429 Too Many Requests`, `RATE_LIMIT_EXCEEDED`, and `Retry-After`.

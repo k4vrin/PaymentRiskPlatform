@@ -33,6 +33,32 @@ payment-risk:
     api-key:
       hashing:
         pepper: ${PAYMENT_RISK_API_KEY_HASHING_PEPPER}
+    jwt:
+      issuer: ${PAYMENT_RISK_JWT_ISSUER}
+      audience: ${PAYMENT_RISK_JWT_AUDIENCE}
+      secret: ${PAYMENT_RISK_JWT_SECRET}
+      allowed-origins: ${PAYMENT_RISK_CORS_ALLOWED_ORIGINS}
+      allowed-methods:
+        - GET
+        - POST
+        - OPTIONS
+      allowed-headers:
+        - Authorization
+        - Content-Type
+        - X-API-Key
+        - X-Correlation-Id
+        - Idempotency-Key
+        - authorization
+        - content-type
+        - x-api-key
+        - x-correlation-id
+        - idempotency-key
+        - Authorization,X-Correlation-Id
+    rate-limit:
+      enabled: ${PAYMENT_RISK_RATE_LIMIT_ENABLED:true}
+      merchant-limit: ${PAYMENT_RISK_RATE_LIMIT_MERCHANT_LIMIT:600}
+      window: ${PAYMENT_RISK_RATE_LIMIT_WINDOW:1m}
+      path-prefix: /api/v1/payments
   rabbitmq:
     callback:
       enabled: ${PAYMENT_RISK_CALLBACK_ENABLED:false}

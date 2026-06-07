@@ -344,7 +344,7 @@ Update this section after each implementation step that adds, removes, renames, 
     │       │   │   │   └── package-info.java
     │       │   │   ├── security
     │       │   │   │   ├── HeaderRoleAuthenticationWebFilter.java
-    │       │   │   │   ├── SecurityConfiguration.java
+    │       │   │   │   ├── infrastructure/jwt/JwtSecurityConfiguration.java
     │       │   │   │   ├── SecurityRoles.java
     │       │   │   │   └── package-info.java
     │       │   │   └── shared
@@ -2080,44 +2080,44 @@ Authentication strategy:
 - [x] Add constant-time comparison where applicable.
 - [x] Add tests for match, mismatch, and rotation.
 
-6. [ ] Implement ops JWT authentication:
+6. [x] Implement ops JWT authentication:
 
-- [ ] Accept bearer JWTs for `/api/v1/ops/**`.
-- [ ] Validate issuer, audience, signature, expiration, and role claims.
-- [ ] Map JWT role claims to `OPS`, `AUDITOR`, and `ADMIN`.
-- [ ] Keep existing local role-header behavior only as a local/test fallback if retained.
-- [ ] Add tests for missing, invalid, expired, wrong-audience, and allowed JWTs.
+- [x] Accept bearer JWTs for `/api/v1/ops/**`.
+- [x] Validate issuer, audience, signature, expiration, and role claims.
+- [x] Map JWT role claims to `OPS`, `AUDITOR`, and `ADMIN`.
+- [x] Keep existing local role-header behavior only as a local/test fallback if retained.
+- [x] Add tests for missing, invalid, expired, wrong-audience, and allowed JWTs.
 
-7. [ ] Implement internal service JWT authentication:
+7. [x] Implement internal service JWT authentication:
 
-- [ ] Accept bearer JWTs for internal/service endpoints.
-- [ ] Validate issuer, audience, signature, expiration, and role claims.
-- [ ] Require `SERVICE` or `ADMIN` for service-only routes.
-- [ ] Document how internal services obtain and send service JWTs.
-- [ ] Add tests for allowed and denied service JWTs.
+- [x] Accept bearer JWTs for internal/service endpoints.
+- [x] Validate issuer, audience, signature, expiration, and role claims.
+- [x] Require `SERVICE` or `ADMIN` for service-only routes.
+- [x] Document how internal services obtain and send service JWTs.
+- [x] Add tests for allowed and denied service JWTs.
 
-8. [ ] Configure secure headers:
+8. [x] Configure secure headers:
 
-- [ ] Add content security policy where practical.
-- [ ] Add frame options.
-- [ ] Add HSTS where appropriate for production profile.
-- [ ] Add content type options.
-- [ ] Add tests or configuration assertions.
+- [x] Add content security policy where practical.
+- [x] Add frame options.
+- [x] Add HSTS where appropriate for production profile.
+- [x] Add content type options.
+- [x] Add tests or configuration assertions.
 
-9. [ ] Configure CORS:
+9. [x] Configure CORS:
 
-- [ ] Define local allowed origins.
-- [ ] Define production placeholder allowed origins.
-- [ ] Restrict methods and headers.
-- [ ] Add preflight tests.
+- [x] Define local allowed origins.
+- [x] Define production placeholder allowed origins.
+- [x] Restrict methods and headers.
+- [x] Add preflight tests.
 
-10. [ ] Add request rate limiting:
+10. [x] Add request rate limiting:
 
-- [ ] Define merchant-level limit.
-- [ ] Define client/IP-level limit if selected.
-- [ ] Use Redis or in-memory local implementation as selected.
-- [ ] Return structured rate-limit errors.
-- [ ] Add tests for allowed, exceeded, and reset behavior.
+- [x] Define merchant-level limit.
+- [x] Define client/IP-level fallback limit for unauthenticated requests.
+- [x] Use Redis fixed-window implementation.
+- [x] Return structured rate-limit errors.
+- [x] Add tests for allowed, exceeded, and reset behavior.
 
 11. [ ] Add log masking policy:
 

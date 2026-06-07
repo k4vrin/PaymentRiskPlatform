@@ -43,6 +43,35 @@ payment-risk:
     api-key:
       hashing:
         pepper: ${PAYMENT_RISK_API_KEY_HASHING_PEPPER:local-development-api-key-hashing-pepper}
+    jwt:
+      issuer: ${PAYMENT_RISK_JWT_ISSUER:http://localhost:8080}
+      audience: ${PAYMENT_RISK_JWT_AUDIENCE:payment-risk-platform}
+      secret: ${PAYMENT_RISK_JWT_SECRET:local-development-jwt-secret-must-be-at-least-32-bytes}
+      allowed-origins:
+        - ${PAYMENT_RISK_CORS_ORIGIN_LOCALHOST_3000:http://localhost:3000}
+        - ${PAYMENT_RISK_CORS_ORIGIN_LOCALHOST_5173:http://localhost:5173}
+        - ${PAYMENT_RISK_CORS_ORIGIN_LOCALHOST_8080:http://localhost:8080}
+      allowed-methods:
+        - GET
+        - POST
+        - OPTIONS
+      allowed-headers:
+        - Authorization
+        - Content-Type
+        - X-API-Key
+        - X-Correlation-Id
+        - Idempotency-Key
+        - authorization
+        - content-type
+        - x-api-key
+        - x-correlation-id
+        - idempotency-key
+        - Authorization,X-Correlation-Id
+    rate-limit:
+      enabled: ${PAYMENT_RISK_RATE_LIMIT_ENABLED:true}
+      merchant-limit: ${PAYMENT_RISK_RATE_LIMIT_MERCHANT_LIMIT:120}
+      window: ${PAYMENT_RISK_RATE_LIMIT_WINDOW:1m}
+      path-prefix: /api/v1/payments
   kafka:
     topic-admin:
       enabled: ${PAYMENT_RISK_KAFKA_TOPIC_ADMIN_ENABLED:false}

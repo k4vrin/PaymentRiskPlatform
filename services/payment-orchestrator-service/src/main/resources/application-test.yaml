@@ -11,3 +11,31 @@ payment-risk:
     api-key:
       hashing:
         pepper: test-api-key-hashing-pepper
+    jwt:
+      issuer: test-issuer
+      audience: payment-risk-platform-test
+      secret: test-jwt-secret-must-be-at-least-32-bytes
+      allowed-origins:
+        - http://localhost:3000
+        - http://localhost:5173
+      allowed-methods:
+        - GET
+        - POST
+        - OPTIONS
+      allowed-headers:
+        - Authorization
+        - Content-Type
+        - X-API-Key
+        - X-Correlation-Id
+        - Idempotency-Key
+        - authorization
+        - content-type
+        - x-api-key
+        - x-correlation-id
+        - idempotency-key
+        - Authorization,X-Correlation-Id
+    rate-limit:
+      enabled: true
+      merchant-limit: 3
+      window: 1m
+      path-prefix: /api/v1/payments

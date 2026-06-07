@@ -4,13 +4,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.autoconfigure.web.reactive.ReactiveWebSecurityAutoConfiguration;
 import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 @WebFluxTest(
         controllers = TestErrorController.class,
-        excludeAutoConfiguration = ReactiveWebSecurityAutoConfiguration.class
+        excludeAutoConfiguration = ReactiveWebSecurityAutoConfiguration.class,
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.REGEX,
+                pattern = "dev\\.kavrin\\.paymentrisk\\.security\\..*"
+        )
 )
 @Import(GlobalApiExceptionHandler.class)
 class GlobalApiExceptionHandlerTest {
@@ -127,6 +133,22 @@ class GlobalApiExceptionHandlerTest {
                 .jsonPath("$.message").isEqualTo("idempotencyKey contains unsupported characters.")
                 .jsonPath("$.path").isEqualTo("/test/invalid-request")
                 .jsonPath("$.correlationId").isEqualTo("corr-invalid");
+    }
+
+    @Test
+    void rateLimitExceededExceptionReturnsStructuredTooManyRequestsResponse() {
+        webTestClient.get()
+                .uri("/test/rate-limit")
+                .header("X-Correlation-Id", "corr-rate-limit")
+                .exchange()
+                .expectStatus().isEqualTo(429)
+                .expectHeader().valueEquals("Retry-After", "30")
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(429)
+                .jsonPath("$.code").isEqualTo("RATE_LIMIT_EXCEEDED")
+                .jsonPath("$.message").isEqualTo("Request rate limit exceeded")
+                .jsonPath("$.path").isEqualTo("/test/rate-limit")
+                .jsonPath("$.correlationId").isEqualTo("corr-rate-limit");
     }
 
     @Test

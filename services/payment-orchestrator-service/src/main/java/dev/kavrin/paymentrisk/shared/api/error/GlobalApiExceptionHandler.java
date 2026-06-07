@@ -2,8 +2,10 @@ package dev.kavrin.paymentrisk.shared.api.error;
 
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKeyConflictException;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentStateTransitionException;
+import dev.kavrin.paymentrisk.security.ratelimit.RateLimitExceededException;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIds;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -140,6 +142,27 @@ public class GlobalApiExceptionHandler {
                 "Access is denied.",
                 exchange
         );
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    ResponseEntity<ApiErrorResponse> handleRateLimitExceededException(
+            RateLimitExceededException exception,
+            ServerWebExchange exchange
+    ) {
+        var response = error(
+                HttpStatus.TOO_MANY_REQUESTS,
+                ApiErrorCode.Infrastructure.RATE_LIMIT_EXCEEDED,
+                exception.getMessage(),
+                exchange
+        );
+
+        return ResponseEntity.status(response.getStatusCode())
+                .headers(headers -> headers.addAll(response.getHeaders()))
+                .header(
+                        HttpHeaders.RETRY_AFTER,
+                        Long.toString(Math.max(1L, exception.getRetryAfter().toSeconds()))
+                )
+                .body(response.getBody());
     }
 
     @ExceptionHandler(Throwable.class)

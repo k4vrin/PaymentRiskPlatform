@@ -1,6 +1,7 @@
 package dev.kavrin.paymentrisk.shared.api.error;
 
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentStateTransitionException;
+import dev.kavrin.paymentrisk.security.ratelimit.RateLimitExceededException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +42,11 @@ class TestErrorController {
     @GetMapping("/test/invalid-request")
     void invalidRequest() {
         throw new IllegalArgumentException("idempotencyKey contains unsupported characters.");
+    }
+
+    @GetMapping("/test/rate-limit")
+    void rateLimit() {
+        throw new RateLimitExceededException(2, java.time.Duration.ofSeconds(30));
     }
 
     @GetMapping("/test/unexpected")
