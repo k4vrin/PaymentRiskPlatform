@@ -2,6 +2,7 @@ package dev.kavrin.paymentrisk.shared.api.error;
 
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKeyConflictException;
 import dev.kavrin.paymentrisk.payment.domain.model.PaymentStateTransitionException;
+import dev.kavrin.paymentrisk.security.masking.SensitiveDataMasker;
 import dev.kavrin.paymentrisk.security.ratelimit.RateLimitExceededException;
 import dev.kavrin.paymentrisk.shared.api.correlation.CorrelationIds;
 import jakarta.validation.ConstraintViolationException;
@@ -227,7 +228,7 @@ public class GlobalApiExceptionHandler {
         ApiErrorResponse response = ApiErrorResponse.of(
                 status.value(),
                 code,
-                message,
+                SensitiveDataMasker.maskFreeText(message),
                 exchange.getRequest().getPath().value(),
                 correlationId,
                 fieldErrors

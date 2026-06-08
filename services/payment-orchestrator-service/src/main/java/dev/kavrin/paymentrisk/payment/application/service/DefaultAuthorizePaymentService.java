@@ -10,6 +10,10 @@ import dev.kavrin.paymentrisk.payment.application.outbox.PaymentOutboxEventWrite
 import dev.kavrin.paymentrisk.payment.domain.model.*;
 import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
+import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
+import dev.kavrin.paymentrisk.shared.observability.metrics.PaymentAuthorizationMetrics;
+import dev.kavrin.paymentrisk.shared.api.error.DownstreamTimeoutException;
+import dev.kavrin.paymentrisk.shared.api.error.DownstreamUnavailableException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -37,6 +41,7 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     private final TransactionalOperator transactionalOperator;
     private final Optional<RedisIdempotencySnapshotCache> idempotencySnapshotCache;
     private final AuthorizePaymentResultSnapshotSerializer snapshotSerializer;
+    private final PaymentAuthorizationMetrics authorizationMetrics;
 
     @Override
     public Mono<AuthorizePaymentResult> authorize(AuthorizePaymentCommand command) {
@@ -46,6 +51,8 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
 
         Instant now = clock.instant();
         Instant expiresAt = now.plus(Duration.ofHours(24));
+
+        authorizationMetrics.recordAuthorizationAttempt();
 
         return findCompletedCachedResult(scope, idempotencyKey, fingerprint)
                 .switchIfEmpty(Mono.defer(() -> findCompletedDatabaseResultAndRefreshCache(
@@ -81,7 +88,7 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     ) {
         return Mono.fromSupplier(() -> createPayment(command, idempotencyKey))
                 .flatMap(payment ->
-                        riskScoringClient.score(toRiskScoringRequest(command, payment))
+                        scoreRisk(command, payment)
                                 .map(riskDecisionMappingPolicy::map)
                                 .map(riskDecision -> applyRiskDecision(payment, riskDecision))
                 )
@@ -137,11 +144,50 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                                         fingerprint,
                                         result,
                                         200,
-                                        clock.instant()
-                                )
+                                clock.instant()
+                        )
                                 .thenReturn(result)
                 )
+                .doOnNext(this::recordAuthorizationResultMetrics)
                 .as(transactionalOperator::transactional);
+    }
+
+    private Mono<RiskScoringResponse> scoreRisk(
+            AuthorizePaymentCommand command,
+            Payment payment
+    ) {
+        long startNanos = System.nanoTime();
+
+        return riskScoringClient.score(toRiskScoringRequest(command, payment))
+                .doOnNext(response -> recordRiskResponseMetrics(response, startNanos))
+                .doOnError(error -> recordRiskErrorMetrics(error, startNanos));
+    }
+
+    private void recordRiskResponseMetrics(RiskScoringResponse response, long startNanos) {
+        authorizationMetrics.recordRiskServiceLatency(elapsed(startNanos));
+
+        switch (response.outcome()) {
+            case TIMEOUT -> authorizationMetrics.recordRiskTimeout();
+            case UNAVAILABLE -> authorizationMetrics.recordRiskUnavailable();
+            default -> {
+            }
+        }
+    }
+
+    private void recordRiskErrorMetrics(Throwable error, long startNanos) {
+        authorizationMetrics.recordRiskServiceLatency(elapsed(startNanos));
+
+        if (error instanceof DownstreamTimeoutException) {
+            authorizationMetrics.recordRiskTimeout();
+        }
+
+        if (error instanceof DownstreamUnavailableException) {
+            authorizationMetrics.recordRiskUnavailable();
+        }
+    }
+
+    private static Duration elapsed(long startNanos) {
+        return Duration.ofNanos(System.nanoTime() - startNanos);
     }
 
     private Mono<AuthorizePaymentResult> findCompletedCachedResult(
@@ -155,6 +201,8 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                             if (!fingerprint.equals(snapshot.requestFingerprint())) {
                                 return Mono.empty();
                             }
+
+                            authorizationMetrics.recordDuplicateIdempotencyReplay();
 
                             return Mono.just(snapshotSerializer.deserialize(
                                     snapshot.responseBodyJson(),
@@ -179,14 +227,18 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                         now,
                         AuthorizePaymentResult.class
                 )
-                .flatMap(storedResult -> cacheCompletedResult(
-                                scope,
-                                idempotencyKey,
-                                fingerprint,
-                                storedResult.response(),
-                                storedResult.expiresAt()
-                        )
-                        .thenReturn(storedResult.response()));
+                .flatMap(storedResult -> {
+                    authorizationMetrics.recordDuplicateIdempotencyReplay();
+
+                    return cacheCompletedResult(
+                                    scope,
+                                    idempotencyKey,
+                                    fingerprint,
+                                    storedResult.response(),
+                                    storedResult.expiresAt()
+                            )
+                            .thenReturn(storedResult.response());
+                });
     }
 
     private Mono<Void> cacheCompletedResult(
@@ -306,6 +358,18 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                 riskDecision.ruleVersion(),
                 payment.getCreatedAt()
         );
+    }
+
+    private void recordAuthorizationResultMetrics(AuthorizePaymentResult result) {
+        String outcome = result.reasonCodes().contains("REVIEW_REQUIRED")
+                ? "REVIEW_REQUIRED"
+                : result.status();
+
+        authorizationMetrics.recordAuthorizationOutcome(outcome);
+
+        if ("DECLINED".equals(result.status())) {
+            result.reasonCodes().forEach(authorizationMetrics::recordDeclineReason);
+        }
     }
 
     private static String requestFingerprint(AuthorizePaymentCommand command) {

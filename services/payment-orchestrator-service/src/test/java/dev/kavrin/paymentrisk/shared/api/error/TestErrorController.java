@@ -49,6 +49,13 @@ class TestErrorController {
         throw new RateLimitExceededException(2, java.time.Duration.ofSeconds(30));
     }
 
+    @GetMapping("/test/sensitive-message")
+    void sensitiveMessage() {
+        throw new IllegalArgumentException(
+                "paymentMethodToken=tok_1234567890 deviceFingerprint=dfp_secret_abcdef Authorization: Bearer ey.fake.jwt"
+        );
+    }
+
     @GetMapping("/test/unexpected")
     void unexpected() {
         throw new IllegalStateException("boom");

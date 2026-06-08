@@ -17,6 +17,8 @@ import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamTimeoutException;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamUnavailableException;
+import dev.kavrin.paymentrisk.shared.observability.metrics.PaymentAuthorizationMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -54,6 +56,9 @@ class DefaultAuthorizePaymentServiceTest {
             new FakeRedisIdempotencySnapshotCache();
     private final AuthorizePaymentResultSnapshotSerializer snapshotSerializer =
             new AuthorizePaymentResultSnapshotSerializer();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    private final PaymentAuthorizationMetrics authorizationMetrics =
+            new PaymentAuthorizationMetrics(meterRegistry);
     private final DefaultAuthorizePaymentService service = new DefaultAuthorizePaymentService(
             clock,
             idempotencyStore,
@@ -63,7 +68,8 @@ class DefaultAuthorizePaymentServiceTest {
             paymentOutboxEventWriter,
             transactionalOperator,
             Optional.of(idempotencySnapshotCache),
-            snapshotSerializer
+            snapshotSerializer,
+            authorizationMetrics
     );
 
     @BeforeEach
@@ -76,6 +82,7 @@ class DefaultAuthorizePaymentServiceTest {
         riskScoringClient.reset();
         paymentOutboxEventWriter.reset();
         idempotencySnapshotCache.reset();
+        meterRegistry.clear();
     }
 
     @Test
@@ -135,6 +142,12 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencySnapshotCache.lastPutKey).isEqualTo(IdempotencyKey.of(validCommand().idempotencyKey()));
         assertThat(idempotencySnapshotCache.lastPutFingerprint).isEqualTo(idempotencyStore.lastRequestFingerprint);
         assertThat(idempotencySnapshotCache.lastPutTtl).isEqualTo(Duration.ofHours(24));
+        assertThat(counterValue("paymentrisk.payment.authorization.attempts")).isEqualTo(1.0);
+        assertThat(counterValue(
+                "paymentrisk.payment.authorization.outcomes",
+                "outcome", "AUTHORIZED"
+        )).isEqualTo(1.0);
+        assertThat(meterRegistry.timer("paymentrisk.risk.service.duration").count()).isEqualTo(1);
         verify(transactionalOperator).transactional(any(Mono.class));
     }
 
@@ -164,7 +177,43 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(idempotencySnapshotCache.putCount).isEqualTo(1);
         assertThat(idempotencyStore.markCompletedCount).isEqualTo(1);
         assertThat(idempotencyStore.markFailedAndExpireCount).isZero();
+        assertThat(counterValue(
+                "paymentrisk.payment.authorization.outcomes",
+                "outcome", "DECLINED"
+        )).isEqualTo(1.0);
+        assertThat(counterValue(
+                "paymentrisk.payment.authorization.declines",
+                "reason_code", "HIGH_AMOUNT"
+        )).isEqualTo(1.0);
         verify(transactionalOperator).transactional(any(Mono.class));
+    }
+
+    @Test
+    void authorizeRecordsReviewRequiredOutcomeAndDeclineReason() {
+        riskScoringClient.response = RiskScoringResponse.reviewRequired(
+                72,
+                List.of("VELOCITY_CHECK"),
+                "risk-rules-v1"
+        );
+
+        AuthorizePaymentResult result = service.authorize(validCommand()).block();
+
+        assertThat(result).isNotNull();
+        assertThat(result.status()).isEqualTo("DECLINED");
+        assertThat(result.riskDecision()).isEqualTo("DECLINED");
+        assertThat(result.reasonCodes()).containsExactly("VELOCITY_CHECK", "REVIEW_REQUIRED");
+        assertThat(counterValue(
+                "paymentrisk.payment.authorization.outcomes",
+                "outcome", "REVIEW_REQUIRED"
+        )).isEqualTo(1.0);
+        assertThat(counterValue(
+                "paymentrisk.payment.authorization.declines",
+                "reason_code", "VELOCITY_CHECK"
+        )).isEqualTo(1.0);
+        assertThat(counterValue(
+                "paymentrisk.payment.authorization.declines",
+                "reason_code", "REVIEW_REQUIRED"
+        )).isEqualTo(1.0);
     }
 
     @Test
@@ -213,6 +262,8 @@ class DefaultAuthorizePaymentServiceTest {
                 AuthorizePaymentResult.class
         )).isEqualTo(storedResult);
         assertThat(idempotencySnapshotCache.lastPutTtl).isEqualTo(Duration.ofHours(2));
+        assertThat(counterValue("paymentrisk.payment.authorization.idempotency.replays")).isEqualTo(1.0);
+        assertThat(meterRegistry.find("paymentrisk.risk.service.duration").timer()).isNull();
     }
 
     @Test
@@ -236,6 +287,8 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(riskScoringClient.scoreCount).isZero();
         assertThat(paymentStatePersistence.saveCount).isZero();
         assertThat(paymentOutboxEventWriter.writeCount).isZero();
+        assertThat(counterValue("paymentrisk.payment.authorization.idempotency.replays")).isEqualTo(1.0);
+        assertThat(meterRegistry.find("paymentrisk.risk.service.duration").timer()).isNull();
     }
 
     @Test
@@ -305,6 +358,7 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(paymentOutboxEventWriter.writeCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+        assertThat(meterRegistry.timer("paymentrisk.risk.service.duration").count()).isEqualTo(1);
     }
 
     @Test
@@ -338,6 +392,14 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(paymentOutboxEventWriter.writeCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+        assertThat(counterValue("paymentrisk.risk.service.timeouts")).isEqualTo(1.0);
+        assertThat(meterRegistry.timer("paymentrisk.risk.service.duration").count()).isEqualTo(1);
+    }
+
+    private double counterValue(String name, String... tags) {
+        var counter = meterRegistry.find(name).tags(tags).counter();
+
+        return counter == null ? 0.0 : counter.count();
     }
 
     @Test
@@ -354,6 +416,8 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(paymentOutboxEventWriter.writeCount).isZero();
         assertThat(idempotencyStore.markCompletedCount).isZero();
         assertThat(idempotencyStore.markFailedAndExpireCount).isEqualTo(1);
+        assertThat(counterValue("paymentrisk.risk.service.unavailable")).isEqualTo(1.0);
+        assertThat(meterRegistry.timer("paymentrisk.risk.service.duration").count()).isEqualTo(1);
     }
 
     private static AuthorizePaymentCommand validCommand() {

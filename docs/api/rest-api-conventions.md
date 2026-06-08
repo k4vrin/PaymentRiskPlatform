@@ -73,6 +73,8 @@ authorization failures, and fallback internal errors should all use the same top
 - Use stable machine-readable IDs for domain resources.
 - Represent money amounts as integer minor units.
 - Do not expose sensitive customer, merchant, credential, token, or raw payment data in errors.
+- Mask payment method tokens, device fingerprints, API keys, bearer tokens, authorization headers, cookies, and
+  proxy-authorization headers before adding them to logs, diagnostics, or error messages.
 - Keep controllers thin; validation and request/response mapping belong at the API boundary, while business decisions
   belong in application/domain services.
 

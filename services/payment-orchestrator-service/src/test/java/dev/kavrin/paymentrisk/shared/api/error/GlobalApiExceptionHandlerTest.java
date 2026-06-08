@@ -10,6 +10,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 @WebFluxTest(
         controllers = TestErrorController.class,
         excludeAutoConfiguration = ReactiveWebSecurityAutoConfiguration.class,
@@ -149,6 +151,23 @@ class GlobalApiExceptionHandlerTest {
                 .jsonPath("$.message").isEqualTo("Request rate limit exceeded")
                 .jsonPath("$.path").isEqualTo("/test/rate-limit")
                 .jsonPath("$.correlationId").isEqualTo("corr-rate-limit");
+    }
+
+    @Test
+    void sensitiveValuesAreMaskedInErrorMessages() {
+        webTestClient.get()
+                .uri("/test/sensitive-message")
+                .header("X-Correlation-Id", "corr-sensitive")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.message").isEqualTo(
+                        "paymentMethodToken=**** deviceFingerprint=**** Authorization: ****"
+                )
+                .jsonPath("$.message").value(message -> assertThat(message.toString())
+                        .doesNotContain("tok_1234567890")
+                        .doesNotContain("dfp_secret_abcdef")
+                        .doesNotContain("ey.fake.jwt"));
     }
 
     @Test

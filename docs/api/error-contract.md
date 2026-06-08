@@ -69,4 +69,8 @@ Error responses must not expose:
 - internal stack traces;
 - unsafe rejected values from validation failures.
 
+Public error messages pass through `SensitiveDataMasker.maskFreeText` before serialization. This masks common credential
+and payment-signal fields such as `paymentMethodToken`, `deviceFingerprint`, API keys, bearer tokens, and authorization
+headers when a lower layer accidentally includes them in an exception message.
+
 Detailed diagnostic data belongs in structured logs tied to the same correlation ID, not in the public API response.

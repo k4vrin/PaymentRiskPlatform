@@ -2119,36 +2119,36 @@ Authentication strategy:
 - [x] Return structured rate-limit errors.
 - [x] Add tests for allowed, exceeded, and reset behavior.
 
-11. [ ] Add log masking policy:
+11. [x] Add log masking policy:
 
-- [ ] Mask payment method tokens.
-- [ ] Mask device fingerprints.
-- [ ] Mask API keys/tokens.
-- [ ] Mask authorization headers.
-- [ ] Add tests for log/error masking helpers.
+- [x] Mask payment method tokens.
+- [x] Mask device fingerprints.
+- [x] Mask API keys/tokens.
+- [x] Mask authorization headers.
+- [x] Add tests for log/error masking helpers.
 
-12. [ ] Add API latency metrics:
+12. [x] Add API latency metrics:
 
-- [ ] Record request duration by route and status.
-- [ ] Avoid high-cardinality labels.
-- [ ] Add tests or actuator metric assertions.
+- [x] Record request duration by route and status.
+- [x] Avoid high-cardinality labels.
+- [x] Add tests or actuator metric assertions.
 
-13. [ ] Add payment authorization metrics:
+13. [x] Add payment authorization metrics:
 
-- [ ] Count authorization attempts.
-- [ ] Count authorized outcomes.
-- [ ] Count declined outcomes.
-- [ ] Count review-required outcomes.
-- [ ] Count duplicate idempotency replays.
-- [ ] Add service-level metric tests where practical.
+- [x] Count authorization attempts.
+- [x] Count authorized outcomes.
+- [x] Count declined outcomes.
+- [x] Count review-required outcomes.
+- [x] Count duplicate idempotency replays.
+- [x] Add service-level metric tests where practical.
 
-14. [ ] Add decline/risk metrics:
+14. [x] Add decline/risk metrics:
 
-- [ ] Count decline by reason code.
-- [ ] Record risk service latency.
-- [ ] Count risk timeouts.
-- [ ] Count risk unavailable responses.
-- [ ] Add tests with fake meter registry.
+- [x] Count decline by reason code.
+- [x] Record risk service latency.
+- [x] Count risk timeouts.
+- [x] Count risk unavailable responses.
+- [x] Add tests with fake meter registry.
 
 15. [ ] Add Redis idempotency/cache metrics:
 
