@@ -33,3 +33,21 @@ declined payment with a `REVIEW_REQUIRED` reason code.
 
 Risk latency is recorded around the Java risk-client call. Timeout and unavailable outcomes are counted before they are
 mapped to structured API errors.
+
+## Idempotency And Redis Metrics
+
+- `paymentrisk.idempotency.cache.redis.requests` tagged by `scope` and `result`
+- `paymentrisk.idempotency.cache.database.fallbacks` tagged by `scope`
+
+Redis request results use `hit`, `miss`, and `write_failure`. Database fallback hits are counted when a duplicate
+completed idempotency response is served from durable storage after the Redis path did not produce a matching snapshot.
+
+## Messaging Metrics
+
+- `payment_risk_outbox_publish_total` tagged by `event_type` and `result`
+- `payment_risk_outbox_lag_seconds` tagged by `event_type`
+- `payment_risk_consumer_events_total` tagged by `consumer`, `event_type`, and `result`
+- `payment_risk_consumer_lag_records` tagged by `consumer` and `topic`
+- `payment_risk_dead_letters_total` tagged by `source`
+- `payment_risk_replay_requests_total` tagged by `source` and `result`
+- `payment_risk_partner_callback_total` tagged by `callback_type` and `result`

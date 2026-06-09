@@ -4,6 +4,7 @@ import dev.kavrin.paymentrisk.shared.api.error.ApiErrorCode;
 import dev.kavrin.paymentrisk.shared.api.error.ConflictException;
 import dev.kavrin.paymentrisk.shared.api.error.ResourceNotFoundException;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
+import dev.kavrin.paymentrisk.shared.messaging.MessagingObservability;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -16,6 +17,7 @@ public class DefaultReplayRequestService implements ReplayRequestService {
     private final ReplayJobStore replayJobStore;
     private final ReplayAuditPort replayAuditPort;
     private final PlatformIdGeneratorFactory idGeneratorFactory;
+    private final MessagingObservability observability;
 
     @Override
     public Mono<ReplayJobResult> requestReplay(ReplayRequestCommand command) {
@@ -37,6 +39,8 @@ public class DefaultReplayRequestService implements ReplayRequestService {
                             ))
                                     : replayJobStore.saveRequested(command, idGeneratorFactory.replayJobId())
                                       .flatMap(job -> replayAuditPort.recordReplayRequested(job).thenReturn(job)));
-                });
+                })
+                .doOnNext(ignored -> observability.recordReplaySuccess(command.source().name()))
+                .doOnError(ignored -> observability.recordReplayFailure(command.source().name()));
     }
 }

@@ -1,0 +1,38 @@
+{
+  "uid": "payment-risk-database-health",
+  "title": "Payment Risk - Database Health",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "R2DBC Pool Usage",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(r2dbc_pool_acquired_connections) by (name)",
+          "legendFormat": "{{name}} acquired"
+        },
+        {
+          "expr": "sum(r2dbc_pool_allocated_connections) by (name)",
+          "legendFormat": "{{name}} allocated"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "JVM Process Health",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "process_uptime_seconds", "legendFormat": "uptime" },
+        { "expr": "jvm_memory_used_bytes", "legendFormat": "{{area}} {{id}}" }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+    }
+  ]
+}

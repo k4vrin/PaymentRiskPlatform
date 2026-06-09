@@ -11,7 +11,7 @@ const (
 	defaultEnv                    = "local"
 	defaultHost                   = "0.0.0.0"
 	defaultServiceName            = "risk-scoring-service"
-	defaultGrpcPort               = 9090
+	defaultGrpcPort               = 9091
 	defaultRuleVersion            = "local-v1"
 	defaultApproveMaxScore        = 49
 	defaultReviewMaxScore         = 79

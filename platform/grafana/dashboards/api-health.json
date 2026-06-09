@@ -1,0 +1,36 @@
+{
+  "uid": "payment-risk-api-health",
+  "title": "Payment Risk - API Health",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "API Latency p95",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(paymentrisk_api_request_duration_seconds_bucket[5m])) by (le, route, status_class))",
+          "legendFormat": "{{route}} {{status_class}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "API Requests By Status Class",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(paymentrisk_api_request_duration_seconds_count[5m])) by (status_class)",
+          "legendFormat": "{{status_class}}"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import dev.kavrin.paymentrisk.TestRedisConfiguration;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyKey;
 import dev.kavrin.paymentrisk.idempotency.domain.IdempotencyScope;
 import dev.kavrin.paymentrisk.shared.config.JacksonObjectMapperConfiguration;
+import dev.kavrin.paymentrisk.shared.observability.metrics.IdempotencyCacheMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +47,9 @@ class SpringRedisIdempotencySnapshotCacheTest {
     @Autowired
     private SpringRedisIdempotencySnapshotCache cache;
 
+    @Autowired
+    private SimpleMeterRegistry meterRegistry;
+
     @BeforeEach
     void clearRedis() {
         redisTemplate.getConnectionFactory()
@@ -62,6 +67,7 @@ class SpringRedisIdempotencySnapshotCacheTest {
         ).blockOptional();
 
         assertThat(snapshot).isEmpty();
+        assertThat(redisCounter("miss")).isEqualTo(1.0);
     }
 
     @Test
@@ -82,6 +88,7 @@ class SpringRedisIdempotencySnapshotCacheTest {
         assertThat(snapshot).isNotNull();
         assertThat(snapshot.requestFingerprint()).isEqualTo("request-fingerprint");
         assertThat(snapshot.responseBodyJson()).isEqualTo("{\"paymentId\":\"pay_123\"}");
+        assertThat(redisCounter("hit")).isEqualTo(1.0);
 
         String redisKey = RedisIdempotencyKeyFormatter.completedSnapshotKey(
                 IdempotencyScope.PAYMENT_AUTHORIZATION,
@@ -91,6 +98,15 @@ class SpringRedisIdempotencySnapshotCacheTest {
         assertThat(ttl).isNotNull();
         assertThat(ttl).isPositive();
         assertThat(ttl).isLessThanOrEqualTo(Duration.ofMinutes(5));
+    }
+
+    private double redisCounter(String result) {
+        var counter = meterRegistry.find("paymentrisk.idempotency.cache.redis.requests")
+                .tag("result", result)
+                .tag("scope", "PAYMENT_AUTHORIZATION")
+                .counter();
+
+        return counter == null ? 0.0 : counter.count();
     }
 
     @SpringBootConfiguration
@@ -105,9 +121,20 @@ class SpringRedisIdempotencySnapshotCacheTest {
         @Bean
         SpringRedisIdempotencySnapshotCache springRedisIdempotencySnapshotCache(
                 ReactiveStringRedisTemplate redisTemplate,
-                RedisIdempotencySnapshotSerializer serializer
+                RedisIdempotencySnapshotSerializer serializer,
+                IdempotencyCacheMetrics metrics
         ) {
-            return new SpringRedisIdempotencySnapshotCache(redisTemplate, serializer);
+            return new SpringRedisIdempotencySnapshotCache(redisTemplate, serializer, metrics);
+        }
+
+        @Bean
+        SimpleMeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+
+        @Bean
+        IdempotencyCacheMetrics idempotencyCacheMetrics(SimpleMeterRegistry meterRegistry) {
+            return new IdempotencyCacheMetrics(meterRegistry);
         }
     }
 }

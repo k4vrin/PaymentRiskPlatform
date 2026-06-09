@@ -180,7 +180,7 @@ class GrpcRiskScoringClientTest {
         );
 
         assertThat(defaultProperties.host()).isEqualTo("localhost");
-        assertThat(defaultProperties.port()).isEqualTo(9090);
+        assertThat(defaultProperties.port()).isEqualTo(9091);
         assertThat(defaultProperties.timeout()).isEqualTo(Duration.ofMillis(500));
     }
 

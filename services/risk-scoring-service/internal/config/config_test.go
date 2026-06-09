@@ -22,8 +22,8 @@ func TestLoadReturnsDefaults(t *testing.T) {
 		t.Fatalf("expected service name risk-scoring-service, got %s", cfg.ServiceName)
 	}
 
-	if cfg.GrpcPort != 9090 {
-		t.Fatalf("expected grpc port 9090, got %d", cfg.GrpcPort)
+	if cfg.GrpcPort != 9091 {
+		t.Fatalf("expected grpc port 9091, got %d", cfg.GrpcPort)
 	}
 
 	if cfg.RuleVersion != "local-v1" {
@@ -128,7 +128,7 @@ func TestValidateRejectsInvalidThresholdOrder(t *testing.T) {
 		Env:                    "test",
 		Host:                   "127.0.0.1",
 		ServiceName:            "risk-scoring-service",
-		GrpcPort:               9090,
+		GrpcPort:               9091,
 		RuleVersion:            "rules-v1",
 		ApproveMaxScore:        80,
 		ReviewMaxScore:         70,
@@ -148,7 +148,7 @@ func TestValidateRejectsInvalidLogLevel(t *testing.T) {
 		Env:                    "test",
 		Host:                   "127.0.0.1",
 		ServiceName:            "risk-scoring-service",
-		GrpcPort:               9090,
+		GrpcPort:               9091,
 		RuleVersion:            "rules-v1",
 		ApproveMaxScore:        40,
 		ReviewMaxScore:         70,

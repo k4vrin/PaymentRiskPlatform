@@ -1,0 +1,37 @@
+name: Protobuf
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: services/risk-scoring-service/go.mod
+          cache-dependency-path: services/risk-scoring-service/go.sum
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Install protobuf compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Install Go protobuf plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      - name: Generate protobuf code
+        run: make proto
+      - name: Fail on stale generated files
+        run: git diff --exit-code -- proto/gen
+      - name: Java contract compile
+        working-directory: services/payment-orchestrator-service
+        run: ./mvnw -DskipTests test-compile
+      - name: Go contract tests
+        working-directory: services/risk-scoring-service
+        run: go test ./...

@@ -1,0 +1,53 @@
+{
+  "uid": "payment-risk-kafka-outbox",
+  "title": "Payment Risk - Kafka And Outbox",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Outbox Publish Results",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(payment_risk_outbox_publish_total[5m])) by (event_type, result)",
+          "legendFormat": "{{event_type}} {{result}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 8 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Outbox Lag",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(payment_risk_outbox_lag_seconds_sum[5m])) by (event_type) / sum(rate(payment_risk_outbox_lag_seconds_count[5m])) by (event_type)",
+          "legendFormat": "{{event_type}}"
+        }
+      ],
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 8 }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Consumer Events And Replay",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(payment_risk_consumer_events_total[5m])) by (consumer, result)",
+          "legendFormat": "{{consumer}} {{result}}"
+        },
+        {
+          "expr": "sum(rate(payment_risk_replay_requests_total[5m])) by (source, result)",
+          "legendFormat": "replay {{source}} {{result}}"
+        }
+      ],
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 }
+    }
+  ]
+}

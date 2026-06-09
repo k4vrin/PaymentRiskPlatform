@@ -94,7 +94,7 @@ func testConfig(logLevel string) config.Config {
 		Env:                    "test",
 		Host:                   "127.0.0.1",
 		ServiceName:            "risk-scoring-service",
-		GrpcPort:               9090,
+		GrpcPort:               9091,
 		RuleVersion:            "rules-test-v1",
 		ApproveMaxScore:        49,
 		ReviewMaxScore:         79,

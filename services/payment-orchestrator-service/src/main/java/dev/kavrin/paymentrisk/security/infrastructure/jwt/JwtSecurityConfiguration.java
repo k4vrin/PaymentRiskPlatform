@@ -58,7 +58,12 @@ public class JwtSecurityConfiguration {
                 .addFilterAt(rateLimitWebFilter, SecurityWebFiltersOrder.AUTHORIZATION)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers("/actuator/health", "/actuator/health/**", "/api/v1/contract/ping").permitAll()
+                        .pathMatchers(
+                                "/actuator/health",
+                                "/actuator/health/**",
+                                "/actuator/prometheus",
+                                "/api/v1/contract/ping"
+                        ).permitAll()
                         .pathMatchers("/api/v1/payments/**").hasRole(SecurityRoles.MERCHANT)
                         .pathMatchers("/api/v1/ops/**").hasAnyRole(SecurityRoles.OPS, SecurityRoles.ADMIN)
                         .pathMatchers("/api/v1/audit/**")

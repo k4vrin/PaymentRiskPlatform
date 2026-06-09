@@ -1,0 +1,20 @@
+name: Platform
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate Docker Compose config
+        run: docker compose -f platform/compose.local.yaml config
+      - name: Build payment orchestrator image
+        run: docker build -f services/payment-orchestrator-service/Dockerfile -t payment-risk/payment-orchestrator-service:ci .
+      - name: Build risk scoring image
+        run: docker build -f services/risk-scoring-service/Dockerfile -t payment-risk/risk-scoring-service:ci .
+      - name: Smoke check image metadata
+        run: docker image inspect payment-risk/payment-orchestrator-service:ci payment-risk/risk-scoring-service:ci

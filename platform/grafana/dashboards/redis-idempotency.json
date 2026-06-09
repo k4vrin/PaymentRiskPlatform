@@ -1,0 +1,36 @@
+{
+  "uid": "payment-risk-redis-idempotency",
+  "title": "Payment Risk - Redis And Idempotency",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Redis Idempotency Cache",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(paymentrisk_idempotency_cache_redis_requests_total[5m])) by (result, scope)",
+          "legendFormat": "{{scope}} {{result}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Database Fallbacks",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(paymentrisk_idempotency_cache_database_fallbacks_total[5m])) by (scope)",
+          "legendFormat": "{{scope}}"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+    }
+  ]
+}

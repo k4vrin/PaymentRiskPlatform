@@ -4,6 +4,8 @@ import dev.kavrin.paymentrisk.ops.domain.ReplaySource;
 import dev.kavrin.paymentrisk.shared.api.error.ConflictException;
 import dev.kavrin.paymentrisk.shared.api.error.ResourceNotFoundException;
 import dev.kavrin.paymentrisk.shared.id.PlatformIdGeneratorFactory;
+import dev.kavrin.paymentrisk.shared.messaging.MessagingObservability;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -20,6 +22,7 @@ class DefaultReplayRequestServiceTest {
     private FakeReplayTargetLookupPort targetLookupPort;
     private FakeReplayJobStore replayJobStore;
     private FakeReplayAuditPort replayAuditPort;
+    private SimpleMeterRegistry meterRegistry;
     private DefaultReplayRequestService service;
 
     @BeforeEach
@@ -27,11 +30,13 @@ class DefaultReplayRequestServiceTest {
         targetLookupPort = new FakeReplayTargetLookupPort();
         replayJobStore = new FakeReplayJobStore();
         replayAuditPort = new FakeReplayAuditPort();
+        meterRegistry = new SimpleMeterRegistry();
         service = new DefaultReplayRequestService(
                 targetLookupPort,
                 replayJobStore,
                 replayAuditPort,
-                new FixedIdGeneratorFactory()
+                new FixedIdGeneratorFactory(),
+                new MessagingObservability(meterRegistry)
         );
     }
 
@@ -47,6 +52,7 @@ class DefaultReplayRequestServiceTest {
         assertThat(result.status().name()).isEqualTo("REQUESTED");
         assertThat(result.reason()).contains("manual retry");
         assertThat(replayAuditPort.lastAudited.get()).isSameAs(result);
+        assertThat(replayCounter("success")).isEqualTo(1.0);
     }
 
     @Test
@@ -56,6 +62,7 @@ class DefaultReplayRequestServiceTest {
         assertThatThrownBy(() -> service.requestReplay(command()).block())
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("not found");
+        assertThat(replayCounter("failure")).isEqualTo(1.0);
     }
 
     @Test
@@ -65,6 +72,7 @@ class DefaultReplayRequestServiceTest {
         assertThatThrownBy(() -> service.requestReplay(command()).block())
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("not replayable");
+        assertThat(replayCounter("failure")).isEqualTo(1.0);
     }
 
     @Test
@@ -75,6 +83,16 @@ class DefaultReplayRequestServiceTest {
         assertThatThrownBy(() -> service.requestReplay(command()).block())
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("active replay job");
+        assertThat(replayCounter("failure")).isEqualTo(1.0);
+    }
+
+    private double replayCounter(String result) {
+        var counter = meterRegistry.find("payment_risk_replay_requests_total")
+                .tag("source", "OUTBOX")
+                .tag("result", result)
+                .counter();
+
+        return counter == null ? 0.0 : counter.count();
     }
 
     private ReplayRequestCommand command() {

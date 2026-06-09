@@ -33,7 +33,7 @@ payment:
   risk:
     grpc:
       host: localhost
-      port: 9090
+      port: 9091
       timeout: 500ms
   sensitive-data:
     hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY:local-development-sensitive-data-hash-key}

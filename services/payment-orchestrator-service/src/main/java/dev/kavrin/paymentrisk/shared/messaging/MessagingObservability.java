@@ -38,8 +38,24 @@ public class MessagingObservability {
         increment("payment_risk_consumer_events_total", "consumer", consumerName, "event_type", eventType, "result", "duplicate");
     }
 
+    public void recordConsumerLag(String consumerName, String topic, long lag) {
+        DistributionSummary.builder("payment_risk_consumer_lag_records")
+                .tag("consumer", normalize(consumerName))
+                .tag("topic", normalize(topic))
+                .register(meterRegistry)
+                .record(Math.max(0, lag));
+    }
+
     public void recordDeadLetter(String sourceSystem) {
         increment("payment_risk_dead_letters_total", "source", sourceSystem);
+    }
+
+    public void recordReplaySuccess(String source) {
+        increment("payment_risk_replay_requests_total", "source", normalize(source), "result", "success");
+    }
+
+    public void recordReplayFailure(String source) {
+        increment("payment_risk_replay_requests_total", "source", normalize(source), "result", "failure");
     }
 
     public void recordCallbackSuccess(String callbackType) {
@@ -55,5 +71,13 @@ public class MessagingObservability {
                 .tags(tags)
                 .register(meterRegistry)
                 .increment();
+    }
+
+    private String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return "UNKNOWN";
+        }
+
+        return value.trim().toUpperCase();
     }
 }

@@ -1,0 +1,253 @@
+# Payment Risk Platform End-to-End Self-Test
+#
+# Prerequisites:
+# - Run `make platform-up`
+# - Run `make risk-run`
+# - Run `make spring-run`
+# - Insert the local merchant API key before payment requests:
+#
+#   export API_KEY_ID="mk_local_self_test"
+#   export API_KEY_SECRET="sk_local_self_test_secret"
+#   export API_KEY_HASH="$(python3 -c 'import hashlib,hmac,os
+#   pepper=os.environ.get("PAYMENT_RISK_API_KEY_HASHING_PEPPER","local-development-api-key-hashing-pepper")
+#   key=os.environ["API_KEY_ID"]
+#   secret=os.environ["API_KEY_SECRET"]
+#   print("hmac-sha256:"+hmac.new(pepper.encode(), f"{key}:{secret}".encode(), hashlib.sha256).hexdigest())')"
+#   docker exec payment-risk-postgres psql -U payment_risk -d payment_risk -c "
+#   insert into merchant_api_keys (key_id, secret_hash, merchant_id, status)
+#   values ('$API_KEY_ID', '$API_KEY_HASH', 'mer_local_self_test', 'ACTIVE')
+#   on conflict (key_id) do update
+#   set secret_hash = excluded.secret_hash,
+#       merchant_id = excluded.merchant_id,
+#       status = excluded.status;
+#   "
+
+@baseUrl = http://localhost:8080
+@prometheusUrl = http://localhost:9090
+@apiKey = mk_local_self_test.sk_local_self_test_secret
+@merchantId = mer_local_self_test
+@opsUserId = local-ops
+@opsRoles = OPS
+@paymentId = pay_a5dc6bf0-923d-4fd6-85e4-08303b1d6ae0
+@outboxEventId = replace_with_outbox_event_id
+
+###
+# 1. Contract ping
+GET {{baseUrl}}/api/v1/contract/ping
+
+###
+# 2. Spring actuator health
+GET {{baseUrl}}/actuator/health
+
+###
+# 3. Spring actuator Prometheus scrape
+GET {{baseUrl}}/actuator/prometheus
+
+###
+# 4. Prometheus health
+GET {{prometheusUrl}}/-/healthy
+
+###
+# 5. Authorize low-risk payment
+# Copy paymentId from the response into @paymentId before running lookup/reversal requests.
+# @name authorizeLowRisk
+POST {{baseUrl}}/api/v1/payments/authorize
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-auth-001
+
+{
+  "merchantId": "{{merchantId}}",
+  "customerId": "cus_self_test_001",
+  "amountMinor": 1299,
+  "currency": "USD",
+  "paymentMethodToken": "pmt_tok_self_test_001",
+  "deviceFingerprint": "dfp_self_test_001",
+  "externalReference": "order_self_test_001",
+  "idempotencyKey": "idem-self-test-auth-001"
+}
+
+###
+# 6. Replay low-risk authorization idempotently
+POST {{baseUrl}}/api/v1/payments/authorize
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-auth-001-replay
+
+{
+  "merchantId": "{{merchantId}}",
+  "customerId": "cus_self_test_001",
+  "amountMinor": 1299,
+  "currency": "USD",
+  "paymentMethodToken": "pmt_tok_self_test_001",
+  "deviceFingerprint": "dfp_self_test_001",
+  "externalReference": "order_self_test_001",
+  "idempotencyKey": "idem-self-test-auth-001"
+}
+
+###
+# 7. Reuse authorization idempotency key with changed body
+# Expected: 409 Conflict
+POST {{baseUrl}}/api/v1/payments/authorize
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-auth-001-conflict
+
+{
+  "merchantId": "{{merchantId}}",
+  "customerId": "cus_self_test_001",
+  "amountMinor": 9999,
+  "currency": "USD",
+  "paymentMethodToken": "pmt_tok_self_test_001",
+  "deviceFingerprint": "dfp_self_test_001",
+  "externalReference": "order_self_test_001",
+  "idempotencyKey": "idem-self-test-auth-001"
+}
+
+###
+# 8. Look up authorized payment
+GET {{baseUrl}}/api/v1/payments/{{paymentId}}
+X-API-Key: {{apiKey}}
+
+###
+# 9. Reverse payment
+# @name reversePayment
+POST {{baseUrl}}/api/v1/payments/{{paymentId}}/reverse
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-reversal-001
+
+{
+  "idempotencyKey": "idem-self-test-reversal-001",
+  "reason": "self_test"
+}
+
+###
+# 10. Replay reversal idempotently
+POST {{baseUrl}}/api/v1/payments/{{paymentId}}/reverse
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-reversal-001-replay
+
+{
+  "idempotencyKey": "idem-self-test-reversal-001",
+  "reason": "self_test"
+}
+
+###
+# 11. Authorize high amount payment
+# Expected: reasonCodes includes HIGH_AMOUNT
+POST {{baseUrl}}/api/v1/payments/authorize
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-high-amount-001
+
+{
+  "merchantId": "{{merchantId}}",
+  "customerId": "cus_self_test_high_amount",
+  "amountMinor": 10000001,
+  "currency": "USD",
+  "paymentMethodToken": "pmt_tok_self_test_high_amount",
+  "deviceFingerprint": "dfp_self_test_high_amount",
+  "externalReference": "order_self_test_high_amount",
+  "idempotencyKey": "idem-self-test-high-amount-001"
+}
+
+###
+# 12. Authorize suspicious currency payment
+# Expected: reasonCodes includes SUSPICIOUS_CURRENCY
+POST {{baseUrl}}/api/v1/payments/authorize
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-currency-001
+
+{
+  "merchantId": "{{merchantId}}",
+  "customerId": "cus_self_test_currency",
+  "amountMinor": 1299,
+  "currency": "XXX",
+  "paymentMethodToken": "pmt_tok_self_test_currency",
+  "deviceFingerprint": "dfp_self_test_currency",
+  "externalReference": "order_self_test_currency",
+  "idempotencyKey": "idem-self-test-currency-001"
+}
+
+###
+# 13. Authorize repeated device payment
+# Expected: reasonCodes includes REPEATED_DEVICE
+POST {{baseUrl}}/api/v1/payments/authorize
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+X-Correlation-Id: corr-self-test-repeat-001
+
+{
+  "merchantId": "{{merchantId}}",
+  "customerId": "cus_self_test_repeat",
+  "amountMinor": 1299,
+  "currency": "USD",
+  "paymentMethodToken": "pmt_tok_self_test_repeat",
+  "deviceFingerprint": "repeat_self_test_device",
+  "externalReference": "order_self_test_repeat",
+  "idempotencyKey": "idem-self-test-repeat-001"
+}
+
+###
+# 14. Search ops payments
+GET {{baseUrl}}/api/v1/ops/payments?merchantId={{merchantId}}&size=20
+X-User-Id: {{opsUserId}}
+X-User-Roles: {{opsRoles}}
+
+###
+# 15. Inspect ops outbox
+# Copy an event ID from the response or database into @outboxEventId before running replay.
+GET {{baseUrl}}/api/v1/ops/outbox?size=20
+X-User-Id: {{opsUserId}}
+X-User-Roles: {{opsRoles}}
+
+###
+# 16. Inspect ops dead letters
+GET {{baseUrl}}/api/v1/ops/dead-letters?size=20
+X-User-Id: {{opsUserId}}
+X-User-Roles: {{opsRoles}}
+
+###
+# 17. Inspect ops consumer lag
+GET {{baseUrl}}/api/v1/ops/consumer-lag
+X-User-Id: {{opsUserId}}
+X-User-Roles: {{opsRoles}}
+
+###
+# 18. Request outbox replay
+# Set @outboxEventId first.
+POST {{baseUrl}}/api/v1/ops/replay/OUTBOX/{{outboxEventId}}
+Content-Type: application/json
+X-User-Id: {{opsUserId}}
+X-User-Roles: {{opsRoles}}
+X-Correlation-Id: corr-self-test-replay-001
+
+{
+  "reason": "self_test"
+}
+
+###
+# 19. Negative auth check: missing merchant API key
+# Expected: 401 Unauthorized
+POST {{baseUrl}}/api/v1/payments/authorize
+Content-Type: application/json
+X-Correlation-Id: corr-self-test-auth-missing-key
+
+{
+  "merchantId": "{{merchantId}}",
+  "customerId": "cus_self_test_missing_key",
+  "amountMinor": 1299,
+  "currency": "USD",
+  "paymentMethodToken": "pmt_tok_self_test_missing_key",
+  "deviceFingerprint": "dfp_self_test_missing_key",
+  "externalReference": "order_self_test_missing_key",
+  "idempotencyKey": "idem-self-test-missing-key-001"
+}
+
+###
+# 20. Negative ops check: missing ops role
+# Expected: 401 or 403 depending on the active security path
+GET {{baseUrl}}/api/v1/ops/payments?size=20

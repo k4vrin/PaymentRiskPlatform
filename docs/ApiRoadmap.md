@@ -2150,114 +2150,114 @@ Authentication strategy:
 - [x] Count risk unavailable responses.
 - [x] Add tests with fake meter registry.
 
-15. [ ] Add Redis idempotency/cache metrics:
+15. [x] Add Redis idempotency/cache metrics:
 
-- [ ] Count Redis hits.
-- [ ] Count Redis misses.
-- [ ] Count Redis write failures.
-- [ ] Count database fallback hits.
-- [ ] Add tests where practical.
+- [x] Count Redis hits.
+- [x] Count Redis misses.
+- [x] Count Redis write failures.
+- [x] Count database fallback hits.
+- [x] Add tests where practical.
 
-16. [ ] Add messaging metrics:
+16. [x] Add messaging metrics:
 
-- [ ] Count Kafka producer successes.
-- [ ] Count Kafka producer failures.
-- [ ] Record outbox lag.
-- [ ] Record consumer lag.
-- [ ] Count dead-letter records.
-- [ ] Count replay success/failure.
-- [ ] Add tests or documented dashboard queries.
+- [x] Count Kafka producer successes.
+- [x] Count Kafka producer failures.
+- [x] Record outbox lag.
+- [x] Record consumer lag.
+- [x] Count dead-letter records.
+- [x] Count replay success/failure.
+- [x] Add tests or documented dashboard queries.
 
-17. [ ] Update Prometheus configuration:
+17. [x] Update Prometheus configuration:
 
-- [ ] Scrape Spring Boot actuator metrics.
-- [ ] Scrape Go risk service metrics if exposed in a later step.
-- [ ] Keep local Prometheus config aligned with service ports.
-- [ ] Validate config syntax.
+- [x] Scrape Spring Boot actuator metrics.
+- [x] Scrape Go risk service metrics if exposed in a later step.
+- [x] Keep local Prometheus config aligned with service ports.
+- [x] Validate config syntax.
 
-18. [ ] Add Grafana dashboards:
+18. [x] Add Grafana dashboards:
 
-- [ ] Add API health dashboard.
-- [ ] Add payment authorization dashboard.
-- [ ] Add risk service dashboard.
-- [ ] Add Redis/idempotency dashboard.
-- [ ] Add Kafka/outbox dashboard.
-- [ ] Add database health dashboard.
-- [ ] Store dashboard JSON under platform docs/config.
+- [x] Add API health dashboard.
+- [x] Add payment authorization dashboard.
+- [x] Add risk service dashboard.
+- [x] Add Redis/idempotency dashboard.
+- [x] Add Kafka/outbox dashboard.
+- [x] Add database health dashboard.
+- [x] Store dashboard JSON under platform docs/config.
 
-19. [ ] Add CI workflow for Java:
+19. [x] Add CI workflow for Java:
 
-- [ ] Run Maven validation.
-- [ ] Run Java tests.
-- [ ] Cache Maven dependencies.
-- [ ] Publish test reports if selected.
+- [x] Run Maven validation.
+- [x] Run Java tests.
+- [x] Cache Maven dependencies.
+- [x] Publish test reports if selected.
 
-20. [ ] Add CI workflow for Go:
+20. [x] Add CI workflow for Go:
 
-- [ ] Run `go test ./...`.
-- [ ] Cache Go modules/build cache.
-- [ ] Run `go vet` if selected.
-- [ ] Publish test reports if selected.
+- [x] Run `go test ./...`.
+- [x] Cache Go modules/build cache.
+- [x] Run `go vet` if selected.
+- [x] Publish test reports if selected.
 
-21. [ ] Add CI workflow for protobuf:
+21. [x] Add CI workflow for protobuf:
 
-- [ ] Run `make proto`.
-- [ ] Fail if generated files are stale.
-- [ ] Run Java and Go contract tests.
+- [x] Run `make proto`.
+- [x] Fail if generated files are stale.
+- [x] Run Java and Go contract tests.
 
-22. [ ] Add CI workflow for platform validation:
+22. [x] Add CI workflow for platform validation:
 
-- [ ] Validate Docker Compose config.
-- [ ] Build service container images if Dockerfiles exist.
-- [ ] Run lightweight smoke checks where practical.
+- [x] Validate Docker Compose config.
+- [x] Build service container images if Dockerfiles exist.
+- [x] Run lightweight smoke checks where practical.
 
-23. [ ] Add container build configuration:
+23. [x] Add container build configuration:
 
-- [ ] Add Dockerfile for payment orchestrator if missing.
-- [ ] Add Dockerfile for risk scoring service if missing.
-- [ ] Add image build targets to `Makefile`.
-- [ ] Add CI build checks.
+- [x] Add Dockerfile for payment orchestrator if missing.
+- [x] Add Dockerfile for risk scoring service if missing.
+- [x] Add image build targets to `Makefile`.
+- [x] Add CI build checks.
 
-24. [ ] Add Linux operations runbook:
+24. [x] Add Linux operations runbook:
 
-- [ ] Document local startup and shutdown.
-- [ ] Document logs inspection.
-- [ ] Document database checks.
-- [ ] Document Redis checks.
-- [ ] Document Kafka checks.
-- [ ] Document RabbitMQ checks.
-- [ ] Document replay and dead-letter workflows.
+- [x] Document local startup and shutdown.
+- [x] Document logs inspection.
+- [x] Document database checks.
+- [x] Document Redis checks.
+- [x] Document Kafka checks.
+- [x] Document RabbitMQ checks.
+- [x] Document replay and dead-letter workflows.
 
-25. [ ] Add incident write-up:
+25. [x] Add incident write-up:
 
-- [ ] Choose failed risk service or Kafka replay scenario.
-- [ ] Document impact.
-- [ ] Document detection signals.
-- [ ] Document timeline.
-- [ ] Document mitigation.
-- [ ] Document prevention/follow-up actions.
+- [x] Choose failed risk service or Kafka replay scenario.
+- [x] Document impact.
+- [x] Document detection signals.
+- [x] Document timeline.
+- [x] Document mitigation.
+- [x] Document prevention/follow-up actions.
 
-26. [ ] Add release readiness checklist:
+26. [x] Add release readiness checklist:
 
-- [ ] Verify tests pass.
-- [ ] Verify docs are current.
-- [ ] Verify dashboards are available.
-- [ ] Verify runbook is available.
-- [ ] Verify secrets are not committed.
-- [ ] Verify local environment can be started from documented commands.
+- [x] Verify tests pass.
+- [x] Verify docs are current.
+- [x] Verify dashboards are available.
+- [x] Verify runbook is available.
+- [x] Verify secrets are not committed.
+- [x] Verify local environment can be started from documented commands.
 
 ### Acceptance Criteria
 
-- [ ] Protected endpoints require authentication.
-- [ ] Payment APIs authenticate merchants with API keys.
-- [ ] Ops APIs authenticate operators with JWT bearer tokens.
-- [ ] Internal service endpoints authenticate service callers with JWT bearer tokens carrying `SERVICE`.
-- [ ] Role-based access rules are enforced.
-- [ ] Sensitive data is masked in logs.
-- [ ] Prometheus exposes service metrics.
-- [ ] Grafana dashboards show API, risk, Kafka, Redis, and database health.
-- [ ] CI runs Java, Go, protobuf, and container checks.
-- [ ] Runbook documents common production troubleshooting commands.
+- [x] Protected endpoints require authentication.
+- [x] Payment APIs authenticate merchants with API keys.
+- [x] Ops APIs authenticate operators with JWT bearer tokens.
+- [x] Internal service endpoints authenticate service callers with JWT bearer tokens carrying `SERVICE`.
+- [x] Role-based access rules are enforced.
+- [x] Sensitive data is masked in logs.
+- [x] Prometheus exposes service metrics.
+- [x] Grafana dashboards show API, risk, Kafka, Redis, and database health.
+- [x] CI runs Java, Go, protobuf, and container checks.
+- [x] Runbook documents common production troubleshooting commands.
 
 ## Phase 8: Portfolio Polish And Readiness
 

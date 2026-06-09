@@ -16,7 +16,7 @@ public record RiskGrpcProperties(
         }
 
         if (port <= 0) {
-            port = 9090;
+            port = 9091;
         }
 
         if (timeout == null || timeout.isNegative() || timeout.isZero()) {

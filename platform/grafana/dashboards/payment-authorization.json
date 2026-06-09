@@ -1,0 +1,43 @@
+{
+  "uid": "payment-risk-authorization",
+  "title": "Payment Risk - Authorization",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Authorization Attempts",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "rate(paymentrisk_payment_authorization_attempts_total[5m])", "legendFormat": "attempts" }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 8 }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Authorization Outcomes",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(paymentrisk_payment_authorization_outcomes_total[5m])) by (outcome)",
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 8 }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Idempotency Replays",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "rate(paymentrisk_payment_authorization_idempotency_replays_total[5m])", "legendFormat": "replays" }
+      ],
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 }
+    }
+  ]
+}

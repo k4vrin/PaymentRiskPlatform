@@ -17,6 +17,8 @@ import dev.kavrin.paymentrisk.security.ratelimit.RateLimitDecision;
 import dev.kavrin.paymentrisk.security.ratelimit.RateLimitProperties;
 import dev.kavrin.paymentrisk.security.ratelimit.RateLimitWebFilter;
 import dev.kavrin.paymentrisk.security.ratelimit.RateLimiter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -239,6 +241,14 @@ class SecurityConfigurationTest {
     }
 
     @Test
+    void permitsPrometheusEndpointWithoutAuthentication() {
+        webTestClient.get()
+                .uri("/actuator/prometheus")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void addsSecurityHeaders() {
         webTestClient.get()
                 .uri("/public-test")
@@ -361,6 +371,11 @@ class SecurityConfigurationTest {
                     limiter,
                     new RateLimitProperties(false, 100, java.time.Duration.ofMinutes(1), "/api/v1/payments")
             );
+        }
+
+        @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
         }
     }
 

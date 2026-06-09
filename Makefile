@@ -2,6 +2,8 @@ COMPOSE_FILE := platform/compose.local.yaml
 JAVA_SERVICE_DIR := services/payment-orchestrator-service
 GO_SERVICE_DIR := services/risk-scoring-service
 GO_CACHE ?= /private/tmp/paymentrisk-go-build-cache
+PAYMENT_ORCHESTRATOR_IMAGE ?= payment-risk/payment-orchestrator-service:local
+RISK_SCORING_IMAGE ?= payment-risk/risk-scoring-service:local
 PROTO_DIR := proto
 GO_PROTO_OUT := proto/gen/go
 GO_BIN := $(shell go env GOPATH)/bin
@@ -23,6 +25,10 @@ help:
 	@echo "  make java-run          Alias for make spring-run"
 	@echo "  make spring-run        Run Spring Boot service locally"
 	@echo "  make risk-run          Run Go risk scoring service locally"
+	@echo "  make image-build       Build service container images"
+	@echo "  make image-build-java  Build payment orchestrator image"
+	@echo "  make image-build-go    Build risk scoring image"
+	@echo "  make compose-config    Validate Docker Compose config"
 
 .PHONY: platform-up
 platform-up:
@@ -82,3 +88,18 @@ proto-go:
 		--go-grpc_out=$(GO_PROTO_OUT) \
 		--go-grpc_opt=paths=source_relative \
 		$(PROTO_DIR)/risk/v1/risk_scoring.proto
+
+.PHONY: image-build
+image-build: image-build-java image-build-go
+
+.PHONY: image-build-java
+image-build-java:
+	docker build -f $(JAVA_SERVICE_DIR)/Dockerfile -t $(PAYMENT_ORCHESTRATOR_IMAGE) .
+
+.PHONY: image-build-go
+image-build-go:
+	docker build -f $(GO_SERVICE_DIR)/Dockerfile -t $(RISK_SCORING_IMAGE) .
+
+.PHONY: compose-config
+compose-config:
+	docker compose -f $(COMPOSE_FILE) config

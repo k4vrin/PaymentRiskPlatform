@@ -17,6 +17,7 @@ import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamTimeoutException;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamUnavailableException;
+import dev.kavrin.paymentrisk.shared.observability.metrics.IdempotencyCacheMetrics;
 import dev.kavrin.paymentrisk.shared.observability.metrics.PaymentAuthorizationMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +60,8 @@ class DefaultAuthorizePaymentServiceTest {
     private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     private final PaymentAuthorizationMetrics authorizationMetrics =
             new PaymentAuthorizationMetrics(meterRegistry);
+    private final IdempotencyCacheMetrics idempotencyCacheMetrics =
+            new IdempotencyCacheMetrics(meterRegistry);
     private final DefaultAuthorizePaymentService service = new DefaultAuthorizePaymentService(
             clock,
             idempotencyStore,
@@ -69,7 +72,8 @@ class DefaultAuthorizePaymentServiceTest {
             transactionalOperator,
             Optional.of(idempotencySnapshotCache),
             snapshotSerializer,
-            authorizationMetrics
+            authorizationMetrics,
+            idempotencyCacheMetrics
     );
 
     @BeforeEach
@@ -263,6 +267,10 @@ class DefaultAuthorizePaymentServiceTest {
         )).isEqualTo(storedResult);
         assertThat(idempotencySnapshotCache.lastPutTtl).isEqualTo(Duration.ofHours(2));
         assertThat(counterValue("paymentrisk.payment.authorization.idempotency.replays")).isEqualTo(1.0);
+        assertThat(counterValue(
+                "paymentrisk.idempotency.cache.database.fallbacks",
+                "scope", "PAYMENT_AUTHORIZATION"
+        )).isEqualTo(1.0);
         assertThat(meterRegistry.find("paymentrisk.risk.service.duration").timer()).isNull();
     }
 
@@ -288,6 +296,10 @@ class DefaultAuthorizePaymentServiceTest {
         assertThat(paymentStatePersistence.saveCount).isZero();
         assertThat(paymentOutboxEventWriter.writeCount).isZero();
         assertThat(counterValue("paymentrisk.payment.authorization.idempotency.replays")).isEqualTo(1.0);
+        assertThat(counterValue(
+                "paymentrisk.idempotency.cache.database.fallbacks",
+                "scope", "PAYMENT_AUTHORIZATION"
+        )).isZero();
         assertThat(meterRegistry.find("paymentrisk.risk.service.duration").timer()).isNull();
     }
 

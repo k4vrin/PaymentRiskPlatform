@@ -23,7 +23,7 @@ payment:
   risk:
     grpc:
       host: ${PAYMENT_RISK_GRPC_HOST}
-      port: ${PAYMENT_RISK_GRPC_PORT:9090}
+      port: ${PAYMENT_RISK_GRPC_PORT:9091}
       timeout: ${PAYMENT_RISK_GRPC_TIMEOUT:500ms}
   sensitive-data:
     hash-key: ${PAYMENT_SENSITIVE_DATA_HASH_KEY}

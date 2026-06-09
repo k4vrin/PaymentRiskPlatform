@@ -12,6 +12,7 @@ import dev.kavrin.paymentrisk.risk.application.RiskScoringClient;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringRequest;
 import dev.kavrin.paymentrisk.risk.application.dto.RiskScoringResponse;
 import dev.kavrin.paymentrisk.shared.observability.metrics.PaymentAuthorizationMetrics;
+import dev.kavrin.paymentrisk.shared.observability.metrics.IdempotencyCacheMetrics;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamTimeoutException;
 import dev.kavrin.paymentrisk.shared.api.error.DownstreamUnavailableException;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
     private final Optional<RedisIdempotencySnapshotCache> idempotencySnapshotCache;
     private final AuthorizePaymentResultSnapshotSerializer snapshotSerializer;
     private final PaymentAuthorizationMetrics authorizationMetrics;
+    private final IdempotencyCacheMetrics idempotencyCacheMetrics;
 
     @Override
     public Mono<AuthorizePaymentResult> authorize(AuthorizePaymentCommand command) {
@@ -229,6 +231,7 @@ public class DefaultAuthorizePaymentService implements AuthorizePaymentService {
                 )
                 .flatMap(storedResult -> {
                     authorizationMetrics.recordDuplicateIdempotencyReplay();
+                    idempotencyCacheMetrics.recordDatabaseFallbackHit(scope.name());
 
                     return cacheCompletedResult(
                                     scope,

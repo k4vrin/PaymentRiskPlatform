@@ -11,6 +11,7 @@ docs/
   adr/
 platform/
   compose.local.yaml
+  grafana/
   prometheus/
 services/
   payment-orchestrator-service/
@@ -120,6 +121,18 @@ Regenerate contracts and run contract checks:
 make contract-test
 ```
 
+Validate Docker Compose config:
+
+```bash
+make compose-config
+```
+
+Build service images:
+
+```bash
+make image-build
+```
+
 Start the Spring Boot service:
 
 ```bash
@@ -134,8 +147,8 @@ Start the Go risk scoring service:
 make risk-run
 ```
 
-The Go service listens on `RISK_SERVICE_HOST:RISK_SERVICE_GRPC_PORT`, defaulting to `0.0.0.0:9090`. The Spring Boot
-local profile points its risk gRPC client at `localhost:9090`, so starting `make risk-run` before the Java service wires
+The Go service listens on `RISK_SERVICE_HOST:RISK_SERVICE_GRPC_PORT`, defaulting to `0.0.0.0:9091`. The Spring Boot
+local profile points its risk gRPC client at `localhost:9091`, so starting `make risk-run` before the Java service wires
 the authorization flow to the local Go scorer.
 
 Useful Go service configuration:
@@ -144,7 +157,7 @@ Useful Go service configuration:
 RISK_SERVICE_ENV=local
 RISK_SERVICE_HOST=0.0.0.0
 RISK_SERVICE_NAME=risk-scoring-service
-RISK_SERVICE_GRPC_PORT=9090
+RISK_SERVICE_GRPC_PORT=9091
 RISK_RULE_VERSION=local-v1
 RISK_APPROVE_MAX_SCORE=49
 RISK_REVIEW_MAX_SCORE=79
@@ -164,13 +177,15 @@ Phase 4 risk rules are deterministic and infrastructure-free:
 ## Current Implementation Status
 
 The project has completed the foundation, API contract baseline, Phase 2 Payment Authorization API work, Phase 3 Payment
-Lookup/Reversal work, and Phase 4 Go Risk Scoring gRPC Service work.
+Lookup/Reversal work, Phase 4 Go Risk Scoring gRPC Service work, Phase 5 Operations API work, Phase 6 messaging work,
+and Phase 7 security/observability/release-readiness work.
 
 Completed foundations include:
 
 - Spring Boot WebFlux payment orchestrator service structure.
 - Go risk scoring service with deterministic scoring rules, gRPC health, structured logging, and graceful shutdown.
-- Local Docker Compose platform for PostgreSQL, Redis, Kafka, RabbitMQ, Prometheus, and Grafana.
+- Local Docker Compose platform for PostgreSQL, Redis, Kafka, RabbitMQ, Prometheus, and Grafana with provisioned
+  dashboards.
 - REST API conventions, API versioning, OpenAPI setup, correlation ID handling, and global error responses.
 - Shared protobuf contract for the risk scoring gRPC API.
 - Generated Go protobuf and gRPC files.
@@ -189,8 +204,15 @@ Completed foundations include:
   fallback outcomes, verified against the Go protobuf contract.
 - Risk decision mapping for approved, declined, review-required, timeout, and unavailable outcomes.
 - Redis repopulation from durable database snapshots after cache misses.
+- Merchant API key authentication, JWT-based ops/internal auth, secure headers, CORS, rate limiting, masking, and
+  endpoint authorization tests.
+- Micrometer metrics for API latency, authorization outcomes, risk latency/failures, Redis idempotency fallback, outbox
+  publishing, consumer processing, dead letters, replay requests, and partner callbacks.
+- CI workflow definitions for Java, Go, protobuf contracts, Docker Compose validation, and container image builds.
+- Dockerfiles for the Java payment orchestrator and Go risk scoring service.
 - Tests for API contracts, correlation IDs, error handling, domain value objects, persistence mappers, Redis cache
-  behavior, transaction rollback, duplicate idempotency replay, and the durable authorization workflow.
+  behavior, transaction rollback, duplicate idempotency replay, durable authorization workflow, security controls, and
+  observability helpers.
 
 The current authorization endpoint validates the request, creates a payment aggregate, calls the risk scoring client,
 maps the risk result to an authorization or decline, persists the payment state and outbox events transactionally,
@@ -198,19 +220,22 @@ returns the authorization response, and supports duplicate request replay throug
 store as the durable source of truth.
 
 Phase 5 operations APIs are available under `/api/v1/ops/**` for payment search, outbox inspection, dead-letter
-inspection, replay requests, and consumer-lag visibility. Local ops authorization uses:
+inspection, replay requests, and consumer-lag visibility. Ops endpoints accept JWT bearer tokens with `OPS` or `ADMIN`;
+local/test fallback headers are retained for focused tests.
 
-```text
-X-User-Id: ops-user
-X-User-Roles: OPS
-```
+Phase 6 messaging includes Kafka outbox publishing, audit and settlement consumers, ops metrics projection, dead-letter
+persistence, and RabbitMQ partner callback command handling.
 
-`OPS` and `ADMIN` can access operations endpoints. Merchant-only and anonymous requests are denied.
+Phase 7 readiness artifacts:
 
-Main work not implemented yet:
-
-- Kafka audit consumer, settlement projection consumer, and RabbitMQ callback worker.
-- Production-grade authentication, observability dashboards, CI, and release-readiness work.
+- `docs/api/endpoint-authorization-matrix.md`
+- `docs/api/observability-metrics.md`
+- `docs/testing/end-to-end-platform-self-test.md`
+- `docs/runbooks/linux-operations-runbook.md`
+- `docs/incidents/failed-risk-service.md`
+- `docs/release/phase-7-release-readiness-checklist.md`
+- `platform/grafana/dashboards/`
+- `.github/workflows/`
 
 See `docs/ApiRoadmap.md` and `docs/phase-2-payment-authorization.md` for the detailed tracker.
 Phase 3 planning is documented in `docs/phase-3-payment-lookup-and-reversal.md`.

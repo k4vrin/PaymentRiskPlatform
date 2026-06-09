@@ -79,10 +79,12 @@ Allowed roles:
 Local behavior:
 
 - `/actuator/health` and `/actuator/health/**` are public and expose only health status.
+- `/actuator/prometheus` is public for local Prometheus scraping.
 
 Production behavior:
 
 - readiness/details should remain minimal publicly or move behind `SERVICE`/`ADMIN`.
+- metrics should be restricted at the network boundary or moved behind `SERVICE` authentication.
 
 ## Security Headers And CORS
 
