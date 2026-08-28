@@ -40,3 +40,13 @@ platform/.tmp/
 generated/
 build/
 out/
+
+# Generated local codebase index; rebuild from repository sources
+.codebase-memory/
+
+# Personal preparation and post drafts live in the Obsidian vault
+/docs/interview-preparation-curriculum.md
+/docs/portfolio-improvement-review.md
+/docs/interview/
+/docs/linkedin/
+/docs/social/
